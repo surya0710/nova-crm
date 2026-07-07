@@ -214,7 +214,7 @@ class LeadController extends Controller
 
     public function acknowledgeFollowUp(Request $request, Lead $lead): JsonResponse
     {
-        $this->authorize('view', $lead);
+        $this->authorize('update', $lead);
 
         $lead->update(['follow_up_alerted_at' => now()]);
 

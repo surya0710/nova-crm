@@ -24,15 +24,17 @@ class TeamController extends Controller
 
         $members = $organization->users()
             ->orderBy('name')
-            ->get()
-            ->map(function (User $member) use ($organization) {
-                $member->setRelation(
-                    'organizationRole',
-                    $member->getRoleInOrganization($organization)
-                );
+            ->get();
 
-                return $member;
-            });
+        $roles = Role::query()
+            ->whereIn('id', $members->pluck('pivot.role_id')->filter()->unique())
+            ->get()
+            ->keyBy('id');
+
+        $members->each(fn (User $member) => $member->setRelation(
+            'organizationRole',
+            $roles->get($member->pivot->role_id)
+        ));
 
         $assignableRoles = Role::query()
             ->where('organization_id', $organization->id)

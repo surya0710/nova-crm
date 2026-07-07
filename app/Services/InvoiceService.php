@@ -129,19 +129,21 @@ class InvoiceService
     {
         $this->assertNoFinancialChanges($invoice, $data);
 
-        $invoice->update([
-            'title' => $data['title'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
-            'opportunity_id' => $data['opportunity_id'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
+        return DB::transaction(function () use ($invoice, $data, $user) {
+            $invoice->update([
+                'title' => $data['title'] ?? null,
+                'due_date' => $data['due_date'] ?? null,
+                'opportunity_id' => $data['opportunity_id'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
 
-        $this->auditLogger->log($invoice, 'updated', [
-            'scope' => 'header',
-            'fields' => ['title', 'due_date', 'opportunity_id', 'notes'],
-        ], $user);
+            $this->auditLogger->log($invoice, 'updated', [
+                'scope' => 'header',
+                'fields' => ['title', 'due_date', 'opportunity_id', 'notes'],
+            ], $user);
 
-        return $invoice->fresh(['items']);
+            return $invoice->fresh(['items']);
+        });
     }
 
     /**

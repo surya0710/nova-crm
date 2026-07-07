@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\Money;
+
 use Illuminate\Validation\ValidationException;
 
 class InvoiceCalculationService
@@ -82,7 +84,7 @@ class InvoiceCalculationService
 
     public function balanceDue(float $total, float $amountPaid): float
     {
-        return max(0, round($total - $amountPaid, 2));
+        return Money::balanceDue($total, $amountPaid);
     }
 
     /**

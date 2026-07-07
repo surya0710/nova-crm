@@ -82,15 +82,17 @@ class ReportService
             ->groupBy('assigned_to')
             ->orderByDesc('won_count')
             ->limit(5)
-            ->get()
-            ->map(function ($row) {
-                $user = User::find($row->assigned_to);
+            ->get();
 
-                return [
-                    'name' => $user?->name ?? __('Unknown'),
-                    'count' => (int) $row->won_count,
-                ];
-            });
+        $users = User::query()
+            ->whereIn('id', $topPerformers->pluck('assigned_to')->filter())
+            ->get()
+            ->keyBy('id');
+
+        $topPerformers = $topPerformers->map(fn ($row) => [
+            'name' => $users->get($row->assigned_to)?->name ?? __('Unknown'),
+            'count' => (int) $row->won_count,
+        ]);
 
         return [
             'currency' => $organization->currency,
@@ -112,17 +114,25 @@ class ReportService
 
     protected function monthlyRevenue(): Collection
     {
+        $rangeStart = now()->subMonths(5)->startOfMonth();
+
+        $payments = Payment::query()
+            ->where('payment_date', '>=', $rangeStart)
+            ->get(['payment_date', 'amount']);
+
+        $totalsByMonth = $payments->groupBy(
+            fn (Payment $payment) => $payment->payment_date->format('Y-m')
+        )->map(fn (Collection $group) => (float) $group->sum('amount'));
+
         $months = collect();
 
         for ($i = 5; $i >= 0; $i--) {
             $start = now()->subMonths($i)->startOfMonth();
-            $end = $start->copy()->endOfMonth();
+            $key = $start->format('Y-m');
 
             $months->push([
                 'label' => $start->format('M Y'),
-                'total' => (float) Payment::query()
-                    ->whereBetween('payment_date', [$start, $end])
-                    ->sum('amount'),
+                'total' => (float) ($totalsByMonth[$key] ?? 0),
             ]);
         }
 

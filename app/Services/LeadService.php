@@ -6,6 +6,7 @@ use App\Exceptions\DuplicateLeadException;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\Organization;
+use App\Models\Role;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use Illuminate\Support\Facades\DB;
@@ -121,9 +122,18 @@ class LeadService
             $organization = Organization::query()->find($lead->organization_id);
 
             if ($organization) {
-                $recipients = $organization->users()
+                $users = $organization->users()->get();
+                $roles = Role::query()
+                    ->whereIn('id', $users->pluck('pivot.role_id')->filter()->unique())
+                    ->with('permissions')
                     ->get()
-                    ->filter(fn (User $user) => $user->hasPermission('leads.manage', $organization));
+                    ->keyBy('id');
+
+                $recipients = $users->filter(function (User $user) use ($roles) {
+                    $role = $roles->get($user->pivot->role_id);
+
+                    return $role?->hasPermission('leads.manage') ?? false;
+                });
             }
         }
 

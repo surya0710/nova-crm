@@ -121,8 +121,6 @@ class QuotationService
 
         $previousStatus = $currentStatus;
 
-        $quotation->updateQuietly(['status' => $newStatus]);
-
         $event = match ($newStatus) {
             'accepted' => 'accepted',
             'rejected' => 'rejected',
@@ -131,12 +129,16 @@ class QuotationService
             default => 'status_changed',
         };
 
-        $this->auditLogger->log($quotation, $event, [
-            'from' => $previousStatus,
-            'to' => $newStatus,
-        ], $user);
+        return DB::transaction(function () use ($quotation, $newStatus, $previousStatus, $event, $user) {
+            $quotation->updateQuietly(['status' => $newStatus]);
 
-        return $quotation->fresh();
+            $this->auditLogger->log($quotation, $event, [
+                'from' => $previousStatus,
+                'to' => $newStatus,
+            ], $user);
+
+            return $quotation->fresh();
+        });
     }
 
     public function markSentAfterEmail(Quotation $quotation, User $user): Quotation

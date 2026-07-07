@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\Organization;
+use App\Support\Money;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportExportService
@@ -34,7 +35,7 @@ class ReportExportService
             $today = now()->startOfDay();
 
             foreach ($invoices as $invoice) {
-                $balance = max(0, (float) $invoice->total - (float) $invoice->amount_paid);
+                $balance = Money::balanceDue((float) $invoice->total, (float) $invoice->amount_paid);
                 $dueDate = $invoice->due_date?->startOfDay() ?? $today;
                 $daysOverdue = $dueDate->lte($today) ? (int) $dueDate->diffInDays($today) : 0;
 

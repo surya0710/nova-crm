@@ -7,7 +7,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\Payment;
-use App\Models\User;
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -130,11 +130,11 @@ class RevenueService
         $paymentCount = (clone $paymentQuery)->count();
 
         $averageInvoiceValue = $invoiceCount > 0
-            ? round($totalInvoiced / $invoiceCount, 2)
+            ? Money::round($totalInvoiced / $invoiceCount)
             : 0.0;
 
         $averagePaymentValue = $paymentCount > 0
-            ? round($totalPaid / $paymentCount, 2)
+            ? Money::round($totalPaid / $paymentCount)
             : 0.0;
 
         return [
@@ -177,7 +177,7 @@ class RevenueService
         $today = now()->startOfDay();
 
         foreach ($query->cursor() as $invoice) {
-            $balance = max(0, (float) $invoice->total - (float) $invoice->amount_paid);
+            $balance = Money::balanceDue((float) $invoice->total, (float) $invoice->amount_paid);
             if ($balance <= 0) {
                 continue;
             }
@@ -223,17 +223,13 @@ class RevenueService
         $invoiceCount = (clone $invoiceQuery)->count();
         $paymentCount = (clone $paymentQuery)->count();
 
-        $collectionRate = $totalInvoiced > 0
-            ? round(($totalPaid / $totalInvoiced) * 100, 1)
-            : null;
+        $collectionRate = Money::percentage($totalPaid, $totalInvoiced);
 
         $paidPercent = $invoiceCount > 0
-            ? round(((clone $invoiceQuery)->where('status', 'paid')->count() / $invoiceCount) * 100, 1)
+            ? Money::percentage((clone $invoiceQuery)->where('status', 'paid')->count(), $invoiceCount)
             : null;
 
-        $outstandingPercent = $totalInvoiced > 0
-            ? round(($outstanding / $totalInvoiced) * 100, 1)
-            : null;
+        $outstandingPercent = Money::percentage($outstanding, $totalInvoiced);
 
         $averageDaysToPayment = $this->averageDaysToPayment($filters);
 
@@ -306,16 +302,19 @@ class RevenueService
             $filters
         );
 
-        return $query->limit($limit)->get()->map(function ($row) {
-            $customer = Customer::query()->find($row->customer_id);
+        $rows = $query->limit($limit)->get();
 
-            return [
-                'customer_id' => $row->customer_id,
-                'name' => $customer?->display_name ?? __('Unknown'),
-                'total' => (float) $row->total,
-                'payment_count' => (int) $row->payment_count,
-            ];
-        });
+        $customers = Customer::query()
+            ->whereIn('id', $rows->pluck('customer_id')->filter())
+            ->get(['id', 'name', 'company'])
+            ->keyBy('id');
+
+        return $rows->map(fn ($row) => [
+            'customer_id' => $row->customer_id,
+            'name' => $customers->get($row->customer_id)?->display_name ?? __('Unknown'),
+            'total' => (float) $row->total,
+            'payment_count' => (int) $row->payment_count,
+        ]);
     }
 
     /**
@@ -325,21 +324,22 @@ class RevenueService
     {
         $query = $this->applyPaymentFilters(Payment::query(), $filters)
             ->join('invoices', 'payments.invoice_id', '=', 'invoices.id')
-            ->whereNotNull('invoices.created_by')
-            ->select('invoices.created_by as user_id', DB::raw('SUM(payments.amount) as total'), DB::raw('COUNT(payments.id) as payment_count'))
-            ->groupBy('invoices.created_by')
+            ->join('users', 'users.id', '=', 'invoices.created_by')
+            ->select(
+                'users.id as user_id',
+                'users.name',
+                DB::raw('SUM(payments.amount) as total'),
+                DB::raw('COUNT(payments.id) as payment_count'),
+            )
+            ->groupBy('users.id', 'users.name')
             ->orderByDesc('total');
 
-        return $query->limit($limit)->get()->map(function ($row) {
-            $user = User::query()->find($row->user_id);
-
-            return [
-                'user_id' => $row->user_id,
-                'name' => $user?->name ?? __('Unknown'),
-                'total' => (float) $row->total,
-                'payment_count' => (int) $row->payment_count,
-            ];
-        });
+        return $query->limit($limit)->get()->map(fn ($row) => [
+            'user_id' => $row->user_id,
+            'name' => $row->name ?? __('Unknown'),
+            'total' => (float) $row->total,
+            'payment_count' => (int) $row->payment_count,
+        ]);
     }
 
     /**
@@ -432,9 +432,9 @@ class RevenueService
             ->orderBy('id')
             ->get(['id', 'number', 'payment_date', 'amount', 'method', 'invoice_id', 'currency']);
 
-        $totalInvoiced = (float) $invoices->sum('total');
-        $totalPaid = (float) $payments->sum('amount');
-        $balanceDue = max(0, round($totalInvoiced - $totalPaid, 2));
+        $totalInvoiced = Money::round((float) $invoices->sum('total'));
+        $totalPaid = Money::round((float) $payments->sum('amount'));
+        $balanceDue = Money::balanceDue($totalInvoiced, $totalPaid);
 
         $entries = collect();
 
@@ -470,7 +470,7 @@ class RevenueService
             ->sortBy(fn ($entry) => [$entry['date']?->format('Y-m-d') ?? '', $entry['type'] === 'invoice' ? 0 : 1])
             ->values()
             ->map(function (array $entry) use (&$runningBalance) {
-                $runningBalance = round($runningBalance + $entry['debit'] - $entry['credit'], 2);
+                $runningBalance = Money::round($runningBalance + $entry['debit'] - $entry['credit']);
                 $entry['balance'] = $runningBalance;
 
                 return $entry;
@@ -481,9 +481,9 @@ class RevenueService
             'total_invoiced' => $totalInvoiced,
             'total_paid' => $totalPaid,
             'balance_due' => $balanceDue,
-            'outstanding_balance' => (float) $invoices->sum(
-                fn (Invoice $invoice) => max(0, (float) $invoice->total - (float) $invoice->amount_paid)
-            ),
+            'outstanding_balance' => Money::round((float) $invoices->sum(
+                fn (Invoice $invoice) => Money::balanceDue((float) $invoice->total, (float) $invoice->amount_paid)
+            )),
             'invoices' => $invoices,
             'payments' => $payments,
             'ledger' => $ledger,
@@ -525,30 +525,27 @@ class RevenueService
         $dashboard = $this->dashboardMetrics($organization, $filters);
         $aging = $this->invoiceAging($organization, $filters);
         $collection = $this->collectionMetrics($organization, $filters);
+        $revenueByMonth = $this->revenueByMonth($organization, $filters);
+        $revenueByCustomer = $this->revenueByCustomer($organization, $filters);
 
         return [
             ...$dashboard,
             'aging' => $aging,
             'collection' => $collection,
-            'revenue_by_month' => $this->revenueByMonth($organization, $filters),
-            'revenue_by_customer' => $this->revenueByCustomer($organization, $filters),
+            'revenue_by_month' => $revenueByMonth,
+            'revenue_by_customer' => $revenueByCustomer,
             'revenue_by_salesperson' => $this->revenueBySalesperson($organization, $filters),
             'revenue_by_product' => $this->revenueByProduct($organization, $filters),
             'revenue_by_organization' => $this->revenueByOrganization($organization, $filters),
-            'charts' => $this->chartDatasets($organization, $filters),
+            'charts' => $this->buildChartDatasets($aging, $revenueByMonth, $revenueByCustomer),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, mixed>
+     * @param  array<string, array{label: string, total: float, count: int}>  $aging
      */
-    public function chartDatasets(Organization $organization, array $filters = []): array
+    protected function buildChartDatasets(array $aging, Collection $byMonth, Collection $byCustomer): array
     {
-        $aging = $this->invoiceAging($organization, $filters);
-        $byMonth = $this->revenueByMonth($organization, $filters);
-        $byCustomer = $this->revenueByCustomer($organization, $filters, 8);
-
         return [
             'aging' => [
                 'labels' => array_column($aging, 'label'),
@@ -564,6 +561,19 @@ class RevenueService
                 'totals' => $byCustomer->pluck('total')->all(),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    public function chartDatasets(Organization $organization, array $filters = []): array
+    {
+        return $this->buildChartDatasets(
+            $this->invoiceAging($organization, $filters),
+            $this->revenueByMonth($organization, $filters),
+            $this->revenueByCustomer($organization, $filters, 8),
+        );
     }
 
     /**

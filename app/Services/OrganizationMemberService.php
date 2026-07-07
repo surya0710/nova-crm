@@ -28,9 +28,15 @@ class OrganizationMemberService
         }
 
         if ($existingUser) {
-            $existingUser->update(['name' => $data['name']]);
-            $user = $existingUser;
-        } else {
+            return DB::transaction(function () use ($existingUser, $data, $organization) {
+                $existingUser->update(['name' => $data['name']]);
+                $organization->addMember($existingUser, $data['role']);
+
+                return $existingUser;
+            });
+        }
+
+        return DB::transaction(function () use ($data, $organization, $email) {
             if (empty($data['password'])) {
                 throw ValidationException::withMessages([
                     'password' => __('A password is required when creating a new user account.'),
@@ -42,11 +48,11 @@ class OrganizationMemberService
                 'email' => $email,
                 'password' => Hash::make($data['password']),
             ]);
-        }
 
-        $organization->addMember($user, $data['role']);
+            $organization->addMember($user, $data['role']);
 
-        return $user;
+            return $user;
+        });
     }
 
     public function updateMemberRole(Organization $organization, User $member, string $roleSlug): void
