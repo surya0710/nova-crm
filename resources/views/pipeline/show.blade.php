@@ -39,34 +39,63 @@
     <x-flash-messages />
 
     @can('update', $opportunity)
-        <div class="mb-6 rounded-xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                    <h3 class="text-sm font-semibold text-slate-900">{{ __('Pipeline Stage') }}</h3>
-                    <p class="mt-0.5 text-sm text-slate-500">{{ __('Move this deal through your pipeline.') }}</p>
+        @if ($opportunity->isOpen())
+            <div class="mb-6 rounded-xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900">{{ __('Pipeline Stage') }}</h3>
+                        <p class="mt-0.5 text-sm text-slate-500">{{ __('Move this deal through your pipeline.') }}</p>
+                    </div>
+                    <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}" class="flex items-center gap-3">
+                        @csrf @method('PATCH')
+                        <select name="stage" onchange="this.form.submit()" class="text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm py-2.5 px-3 min-w-[200px]">
+                            @foreach (config('pipeline.open_stages') as $value)
+                                <option value="{{ $value }}" @selected($opportunity->stage === $value)>{{ config('pipeline.stages.'.$value) }}</option>
+                            @endforeach
+                        </select>
+                    </form>
                 </div>
-                <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}" class="flex items-center gap-3">
-                    @csrf @method('PATCH')
-                    <select name="stage" onchange="this.form.submit()" class="text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm py-2.5 px-3 min-w-[200px]">
-                        @foreach (config('pipeline.stages') as $value => $label)
-                            <option value="{{ $value }}" @selected($opportunity->stage === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </form>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-medium text-slate-500 self-center mr-1">{{ __('Quick set:') }}</span>
+                    @foreach (config('pipeline.open_stages') as $stage)
+                        @if ($opportunity->stage !== $stage)
+                            <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="stage" value="{{ $stage }}">
+                                <button type="submit" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
+                                    {{ config('pipeline.stages.'.$stage) }}
+                                </button>
+                            </form>
+                        @endif
+                    @endforeach
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        x-data=""
+                        x-on:click="$dispatch('open-modal', 'opportunity-mark-won')"
+                        class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition"
+                    >
+                        {{ __('Mark as Won') }}
+                    </button>
+                    <button
+                        type="button"
+                        x-data=""
+                        x-on:click="$dispatch('open-modal', 'opportunity-mark-lost')"
+                        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                    >
+                        {{ __('Mark as Lost') }}
+                    </button>
+                </div>
             </div>
-            <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
-                <span class="text-xs font-medium text-slate-500 self-center mr-1">{{ __('Quick set:') }}</span>
-                @foreach (['proposal' => __('Proposal'), 'negotiation' => __('Negotiation'), 'closed_won' => __('Closed Won'), 'closed_lost' => __('Closed Lost')] as $stage => $label)
-                    @if ($opportunity->stage !== $stage)
-                        <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}">
-                            @csrf @method('PATCH')
-                            <input type="hidden" name="stage" value="{{ $stage }}">
-                            <button type="submit" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition">{{ $label }}</button>
-                        </form>
-                    @endif
-                @endforeach
+            <x-opportunity-close-modal :opportunity="$opportunity" />
+        @else
+            <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+                <p class="text-sm text-slate-600">
+                    {{ __('This deal is closed and cannot be moved to another stage.') }}
+                </p>
             </div>
-        </div>
+        @endif
     @endcan
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -88,6 +117,18 @@
                         <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Expected Close') }}</dt>
                         <dd class="mt-1 text-sm text-slate-900">{{ $opportunity->expected_close_date?->format('M j, Y') ?? '—' }}</dd>
                     </div>
+                    @if ($opportunity->isWon())
+                        <div>
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Won Date') }}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-emerald-700">{{ $opportunity->won_at?->format('M j, Y') ?? '—' }}</dd>
+                        </div>
+                    @endif
+                    @if ($opportunity->isLost())
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Lost Reason') }}</dt>
+                            <dd class="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{{ $opportunity->lost_reason ?? '—' }}</dd>
+                        </div>
+                    @endif
                     <div>
                         <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Assigned To') }}</dt>
                         <dd class="mt-1 text-sm text-slate-900">{{ $opportunity->assignee?->name ?? __('Unassigned') }}</dd>

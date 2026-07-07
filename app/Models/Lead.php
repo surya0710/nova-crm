@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Lead extends Model
@@ -28,6 +29,8 @@ class Lead extends Model
         'priority',
         'assigned_to',
         'status',
+        'converted_at',
+        'converted_by',
         'next_follow_up_at',
         'next_follow_up_note',
         'follow_up_alerted_at',
@@ -42,6 +45,7 @@ class Lead extends Model
             'budget' => 'decimal:2',
             'tags' => 'array',
             'custom_fields' => 'array',
+            'converted_at' => 'datetime',
             'next_follow_up_at' => 'datetime',
             'follow_up_alerted_at' => 'datetime',
         ];
@@ -71,6 +75,16 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function convertedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'converted_by');
+    }
+
+    public function customer(): HasOne
+    {
+        return $this->hasOne(Customer::class);
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(LeadNote::class)->latest();
@@ -98,7 +112,17 @@ class Lead extends Model
 
     public function isOpen(): bool
     {
-        return ! in_array($this->status, ['won', 'lost'], true);
+        return ! in_array($this->status, ['converted', 'won', 'lost'], true);
+    }
+
+    public function isConverted(): bool
+    {
+        return $this->status === 'converted' || $this->converted_at !== null;
+    }
+
+    public function isConvertible(): bool
+    {
+        return $this->status === 'qualified' && ! $this->isConverted();
     }
 
     public function hasFollowUpScheduled(): bool
@@ -109,8 +133,8 @@ class Lead extends Model
     public function isFollowUpDue(): bool
     {
         return $this->hasFollowUpScheduled()
-            && $this->next_follow_up_at->lte(now())
-            && $this->isOpen();
+            && $this->isOpen()
+            && $this->next_follow_up_at->isPast();
     }
 
     public function needsFollowUpAlert(): bool
@@ -132,10 +156,12 @@ class Lead extends Model
      */
     public function scopeDueForFollowUpAlert($query)
     {
+        $now = now();
+
         return $query
             ->whereNotNull('next_follow_up_at')
-            ->where('next_follow_up_at', '<=', now())
-            ->whereNotIn('status', ['won', 'lost'])
+            ->where('next_follow_up_at', '<=', $now)
+            ->whereNotIn('status', ['converted', 'won', 'lost'])
             ->where(function ($q) {
                 $q->whereNull('follow_up_alerted_at')
                     ->orWhereColumn('follow_up_alerted_at', '<', 'next_follow_up_at');

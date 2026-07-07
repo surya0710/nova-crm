@@ -7,6 +7,7 @@ return [
         'qualified' => 'Qualified',
         'proposal_sent' => 'Proposal Sent',
         'negotiation' => 'Negotiation',
+        'converted' => 'Converted',
         'won' => 'Won',
         'lost' => 'Lost',
     ],

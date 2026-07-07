@@ -33,8 +33,7 @@ class StoreLeadRequest extends FormRequest
                 Rule::exists('organization_user', 'user_id')->where('organization_id', $organization?->id),
             ],
             'status' => ['required', 'string', Rule::in(array_keys(config('leads.statuses')))],
-            'next_follow_up_at' => ['nullable', 'date'],
-            'next_follow_up_note' => ['nullable', 'string', 'max:2000'],
+            ...app(\App\Services\LeadFollowUpService::class)->validationRules(),
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:50'],
         ];

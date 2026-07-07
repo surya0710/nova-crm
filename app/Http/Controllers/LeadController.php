@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DuplicateCustomerException;
+use App\Http\Requests\ConvertLeadRequest;
 use App\Http\Requests\StoreLeadNoteRequest;
 use App\Http\Requests\StoreLeadRequest;
 use App\Http\Requests\UpdateLeadFollowUpRequest;
@@ -10,16 +12,23 @@ use App\Http\Requests\UpdateLeadStatusRequest;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\User;
+use App\Services\LeadConversionService;
+use App\Services\LeadFollowUpService;
 use App\Services\TenantContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class LeadController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        protected LeadFollowUpService $followUpService,
+        protected LeadConversionService $conversionService,
+    ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
 
@@ -73,8 +82,10 @@ class LeadController extends Controller
 
     public function store(StoreLeadRequest $request): RedirectResponse
     {
+        $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
+
         $lead = Lead::query()->create([
-            ...$request->validated(),
+            ...$validated,
             'created_by' => $request->user()->id,
         ]);
 
@@ -85,6 +96,10 @@ class LeadController extends Controller
 
     public function show(Lead $lead): View
     {
+        if ($lead->needsFollowUpAlert()) {
+            $lead->update(['follow_up_alerted_at' => now()]);
+        }
+
         $lead->load(['assignee', 'creator', 'notes.user', 'attachments.uploader', 'tasks.assignee']);
 
         return view('leads.show', [
@@ -102,7 +117,7 @@ class LeadController extends Controller
 
     public function update(UpdateLeadRequest $request, Lead $lead): RedirectResponse
     {
-        $lead->update($request->validated());
+        $lead->update($this->followUpService->normalizeValidatedFollowUp($request->validated()));
 
         return redirect()
             ->route('leads.show', $lead)
@@ -141,32 +156,61 @@ class LeadController extends Controller
             ->with('status', 'lead-note-added');
     }
 
+    public function convert(ConvertLeadRequest $request, Lead $lead): RedirectResponse
+    {
+        $this->authorize('convert', $lead);
+
+        try {
+            $result = $this->conversionService->convert(
+                $lead,
+                $request->validated(),
+                $request->user(),
+            );
+        } catch (DuplicateCustomerException $e) {
+            return redirect()
+                ->route('leads.show', $lead)
+                ->withInput()
+                ->with('duplicate_customers', $e->duplicateCustomers->map(fn ($customer) => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'company' => $customer->company,
+                    'email' => $customer->email,
+                    'phone' => $customer->phone,
+                ])->all())
+                ->withErrors($e->errors());
+        } catch (AuthorizationException $e) {
+            return redirect()
+                ->route('leads.show', $lead)
+                ->with('error', $e->getMessage());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('leads.show', $lead)
+                ->withInput()
+                ->withErrors($e->errors());
+        } catch (Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('leads.show', $lead)
+                ->with('error', __('Lead conversion failed. Please try again.'));
+        }
+
+        $flashStatus = $result['opportunity']
+            ? 'lead-converted-with-opportunity'
+            : 'lead-converted';
+
+        return redirect()
+            ->route('customers.show', $result['customer'])
+            ->with('status', $flashStatus);
+    }
+
     public function dueFollowUps(Request $request): JsonResponse
     {
         abort_unless($request->user()->hasPermission('leads.view'), 403);
 
-        $leads = Lead::query()
-            ->dueForFollowUpAlert()
-            ->with(['assignee'])
-            ->orderBy('next_follow_up_at')
-            ->limit(10)
-            ->get()
-            ->map(fn (Lead $lead) => [
-                'id' => $lead->id,
-                'name' => $lead->name,
-                'company' => $lead->company,
-                'email' => $lead->email,
-                'phone' => $lead->phone,
-                'status' => $lead->status_label,
-                'priority' => $lead->priority_label,
-                'assigned_to' => $lead->assignee?->name,
-                'next_follow_up_at' => $lead->next_follow_up_at?->toIso8601String(),
-                'next_follow_up_at_formatted' => $lead->next_follow_up_at?->format('M j, Y g:i A'),
-                'next_follow_up_note' => $lead->next_follow_up_note,
-                'url' => route('leads.show', $lead),
-            ]);
-
-        return response()->json(['data' => $leads]);
+        return response()->json([
+            'data' => $this->followUpService->dueForAlertPayloads(),
+        ]);
     }
 
     public function acknowledgeFollowUp(Request $request, Lead $lead): JsonResponse
@@ -180,7 +224,7 @@ class LeadController extends Controller
 
     public function updateFollowUp(UpdateLeadFollowUpRequest $request, Lead $lead): RedirectResponse
     {
-        $validated = $request->validated();
+        $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
 
         $lead->update([
             'next_follow_up_at' => $validated['next_follow_up_at'] ?? null,

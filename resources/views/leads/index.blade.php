@@ -124,7 +124,7 @@
                                 <td class="px-6 py-4 hidden lg:table-cell text-sm">
                                     @if ($lead->next_follow_up_at)
                                         <span class="{{ $lead->isFollowUpDue() ? 'text-amber-600 font-medium' : 'text-slate-600' }}">
-                                            {{ $lead->next_follow_up_at->format('M j, g:i A') }}
+                                            {{ $lead->next_follow_up_at->timezone(app(\App\Services\LeadFollowUpService::class)->organizationTimezone())->format('M j, g:i A') }}
                                         </span>
                                     @else
                                         <span class="text-slate-400">—</span>

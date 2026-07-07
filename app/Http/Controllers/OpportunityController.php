@@ -60,6 +60,14 @@ class OpportunityController extends Controller
                 ->selectRaw('stage, count(*) as total')
                 ->groupBy('stage')
                 ->pluck('total', 'stage'),
+            'pipelineSummary' => [
+                'open_count' => Opportunity::query()->whereIn('stage', config('pipeline.open_stages'))->count(),
+                'open_value' => (float) Opportunity::query()
+                    ->whereIn('stage', config('pipeline.open_stages'))
+                    ->sum('amount'),
+                'won_count' => Opportunity::query()->where('stage', 'closed_won')->count(),
+                'lost_count' => Opportunity::query()->where('stage', 'closed_lost')->count(),
+            ],
         ]);
     }
 
@@ -118,11 +126,30 @@ class OpportunityController extends Controller
 
     public function updateStage(UpdateOpportunityStageRequest $request, Opportunity $opportunity): RedirectResponse
     {
-        $opportunity->update(['stage' => $request->validated('stage')]);
+        $validated = $request->validated();
+        $stage = $validated['stage'];
+
+        $attributes = ['stage' => $stage];
+
+        if ($stage === 'closed_won') {
+            $attributes['won_at'] = $validated['won_at'];
+            $attributes['lost_reason'] = null;
+        } elseif ($stage === 'closed_lost') {
+            $attributes['lost_reason'] = $validated['lost_reason'];
+            $attributes['won_at'] = null;
+        }
+
+        $opportunity->update($attributes);
+
+        $flashStatus = match ($stage) {
+            'closed_won' => 'opportunity-won',
+            'closed_lost' => 'opportunity-lost',
+            default => 'opportunity-stage-updated',
+        };
 
         return redirect()
             ->route('pipeline.show', $opportunity)
-            ->with('status', 'opportunity-stage-updated');
+            ->with('status', $flashStatus);
     }
 
     public function destroy(Opportunity $opportunity): RedirectResponse

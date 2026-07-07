@@ -348,4 +348,79 @@ class LeadTest extends TestCase
         $response->assertOk();
         $response->assertJsonCount(0, 'data');
     }
+
+    public function test_viewing_due_lead_page_acknowledges_follow_up_alert(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'status' => 'contacted',
+            'next_follow_up_at' => now()->subMinute(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->assertNull($lead->follow_up_alerted_at);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('leads.show', $lead))
+            ->assertOk();
+
+        $lead->refresh();
+        $this->assertNotNull($lead->follow_up_alerted_at);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->getJson(route('leads.follow-ups.due'))
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_follow_up_uses_organization_timezone(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        $organization->update(['timezone' => 'Asia/Kolkata']);
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'status' => 'contacted',
+            'created_by' => $user->id,
+        ]);
+
+        $localDueTime = now('Asia/Kolkata')->addHour()->format('Y-m-d\TH:i');
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->patch(route('leads.follow-up.update', $lead), [
+                'next_follow_up_at' => $localDueTime,
+                'next_follow_up_note' => 'Timezone test',
+            ])
+            ->assertRedirect();
+
+        $lead->refresh();
+        $this->assertTrue($lead->next_follow_up_at->isFuture());
+    }
+
+    public function test_past_follow_up_time_is_rejected(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        $organization->update(['timezone' => 'Asia/Kolkata']);
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->from(route('leads.show', $lead))
+            ->patch(route('leads.follow-up.update', $lead), [
+                'next_follow_up_at' => now('Asia/Kolkata')->subHour()->format('Y-m-d\TH:i'),
+                'next_follow_up_note' => 'Too early',
+            ]);
+
+        $response->assertRedirect(route('leads.show', $lead));
+        $response->assertSessionHasErrors('next_follow_up_at');
+    }
 }

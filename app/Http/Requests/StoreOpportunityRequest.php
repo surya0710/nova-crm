@@ -29,7 +29,7 @@ class StoreOpportunityRequest extends FormRequest
                 'integer',
                 Rule::exists('leads', 'id')->where('organization_id', $organization?->id),
             ],
-            'stage' => ['required', 'string', Rule::in(array_keys(config('pipeline.stages')))],
+            'stage' => ['required', 'string', Rule::in(config('pipeline.open_stages'))],
             'amount' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'currency' => ['required', 'string', 'size:3'],
             'probability' => ['nullable', 'integer', 'min:0', 'max:100'],

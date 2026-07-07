@@ -27,6 +27,12 @@ class LeadPolicy
         return $user->hasPermission('leads.update', $lead->organization);
     }
 
+    public function convert(User $user, Lead $lead): bool
+    {
+        return $user->hasPermission('leads.update', $lead->organization)
+            && $user->hasPermission('customers.create', $lead->organization);
+    }
+
     public function delete(User $user, Lead $lead): bool
     {
         return $user->hasPermission('leads.delete', $lead->organization);

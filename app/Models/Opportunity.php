@@ -26,6 +26,8 @@ class Opportunity extends Model
         'currency',
         'probability',
         'expected_close_date',
+        'won_at',
+        'lost_reason',
         'description',
         'assigned_to',
         'created_by',
@@ -36,6 +38,7 @@ class Opportunity extends Model
         return [
             'amount' => 'decimal:2',
             'expected_close_date' => 'date',
+            'won_at' => 'date',
         ];
     }
 
@@ -76,6 +79,21 @@ class Opportunity extends Model
 
     public function isOpen(): bool
     {
-        return ! in_array($this->stage, ['closed_won', 'closed_lost'], true);
+        return ! in_array($this->stage, config('pipeline.closed_stages', ['closed_won', 'closed_lost']), true);
+    }
+
+    public function isWon(): bool
+    {
+        return $this->stage === 'closed_won';
+    }
+
+    public function isLost(): bool
+    {
+        return $this->stage === 'closed_lost';
+    }
+
+    public function isClosed(): bool
+    {
+        return ! $this->isOpen();
     }
 }

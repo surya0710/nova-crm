@@ -26,6 +26,30 @@
 
     <x-flash-messages />
 
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        @php $currency = $organization->currency ?? 'USD'; @endphp
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Open Deals') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ $pipelineSummary['open_count'] }}</p>
+            <p class="mt-1 text-xs text-slate-400">{{ __('Active in pipeline') }}</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Open Pipeline Value') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($pipelineSummary['open_value'], 0) }} {{ $currency }}</p>
+            <p class="mt-1 text-xs text-slate-400">{{ __('Excludes closed deals') }}</p>
+        </div>
+        <a href="{{ route('pipeline.index', ['stage' => 'closed_won']) }}" class="rounded-xl bg-white border border-slate-200 p-4 hover:border-emerald-200 transition block">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Won') }}</p>
+            <p class="mt-1 text-2xl font-bold text-emerald-700">{{ $pipelineSummary['won_count'] }}</p>
+            <p class="mt-1 text-xs text-slate-400">{{ __('Closed won') }}</p>
+        </a>
+        <a href="{{ route('pipeline.index', ['stage' => 'closed_lost']) }}" class="rounded-xl bg-white border border-slate-200 p-4 hover:border-slate-300 transition block">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Lost') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-600">{{ $pipelineSummary['lost_count'] }}</p>
+            <p class="mt-1 text-xs text-slate-400">{{ __('Closed lost') }}</p>
+        </a>
+    </div>
+
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         @foreach (config('pipeline.stages') as $value => $label)
             <a href="{{ route('pipeline.index', ['stage' => $value]) }}" class="rounded-xl bg-white border {{ ($filters['stage'] ?? '') === $value ? 'border-indigo-300 ring-1 ring-indigo-200' : 'border-slate-200' }} p-4 hover:border-indigo-200 transition">

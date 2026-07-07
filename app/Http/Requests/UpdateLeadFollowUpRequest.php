@@ -15,10 +15,7 @@ class UpdateLeadFollowUpRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'next_follow_up_at' => ['nullable', 'date'],
-            'next_follow_up_note' => ['nullable', 'string', 'max:2000'],
-        ];
+        return app(\App\Services\LeadFollowUpService::class)->validationRules();
     }
 
     protected function prepareForValidation(): void

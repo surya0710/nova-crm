@@ -33,11 +33,15 @@
 
     <div>
         <x-input-label for="stage" :value="__('Stage')" />
-        <select id="stage" name="stage" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-            @foreach (config('pipeline.stages') as $value => $label)
-                <option value="{{ $value }}" @selected(old('stage', $opportunity->stage) === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
+        @if ($opportunity->exists && $opportunity->isClosed())
+            <p class="mt-1 text-sm text-slate-900">{{ $opportunity->stage_label }}</p>
+        @else
+            <select id="stage" name="stage" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                @foreach (config('pipeline.open_stages') as $value)
+                    <option value="{{ $value }}" @selected(old('stage', $opportunity->stage) === $value)>{{ config('pipeline.stages.'.$value) }}</option>
+                @endforeach
+            </select>
+        @endif
         <x-input-error :messages="$errors->get('stage')" class="mt-2" />
     </div>
 

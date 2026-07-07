@@ -5,6 +5,7 @@
         'qualified' => 'bg-indigo-100 text-indigo-800',
         'proposal_sent' => 'bg-violet-100 text-violet-800',
         'negotiation' => 'bg-amber-100 text-amber-800',
+        'converted' => 'bg-teal-100 text-teal-800',
         'won' => 'bg-emerald-100 text-emerald-800',
         'lost' => 'bg-slate-100 text-slate-600',
     ];
@@ -30,6 +31,18 @@
                 @endif
             </div>
             <div class="flex items-center gap-2 shrink-0">
+                @can('convert', $lead)
+                    @if ($lead->isConvertible())
+                        <button
+                            type="button"
+                            x-data=""
+                            x-on:click="$dispatch('open-modal', 'convert-lead')"
+                            class="inline-flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition"
+                        >
+                            {{ __('Convert Lead') }}
+                        </button>
+                    @endif
+                @endcan
                 @can('update', $lead)
                     <a href="{{ route('leads.edit', $lead) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
                         {{ __('Edit') }}
@@ -223,7 +236,7 @@
                             <div>
                                 <dt class="text-xs text-slate-500">{{ __('Scheduled') }}</dt>
                                 <dd class="mt-1 font-medium {{ $lead->isFollowUpDue() ? 'text-amber-600' : 'text-slate-900' }}">
-                                    {{ $lead->next_follow_up_at->format('M j, Y g:i A') }}
+                                    {{ $lead->next_follow_up_at->timezone(app(\App\Services\LeadFollowUpService::class)->organizationTimezone())->format('M j, Y g:i A') }}
                                     @if ($lead->isFollowUpDue())
                                         <span class="ml-1 text-xs font-semibold uppercase text-amber-600">({{ __('Due now') }})</span>
                                     @endif
@@ -241,12 +254,32 @@
                     @endif
 
                     @can('update', $lead)
+                        @php
+                            $followUpService = app(\App\Services\LeadFollowUpService::class);
+                            $followUpInputValue = old('next_follow_up_at');
+
+                            if ($followUpInputValue === null) {
+                                if ($lead->hasFollowUpScheduled() && ! $lead->isFollowUpDue()) {
+                                    $followUpInputValue = $followUpService->formatForInput($lead->next_follow_up_at);
+                                } else {
+                                    $followUpInputValue = $followUpService->formatForInput(
+                                        $followUpService->organizationNow()->copy()->addHour()
+                                    );
+                                }
+                            }
+                        @endphp
+
                         <form method="POST" action="{{ route('leads.follow-up.update', $lead) }}" class="space-y-3 border-t border-slate-100 pt-4">
                             @csrf
                             @method('PATCH')
                             <div>
-                                <x-input-label for="next_follow_up_at" :value="__('Date & Time')" />
-                                <x-text-input id="next_follow_up_at" name="next_follow_up_at" type="datetime-local" class="block mt-1 w-full" :value="old('next_follow_up_at', $lead->next_follow_up_at?->format('Y-m-d\TH:i'))" />
+                                <x-input-label for="next_follow_up_at_date" :value="__('Date & Time')" />
+                                <x-follow-up-datetime-input
+                                    id="next_follow_up_at"
+                                    :value="$followUpInputValue"
+                                    show-quick-pick
+                                    class="mt-1"
+                                />
                                 <x-input-error :messages="$errors->get('next_follow_up_at')" class="mt-2" />
                             </div>
                             <div>
@@ -254,8 +287,22 @@
                                 <textarea id="next_follow_up_note" name="next_follow_up_note" rows="2" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" placeholder="{{ __('What to discuss on the call…') }}">{{ old('next_follow_up_note', $lead->next_follow_up_note) }}</textarea>
                                 <x-input-error :messages="$errors->get('next_follow_up_note')" class="mt-2" />
                             </div>
-                            <x-primary-button type="submit">{{ __('Save Follow-up') }}</x-primary-button>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <x-primary-button type="submit">{{ __('Save Follow-up') }}</x-primary-button>
+                            </div>
                         </form>
+
+                        @if ($lead->hasFollowUpScheduled())
+                            <form method="POST" action="{{ route('leads.follow-up.update', $lead) }}" class="mt-2">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="next_follow_up_at" value="">
+                                <input type="hidden" name="next_follow_up_note" value="">
+                                <button type="submit" class="text-sm text-slate-500 hover:text-red-600">
+                                    {{ __('Clear schedule') }}
+                                </button>
+                            </form>
+                        @endif
                     @endcan
                 </div>
             </div>
@@ -279,4 +326,10 @@
             </a>
         </div>
     </div>
+
+    @can('convert', $lead)
+        @if ($lead->isConvertible())
+            <x-lead-convert-modal :lead="$lead" />
+        @endif
+    @endcan
 </x-app-layout>

@@ -38,6 +38,7 @@ Route::middleware(['auth', 'set.organization'])->group(function () {
     Route::middleware('ensure.organization')->group(function () {
         Route::get('/dashboard', DashboardController::class)->middleware('verified')->name('dashboard');
 
+        Route::post('leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
         Route::get('leads/follow-ups/due', [LeadController::class, 'dueFollowUps'])->name('leads.follow-ups.due');
         Route::resource('leads', LeadController::class);
         Route::post('leads/{lead}/notes', [LeadController::class, 'storeNote'])->name('leads.notes.store');

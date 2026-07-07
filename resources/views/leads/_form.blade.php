@@ -107,8 +107,18 @@
     </div>
 
     <div>
-        <x-input-label for="next_follow_up_at" :value="__('Follow-up Date & Time')" />
-        <x-text-input id="next_follow_up_at" name="next_follow_up_at" class="block mt-1 w-full" type="datetime-local" :value="old('next_follow_up_at', $lead->next_follow_up_at?->format('Y-m-d\TH:i'))" />
+        <x-input-label for="next_follow_up_at_date" :value="__('Follow-up Date & Time')" />
+        @php
+            $followUpService = app(\App\Services\LeadFollowUpService::class);
+            $followUpInputValue = old('next_follow_up_at', $followUpService->formatForInput($lead->next_follow_up_at)
+                ?? $followUpService->formatForInput($followUpService->organizationNow()->copy()->addHour()));
+        @endphp
+        <x-follow-up-datetime-input
+            id="next_follow_up_at"
+            :value="$followUpInputValue"
+            show-quick-pick
+            class="mt-1"
+        />
         <x-input-error :messages="$errors->get('next_follow_up_at')" class="mt-2" />
     </div>
 
