@@ -15,5 +15,7 @@ class ExampleTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
+        $response->assertSee('NovaCRM');
+        $response->assertSee('The CRM that grows');
     }
 }

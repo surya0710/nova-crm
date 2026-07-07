@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+[x-cloak] {
+    display: none !important;
+}
+
+.sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+}
+
+@layer components {
+    .landing-grid {
+        background-image:
+            linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+    }
+
+    .landing-glow {
+        background: radial-gradient(ellipse 80% 60% at 50% -10%, rgb(99 102 241 / 0.35), transparent 70%);
+    }
+
+    .landing-glow-secondary {
+        background: radial-gradient(ellipse 60% 50% at 80% 50%, rgb(139 92 246 / 0.15), transparent 70%);
+    }
+
+    .text-gradient {
+        background: linear-gradient(135deg, #c4b5fd 0%, #818cf8 40%, #38bdf8 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .glass-nav {
+        background: rgb(15 23 42 / 0.72);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+
+    .feature-card {
+        @apply relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition duration-300 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5;
+    }
+
+    .bento-card {
+        @apply relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm;
+    }
+}

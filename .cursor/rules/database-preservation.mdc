@@ -1,0 +1,32 @@
+---
+description: Preserve database data — never wipe or reset without explicit user request
+alwaysApply: true
+---
+
+# Database preservation
+
+Do **not** wipe, reset, or destroy existing database data unless the user explicitly asks.
+
+## Avoid without explicit permission
+
+- `php artisan migrate:fresh`
+- `php artisan migrate:refresh`
+- `php artisan db:wipe`
+- `php artisan migrate:reset` (when it would drop data)
+- Dropping/recreating tables outside normal forward migrations
+- Suggesting or running seeders with `--force` in ways that truncate user data
+- Any command whose primary effect is clearing the database
+
+## Prefer instead
+
+- `php artisan migrate` — forward-only migrations
+- Additive migrations (new tables/columns) that preserve existing rows
+- Targeted fixes when data issues arise, without full resets
+
+## Tests
+
+Feature tests may still use `RefreshDatabase` in the **test environment only** (isolated test DB). Do not run destructive DB commands against the user's development/production database to fix or verify things.
+
+## When destructive action is needed
+
+Only if the user explicitly requests it (e.g. "fresh migrate", "reset the database"). Confirm scope if ambiguous.
