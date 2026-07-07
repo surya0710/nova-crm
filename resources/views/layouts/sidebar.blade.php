@@ -99,11 +99,16 @@
                 </div>
             @endif
 
-            @if ($can('reports.view'))
+            @if ($can('reports.view') || $can('finance.view'))
                 <div>
                     <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Analytics') }}</p>
                     <div class="space-y-1">
-                        <x-sidebar-link :href="route('reports.index')" :active="request()->routeIs('reports.*')" :icon="$iconChart">{{ __('Reports') }}</x-sidebar-link>
+                        @if ($can('reports.view'))
+                            <x-sidebar-link :href="route('reports.index')" :active="request()->routeIs('reports.index')" :icon="$iconChart">{{ __('Reports') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('reports.view') || $can('finance.view'))
+                            <x-sidebar-link :href="route('reports.finance')" :active="request()->routeIs('reports.finance')" :icon="$iconChart">{{ __('Finance') }}</x-sidebar-link>
+                        @endif
                         @if ($can('audit.view'))
                             <x-sidebar-link :href="route('audit-logs.index')" :active="request()->routeIs('audit-logs.*')" :icon="$iconShield">{{ __('Audit Log') }}</x-sidebar-link>
                         @endif

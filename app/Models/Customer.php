@@ -72,6 +72,16 @@ class Customer extends Model
         return $this->morphMany(Task::class, 'taskable')->latest();
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->latest('issue_date');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest('payment_date');
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return config('customers.statuses.'.$this->status, ucfirst($this->status));

@@ -99,6 +99,83 @@
                 </dl>
             </div>
 
+            @if ($statement)
+                <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="font-semibold text-slate-900">{{ __('Account Statement') }}</h3>
+                            <p class="text-sm text-slate-500 mt-0.5">{{ __('Read-only financial summary') }}</p>
+                        </div>
+                        @if (auth()->user()->hasPermission('reports.manage') || auth()->user()->hasPermission('finance.view'))
+                            <a href="{{ route('customers.statement.export', $customer) }}" class="text-sm text-indigo-600 hover:text-indigo-800">{{ __('Export CSV') }}</a>
+                        @endif
+                    </div>
+                    <div class="p-6">
+                        @php
+                            $stmtCurrency = $statement['currency'];
+                            $fmt = fn (float $amount) => number_format($amount, 2).' '.$stmtCurrency;
+                        @endphp
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <div class="p-4 rounded-lg bg-slate-50">
+                                <p class="text-xs font-semibold uppercase text-slate-500">{{ __('Total invoiced') }}</p>
+                                <p class="mt-1 text-lg font-bold text-slate-900">{{ $fmt($statement['total_invoiced']) }}</p>
+                            </div>
+                            <div class="p-4 rounded-lg bg-emerald-50">
+                                <p class="text-xs font-semibold uppercase text-emerald-700">{{ __('Total paid') }}</p>
+                                <p class="mt-1 text-lg font-bold text-emerald-900">{{ $fmt($statement['total_paid']) }}</p>
+                            </div>
+                            <div class="p-4 rounded-lg bg-amber-50">
+                                <p class="text-xs font-semibold uppercase text-amber-700">{{ __('Balance due') }}</p>
+                                <p class="mt-1 text-lg font-bold text-amber-900">{{ $fmt($statement['balance_due']) }}</p>
+                            </div>
+                        </div>
+
+                        @if ($statement['ledger']->isEmpty())
+                            <p class="text-sm text-slate-500 text-center py-6">{{ __('No invoices or payments yet.') }}</p>
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
+                                            <th class="py-2 pr-4">{{ __('Date') }}</th>
+                                            <th class="py-2 pr-4">{{ __('Type') }}</th>
+                                            <th class="py-2 pr-4">{{ __('Reference') }}</th>
+                                            <th class="py-2 pr-4 text-right">{{ __('Debit') }}</th>
+                                            <th class="py-2 pr-4 text-right">{{ __('Credit') }}</th>
+                                            <th class="py-2 text-right">{{ __('Balance') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach ($statement['ledger'] as $entry)
+                                            <tr>
+                                                <td class="py-2 pr-4 text-slate-700">{{ $entry['date']?->format('M j, Y') ?? '—' }}</td>
+                                                <td class="py-2 pr-4">
+                                                    <span class="inline-flex text-xs font-medium px-2 py-0.5 rounded-full {{ $entry['type'] === 'invoice' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800' }}">
+                                                        {{ $entry['type'] === 'invoice' ? __('Invoice') : __('Payment') }}
+                                                    </span>
+                                                </td>
+                                                <td class="py-2 pr-4">
+                                                    @if ($entry['type'] === 'invoice' && isset($entry['invoice_id']))
+                                                        <a href="{{ route('invoices.show', $entry['invoice_id']) }}" class="text-indigo-600 hover:text-indigo-800">{{ $entry['number'] }}</a>
+                                                    @elseif ($entry['type'] === 'payment' && isset($entry['payment_id']))
+                                                        <a href="{{ route('payments.show', $entry['payment_id']) }}" class="text-indigo-600 hover:text-indigo-800">{{ $entry['number'] }}</a>
+                                                    @else
+                                                        {{ $entry['number'] }}
+                                                    @endif
+                                                </td>
+                                                <td class="py-2 pr-4 text-right text-slate-900">{{ $entry['debit'] > 0 ? $fmt($entry['debit']) : '—' }}</td>
+                                                <td class="py-2 pr-4 text-right text-emerald-700">{{ $entry['credit'] > 0 ? $fmt($entry['credit']) : '—' }}</td>
+                                                <td class="py-2 text-right font-medium text-slate-900">{{ $fmt($entry['balance']) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             @if ($customer->address_line_1 || $customer->city || $customer->country)
                 <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
                     <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">

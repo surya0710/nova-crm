@@ -15,22 +15,29 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
+    public function __construct(protected RevenueService $revenue) {}
+
     public function compile(Organization $organization, ?Carbon $from = null): array
     {
+        $filters = [
+            'date_from' => $from,
+            'date_to' => null,
+            'customer_id' => null,
+            'salesperson_id' => null,
+            'status' => null,
+            'period' => $from ? 'custom' : 'all',
+        ];
+
+        $financeSummary = $this->revenue->dashboardMetrics($organization, $filters);
+
         $paymentQuery = Payment::query();
         if ($from) {
             $paymentQuery->where('payment_date', '>=', $from);
         }
 
         $revenueCollected = (float) (clone $paymentQuery)->sum('amount');
-
-        $outstandingInvoices = Invoice::query()
-            ->whereIn('status', ['issued', 'partially_paid'])
-            ->get();
-
-        $outstandingAmount = $outstandingInvoices->sum(
-            fn (Invoice $invoice) => max(0, (float) $invoice->total - (float) $invoice->amount_paid)
-        );
+        $outstandingAmount = $financeSummary['outstanding_receivables'];
+        $outstandingCount = $financeSummary['outstanding_count'];
 
         $leadCounts = Lead::query()
             ->select('status', DB::raw('count(*) as count'))
@@ -89,7 +96,7 @@ class ReportService
             'currency' => $organization->currency,
             'revenue_collected' => $revenueCollected,
             'outstanding_amount' => (float) $outstandingAmount,
-            'outstanding_count' => $outstandingInvoices->count(),
+            'outstanding_count' => $outstandingCount,
             'lead_counts' => $leadCounts,
             'conversion_rate' => $conversionRate,
             'lead_total' => Lead::query()->count(),

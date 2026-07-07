@@ -72,6 +72,10 @@ Route::middleware(['auth', 'set.organization'])->group(function () {
         Route::post('payments/{payment}/send', [PaymentController::class, 'sendMail'])->name('payments.send');
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/finance', [ReportController::class, 'finance'])->name('reports.finance');
+        Route::get('reports/finance/export/outstanding', [ReportController::class, 'exportOutstanding'])->name('reports.export.outstanding');
+        Route::get('reports/finance/export/revenue', [ReportController::class, 'exportRevenue'])->name('reports.export.revenue');
+        Route::get('customers/{customer}/statement/export', [ReportController::class, 'exportCustomerStatement'])->name('customers.statement.export');
 
         Route::resource('tasks', TaskController::class);
         Route::patch('tasks/{task}/complete', [TaskController::class, 'complete'])->name('tasks.complete');

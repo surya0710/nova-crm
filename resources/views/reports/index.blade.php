@@ -19,6 +19,9 @@
                     <option value="365" @selected($period === '365')>{{ __('Last 12 months') }}</option>
                     <option value="all" @selected($period === 'all')>{{ __('All time') }}</option>
                 </select>
+                @if (auth()->user()->hasPermission('reports.view') || auth()->user()->hasPermission('finance.view'))
+                    <a href="{{ route('reports.finance') }}" class="text-sm text-indigo-600 hover:text-indigo-800 whitespace-nowrap">{{ __('Finance reports') }}</a>
+                @endif
             </form>
         </div>
     </x-slot>

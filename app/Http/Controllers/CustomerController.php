@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\CustomerNote;
 use App\Models\User;
 use App\Services\OrganizationMailer;
+use App\Services\RevenueService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -79,13 +80,21 @@ class CustomerController extends Controller
             ->with('status', 'customer-created');
     }
 
-    public function show(Customer $customer, TenantContext $tenant): View
+    public function show(Customer $customer, TenantContext $tenant, RevenueService $revenue): View
     {
         $customer->load(['assignee', 'creator', 'lead', 'notes.user', 'attachments.uploader', 'tasks.assignee']);
+
+        $statement = null;
+        $user = auth()->user();
+
+        if ($user && ($user->hasPermission('finance.view') || $user->hasPermission('invoices.view'))) {
+            $statement = $revenue->customerStatement($customer);
+        }
 
         return view('customers.show', [
             'customer' => $customer,
             'organization' => $tenant->get(),
+            'statement' => $statement,
         ]);
     }
 
