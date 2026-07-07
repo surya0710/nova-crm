@@ -14,6 +14,7 @@ use App\Models\LeadNote;
 use App\Models\User;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
+use App\Services\LeadService;
 use App\Services\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,7 @@ class LeadController extends Controller
     public function __construct(
         protected LeadFollowUpService $followUpService,
         protected LeadConversionService $conversionService,
+        protected LeadService $leadService,
     ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
@@ -84,10 +86,7 @@ class LeadController extends Controller
     {
         $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
 
-        $lead = Lead::query()->create([
-            ...$validated,
-            'created_by' => $request->user()->id,
-        ]);
+        $lead = $this->leadService->create($validated, $request->user());
 
         return redirect()
             ->route('leads.show', $lead)

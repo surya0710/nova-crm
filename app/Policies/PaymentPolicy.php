@@ -24,11 +24,11 @@ class PaymentPolicy
 
     public function update(User $user, Payment $payment): bool
     {
-        return $user->hasPermission('payments.update', $payment->organization);
+        return false;
     }
 
     public function delete(User $user, Payment $payment): bool
     {
-        return $user->hasPermission('payments.delete', $payment->organization);
+        return false;
     }
 }

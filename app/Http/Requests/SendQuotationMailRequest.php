@@ -13,7 +13,7 @@ class SendQuotationMailRequest extends FormRequest
     {
         $quotation = $this->route('quotation');
 
-        return $quotation && ($this->user()?->can('update', $quotation) ?? false);
+        return $quotation && ($this->user()?->can('changeStatus', $quotation) ?? false);
     }
 
     public function rules(): array

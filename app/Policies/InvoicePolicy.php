@@ -24,11 +24,30 @@ class InvoicePolicy
 
     public function update(User $user, Invoice $invoice): bool
     {
-        return $user->hasPermission('invoices.update', $invoice->organization);
+        return $user->hasPermission('invoices.update', $invoice->organization)
+            && ($invoice->isFullyEditable() || $invoice->isHeaderEditable());
     }
 
     public function delete(User $user, Invoice $invoice): bool
     {
-        return $user->hasPermission('invoices.delete', $invoice->organization);
+        return $user->hasPermission('invoices.delete', $invoice->organization)
+            && $invoice->isDeletable();
+    }
+
+    public function issue(User $user, Invoice $invoice): bool
+    {
+        return $user->hasPermission('invoices.update', $invoice->organization)
+            && $invoice->canIssue();
+    }
+
+    public function cancel(User $user, Invoice $invoice): bool
+    {
+        return $user->hasPermission('invoices.update', $invoice->organization)
+            && $invoice->canCancel();
+    }
+
+    public function send(User $user, Invoice $invoice): bool
+    {
+        return $user->hasPermission('invoices.update', $invoice->organization);
     }
 }

@@ -5,25 +5,30 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SendPaymentMailRequest;
 use App\Http\Requests\StorePaymentRequest;
 use App\Mail\PaymentMail;
-use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\OrganizationMailer;
+use App\Services\PaymentService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class PaymentController extends Controller
 {
-    public function __construct(protected OrganizationMailer $organizationMailer)
-    {
-        $this->authorizeResource(Payment::class, 'payment');
+    public function __construct(
+        protected OrganizationMailer $organizationMailer,
+        protected PaymentService $paymentService,
+    ) {
+        $this->authorizeResource(Payment::class, 'payment', [
+            'except' => ['create', 'store'],
+        ]);
     }
 
     public function index(Request $request, TenantContext $tenant): View
     {
+        $this->authorize('viewAny', Payment::class);
+
         $query = Payment::query()
             ->with(['invoice', 'customer', 'recorder'])
             ->latest('payment_date')
@@ -58,6 +63,8 @@ class PaymentController extends Controller
 
     public function create(Request $request): View
     {
+        $this->authorize('create', Payment::class);
+
         $invoice = null;
 
         if ($invoiceId = $request->integer('invoice')) {
@@ -67,9 +74,12 @@ class PaymentController extends Controller
 
         $openInvoices = Invoice::query()
             ->with('customer')
-            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->whereIn('status', config('payments.payable_invoice_statuses', []))
+            ->where('total', '>', 0)
             ->orderByDesc('issue_date')
-            ->get();
+            ->get()
+            ->filter(fn (Invoice $openInvoice) => $openInvoice->balance_due > 0)
+            ->values();
 
         return view('payments.create', [
             'payment' => new Payment([
@@ -91,35 +101,12 @@ class PaymentController extends Controller
         $invoice = Invoice::query()->findOrFail($validated['invoice_id']);
         $this->authorize('view', $invoice);
 
-        if ($invoice->status === 'cancelled') {
-            return back()->withErrors(['invoice_id' => __('Cannot record payment on a cancelled invoice.')]);
-        }
-
-        $balanceDue = $invoice->balance_due;
-        if ((float) $validated['amount'] > $balanceDue) {
-            return back()->withErrors(['amount' => __('Payment exceeds balance due (:balance).', [
-                'balance' => number_format($balanceDue, 2).' '.$invoice->currency,
-            ])])->withInput();
-        }
-
-        $payment = DB::transaction(function () use ($organization, $validated, $invoice, $request) {
-            $payment = Payment::query()->create([
-                'number' => Payment::generateNumber($organization),
-                'invoice_id' => $invoice->id,
-                'customer_id' => $invoice->customer_id,
-                'amount' => $validated['amount'],
-                'currency' => $invoice->currency,
-                'payment_date' => $validated['payment_date'],
-                'method' => $validated['method'],
-                'reference' => $validated['reference'] ?? null,
-                'notes' => $validated['notes'] ?? null,
-                'recorded_by' => $request->user()->id,
-            ]);
-
-            $invoice->recalculateAmountPaid();
-
-            return $payment;
-        });
+        $payment = $this->paymentService->record(
+            $organization,
+            $invoice,
+            $validated,
+            $request->user(),
+        );
 
         return redirect()
             ->route('payments.show', $payment)
@@ -174,19 +161,5 @@ class PaymentController extends Controller
         return redirect()
             ->route('payments.show', $payment)
             ->with('status', 'payment-email-sent');
-    }
-
-    public function destroy(Payment $payment): RedirectResponse
-    {
-        $invoice = $payment->invoice;
-
-        DB::transaction(function () use ($payment, $invoice) {
-            $payment->delete();
-            $invoice->recalculateAmountPaid();
-        });
-
-        return redirect()
-            ->route('payments.index')
-            ->with('status', 'payment-deleted');
     }
 }

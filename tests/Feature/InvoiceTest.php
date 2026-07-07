@@ -107,7 +107,20 @@ class InvoiceTest extends TestCase
             'organization_id' => $organization->id,
             'customer_id' => $customer->id,
             'status' => 'draft',
+            'total' => 550,
+            'subtotal' => 500,
+            'tax_total' => 50,
             'created_by' => $user->id,
+        ]);
+
+        $invoice->items()->create([
+            'description' => 'Monthly service',
+            'quantity' => 1,
+            'unit_price' => 500,
+            'tax_rate' => 10,
+            'discount_percent' => 0,
+            'line_total' => 550,
+            'sort_order' => 0,
         ]);
 
         $response = $this->actingAs($user)
@@ -116,7 +129,7 @@ class InvoiceTest extends TestCase
 
         $response->assertRedirect();
         Mail::assertSent(InvoiceMail::class);
-        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'status' => 'sent']);
+        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'status' => 'issued']);
     }
 
     public function test_can_create_invoice_from_quotation(): void

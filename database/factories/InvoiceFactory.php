@@ -29,7 +29,7 @@ class InvoiceFactory extends Factory
             'quotation_id' => null,
             'opportunity_id' => null,
             'title' => fake()->optional()->sentence(3),
-            'status' => fake()->randomElement(array_keys(config('invoices.statuses'))),
+            'status' => 'draft',
             'issue_date' => now()->toDateString(),
             'due_date' => now()->addDays(30)->toDateString(),
             'currency' => fake()->randomElement(array_keys(config('invoices.currencies'))),

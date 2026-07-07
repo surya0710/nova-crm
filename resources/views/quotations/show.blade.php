@@ -5,6 +5,16 @@
         'accepted' => 'bg-emerald-100 text-emerald-800',
         'rejected' => 'bg-red-100 text-red-800',
         'expired' => 'bg-amber-100 text-amber-800',
+        'converted' => 'bg-violet-100 text-violet-800',
+    ];
+
+    $allowedTransitions = $quotation->allowedTransitions();
+    $selectableStatuses = array_unique(array_merge([$quotation->status], $allowedTransitions));
+    $quickActions = [
+        'sent' => ['label' => __('Mark Sent'), 'class' => 'border-blue-200 text-blue-700 hover:bg-blue-50'],
+        'accepted' => ['label' => __('Accepted'), 'class' => 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'],
+        'rejected' => ['label' => __('Rejected'), 'class' => 'border-red-200 text-red-700 hover:bg-red-50'],
+        'expired' => ['label' => __('Expired'), 'class' => 'border-amber-200 text-amber-700 hover:bg-amber-50'],
     ];
 @endphp
 
@@ -31,11 +41,22 @@
                         {{ __('Edit') }}
                     </a>
                 @endcan
-                @can('create', App\Models\Invoice::class)
-                    <a href="{{ route('invoices.create', ['quotation' => $quotation->id]) }}" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition">
-                        {{ __('Create :label', ['label' => crm_term('invoice')]) }}
-                    </a>
-                @endcan
+                @if ($quotation->canConvert())
+                    @can('convert', $quotation)
+                        <form method="POST" action="{{ route('quotations.convert', $quotation) }}">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                                {{ __('Generate :label', ['label' => crm_term('invoice')]) }}
+                            </button>
+                        </form>
+                    @endcan
+                @elseif ($quotation->status === 'converted' && $quotation->invoice)
+                    @can('view', $quotation->invoice)
+                        <a href="{{ route('invoices.show', $quotation->invoice) }}" class="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 transition">
+                            {{ __('View :label', ['label' => crm_term('invoice')]) }}
+                        </a>
+                    @endcan
+                @endif
                 @can('delete', $quotation)
                     <form method="POST" action="{{ route('quotations.destroy', $quotation) }}" onsubmit="return confirm('{{ __('Delete this quotation?') }}')">
                         @csrf
@@ -117,7 +138,7 @@
                 </div>
             @endif
 
-            @can('update', $quotation)
+            @can('changeStatus', $quotation)
                 <x-client-email-form
                     :action="route('quotations.send', $quotation)"
                     :email="old('email', $quotation->customer->email)"
@@ -127,48 +148,46 @@
                     :missing-email-hint="! $quotation->customer->email"
                 />
 
-                <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                        <h3 class="font-semibold text-slate-900">{{ __('Update Status') }}</h3>
-                    </div>
-                    <div class="p-6">
-                        <form method="POST" action="{{ route('quotations.status.update', $quotation) }}" class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-                            @csrf
-                            @method('PATCH')
-                            <label for="quotation-status" class="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">{{ __('Status') }}</label>
-                            <select
-                                id="quotation-status"
-                                name="status"
-                                onchange="this.form.submit()"
-                                class="text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm py-2 px-3 min-w-[160px]"
-                            >
-                                @foreach (config('quotations.statuses') as $value => $label)
-                                    <option value="{{ $value }}" @selected($quotation->status === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('status')" />
-                        </form>
+                @if ($allowedTransitions !== [])
+                    <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                            <h3 class="font-semibold text-slate-900">{{ __('Update Status') }}</h3>
+                        </div>
+                        <div class="p-6">
+                            <form method="POST" action="{{ route('quotations.status.update', $quotation) }}" class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+                                @csrf
+                                @method('PATCH')
+                                <label for="quotation-status" class="text-xs font-semibold uppercase tracking-wide text-slate-500 shrink-0">{{ __('Status') }}</label>
+                                <select
+                                    id="quotation-status"
+                                    name="status"
+                                    onchange="this.form.submit()"
+                                    class="text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm py-2 px-3 min-w-[160px]"
+                                >
+                                    @foreach ($selectableStatuses as $value)
+                                        <option value="{{ $value }}" @selected($quotation->status === $value)>{{ config('quotations.statuses.'.$value) }}</option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('status')" />
+                            </form>
 
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            @foreach ([
-                                'sent' => ['label' => __('Mark Sent'), 'class' => 'border-blue-200 text-blue-700 hover:bg-blue-50'],
-                                'accepted' => ['label' => __('Accepted'), 'class' => 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'],
-                                'rejected' => ['label' => __('Rejected'), 'class' => 'border-red-200 text-red-700 hover:bg-red-50'],
-                            ] as $status => $meta)
-                                @if ($quotation->status !== $status)
-                                    <form method="POST" action="{{ route('quotations.status.update', $quotation) }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <input type="hidden" name="status" value="{{ $status }}">
-                                        <button type="submit" class="text-xs font-medium px-2.5 py-1.5 rounded-lg border transition {{ $meta['class'] }}">
-                                            {{ $meta['label'] }}
-                                        </button>
-                                    </form>
-                                @endif
-                            @endforeach
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @foreach ($quickActions as $status => $meta)
+                                    @if (in_array($status, $allowedTransitions, true))
+                                        <form method="POST" action="{{ route('quotations.status.update', $quotation) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="{{ $status }}">
+                                            <button type="submit" class="text-xs font-medium px-2.5 py-1.5 rounded-lg border transition {{ $meta['class'] }}">
+                                                {{ $meta['label'] }}
+                                            </button>
+                                        </form>
+                                    @endif
+                                @endforeach
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
             @endcan
 
             <x-attachments-panel

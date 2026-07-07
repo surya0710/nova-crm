@@ -79,13 +79,15 @@
                 <x-input-error :messages="$errors->get('currency')" class="mt-2" />
             </div>
             <div>
-                <x-input-label for="status" :value="__('Status')" />
-                <select id="status" name="status" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                    @foreach (config('invoices.statuses') as $value => $label)
-                        <option value="{{ $value }}" @selected(old('status', $invoice->status) === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('status')" class="mt-2" />
+                @if ($invoice->exists)
+                    <x-input-label :value="__('Status')" />
+                    <p class="mt-1 text-sm text-slate-700">{{ $invoice->status_label }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ __('Status is managed from the invoice detail page.') }}</p>
+                @else
+                    <input type="hidden" name="status" value="draft">
+                    <x-input-label :value="__('Status')" />
+                    <p class="mt-1 text-sm text-slate-700">{{ config('invoices.statuses.draft') }}</p>
+                @endif
             </div>
             <div class="sm:col-span-2">
                 <x-input-label for="notes" :value="__('Notes')" />

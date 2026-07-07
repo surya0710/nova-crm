@@ -5,6 +5,7 @@
         'accepted' => 'bg-emerald-100 text-emerald-800',
         'rejected' => 'bg-red-100 text-red-800',
         'expired' => 'bg-amber-100 text-amber-800',
+        'converted' => 'bg-violet-100 text-violet-800',
     ];
 @endphp
 

@@ -23,7 +23,10 @@ use App\Policies\QuotationPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
 use App\Services\TenantContext;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -71,6 +74,12 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('permission', function (User $user, string $permission) {
             return $user->hasPermission($permission);
+        });
+
+        RateLimiter::for('api-lead-intake', function (Request $request) {
+            $tokenId = $request->user()?->currentAccessToken()?->id;
+
+            return Limit::perMinute(60)->by($tokenId ?? $request->ip());
         });
     }
 }

@@ -5,12 +5,6 @@
                 <h1 class="text-lg font-semibold text-slate-900">{{ $payment->number }}</h1>
                 <p class="text-sm text-slate-500">{{ $payment->formatted_amount }} · {{ $payment->payment_date->format('M j, Y') }}</p>
             </div>
-            @can('delete', $payment)
-                <form method="POST" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('{{ __('Delete this payment? The invoice balance will be recalculated.') }}')">
-                    @csrf @method('DELETE')
-                    <x-danger-button type="submit">{{ __('Delete') }}</x-danger-button>
-                </form>
-            @endcan
         </div>
     </x-slot>
 

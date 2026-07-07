@@ -5,24 +5,26 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SendInvoiceMailRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
-use App\Http\Requests\UpdateInvoiceStatusRequest;
 use App\Mail\InvoiceMail;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quotation;
+use App\Services\InvoiceService;
 use App\Services\OrganizationMailer;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
-    public function __construct(protected OrganizationMailer $organizationMailer)
-    {
+    public function __construct(
+        protected OrganizationMailer $organizationMailer,
+        protected InvoiceService $invoiceService,
+    ) {
         $this->authorizeResource(Invoice::class, 'invoice');
     }
 
@@ -103,43 +105,12 @@ class InvoiceController extends Controller
     public function store(StoreInvoiceRequest $request, TenantContext $tenant): RedirectResponse
     {
         $organization = $tenant->get();
-        $validated = $request->validated();
-        $totals = Invoice::calculateTotals($validated['items']);
 
-        $invoice = DB::transaction(function () use ($organization, $validated, $totals, $request) {
-            $invoice = Invoice::query()->create([
-                'number' => Invoice::generateNumber($organization),
-                'customer_id' => $validated['customer_id'],
-                'quotation_id' => $validated['quotation_id'] ?? null,
-                'opportunity_id' => $validated['opportunity_id'] ?? null,
-                'title' => $validated['title'] ?? null,
-                'status' => $validated['status'],
-                'issue_date' => $validated['issue_date'],
-                'due_date' => $validated['due_date'] ?? null,
-                'currency' => $validated['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => $request->user()->id,
-            ]);
-
-            foreach ($totals['items'] as $item) {
-                $invoice->items()->create([
-                    'product_id' => $item['product_id'],
-                    'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_rate' => $item['tax_rate'],
-                    'discount_percent' => $item['discount_percent'],
-                    'line_total' => $item['line_total'],
-                    'sort_order' => $item['sort_order'],
-                ]);
-            }
-
-            return $invoice;
-        });
+        $invoice = $this->invoiceService->create(
+            $organization,
+            $request->validated(),
+            $request->user(),
+        );
 
         return redirect()
             ->route('invoices.show', $invoice)
@@ -170,45 +141,18 @@ class InvoiceController extends Controller
 
     public function update(UpdateInvoiceRequest $request, Invoice $invoice): RedirectResponse
     {
-        $validated = $request->validated();
-        $totals = Invoice::calculateTotals($validated['items']);
-
-        DB::transaction(function () use ($invoice, $validated, $totals) {
-            $invoice->update([
-                'customer_id' => $validated['customer_id'],
-                'quotation_id' => $validated['quotation_id'] ?? null,
-                'opportunity_id' => $validated['opportunity_id'] ?? null,
-                'title' => $validated['title'] ?? null,
-                'status' => $validated['status'],
-                'issue_date' => $validated['issue_date'],
-                'due_date' => $validated['due_date'] ?? null,
-                'currency' => $validated['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            $invoice->syncPaymentStatus();
-
-            $invoice->items()->delete();
-
-            foreach ($totals['items'] as $item) {
-                $invoice->items()->create([
-                    'product_id' => $item['product_id'],
-                    'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_rate' => $item['tax_rate'],
-                    'discount_percent' => $item['discount_percent'],
-                    'line_total' => $item['line_total'],
-                    'sort_order' => $item['sort_order'],
-                ]);
-            }
-
-            $invoice->save();
-        });
+        try {
+            $this->invoiceService->update(
+                $invoice,
+                $request->validated(),
+                $request->user(),
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('invoices.edit', $invoice)
+                ->withInput()
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('invoices.show', $invoice)
@@ -217,22 +161,51 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice): RedirectResponse
     {
-        $invoice->delete();
+        try {
+            $this->invoiceService->delete($invoice, auth()->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('invoices.show', $invoice)
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('invoices.index')
             ->with('status', 'invoice-deleted');
     }
 
-    public function updateStatus(UpdateInvoiceStatusRequest $request, Invoice $invoice): RedirectResponse
+    public function issue(Request $request, Invoice $invoice): RedirectResponse
     {
-        $invoice->update([
-            'status' => $request->validated('status'),
-        ]);
+        $this->authorize('issue', $invoice);
+
+        try {
+            $this->invoiceService->issue($invoice, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('invoices.show', $invoice)
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('invoices.show', $invoice)
-            ->with('status', 'invoice-status-updated');
+            ->with('status', 'invoice-issued');
+    }
+
+    public function cancel(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('cancel', $invoice);
+
+        try {
+            $this->invoiceService->cancel($invoice, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('invoices.show', $invoice)
+                ->withErrors($e->errors());
+        }
+
+        return redirect()
+            ->route('invoices.show', $invoice)
+            ->with('status', 'invoice-cancelled');
     }
 
     public function sendMail(SendInvoiceMailRequest $request, Invoice $invoice, TenantContext $tenant): RedirectResponse
@@ -270,8 +243,13 @@ class InvoiceController extends Controller
                 ->with('error', __('Failed to send email: :message', ['message' => $e->getMessage()]));
         }
 
-        if (in_array($invoice->status, ['draft'], true)) {
-            $invoice->update(['status' => 'sent']);
+        try {
+            $this->invoiceService->markIssuedAfterEmail($invoice, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('invoices.show', $invoice)
+                ->with('status', 'invoice-email-sent')
+                ->withErrors($e->errors());
         }
 
         return redirect()

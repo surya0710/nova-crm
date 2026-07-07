@@ -9,4 +9,9 @@ return [
         'upi' => 'UPI',
         'other' => 'Other',
     ],
+
+    'payable_invoice_statuses' => [
+        'issued',
+        'partially_paid',
+    ],
 ];

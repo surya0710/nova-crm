@@ -12,16 +12,21 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quotation;
 use App\Services\OrganizationMailer;
+use App\Services\QuotationConversionService;
+use App\Services\QuotationService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class QuotationController extends Controller
 {
-    public function __construct(protected OrganizationMailer $organizationMailer)
-    {
+    public function __construct(
+        protected OrganizationMailer $organizationMailer,
+        protected QuotationService $quotationService,
+        protected QuotationConversionService $conversionService,
+    ) {
         $this->authorizeResource(Quotation::class, 'quotation');
     }
 
@@ -81,42 +86,12 @@ class QuotationController extends Controller
     public function store(StoreQuotationRequest $request, TenantContext $tenant): RedirectResponse
     {
         $organization = $tenant->get();
-        $validated = $request->validated();
-        $totals = Quotation::calculateTotals($validated['items']);
 
-        $quotation = DB::transaction(function () use ($organization, $validated, $totals, $request) {
-            $quotation = Quotation::query()->create([
-                'number' => Quotation::generateNumber($organization),
-                'customer_id' => $validated['customer_id'],
-                'opportunity_id' => $validated['opportunity_id'] ?? null,
-                'title' => $validated['title'] ?? null,
-                'status' => $validated['status'],
-                'issue_date' => $validated['issue_date'],
-                'valid_until' => $validated['valid_until'] ?? null,
-                'currency' => $validated['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => $request->user()->id,
-            ]);
-
-            foreach ($totals['items'] as $item) {
-                $quotation->items()->create([
-                    'product_id' => $item['product_id'],
-                    'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_rate' => $item['tax_rate'],
-                    'discount_percent' => $item['discount_percent'],
-                    'line_total' => $item['line_total'],
-                    'sort_order' => $item['sort_order'],
-                ]);
-            }
-
-            return $quotation;
-        });
+        $quotation = $this->quotationService->create(
+            $organization,
+            $request->validated(),
+            $request->user(),
+        );
 
         return redirect()
             ->route('quotations.show', $quotation)
@@ -125,7 +100,7 @@ class QuotationController extends Controller
 
     public function show(Quotation $quotation, TenantContext $tenant): View
     {
-        $quotation->load(['customer', 'opportunity', 'creator', 'items.product', 'attachments.uploader']);
+        $quotation->load(['customer', 'opportunity', 'creator', 'items.product', 'attachments.uploader', 'invoice']);
 
         return view('quotations.show', [
             'quotation' => $quotation,
@@ -147,40 +122,18 @@ class QuotationController extends Controller
 
     public function update(UpdateQuotationRequest $request, Quotation $quotation): RedirectResponse
     {
-        $validated = $request->validated();
-        $totals = Quotation::calculateTotals($validated['items']);
-
-        DB::transaction(function () use ($quotation, $validated, $totals) {
-            $quotation->update([
-                'customer_id' => $validated['customer_id'],
-                'opportunity_id' => $validated['opportunity_id'] ?? null,
-                'title' => $validated['title'] ?? null,
-                'status' => $validated['status'],
-                'issue_date' => $validated['issue_date'],
-                'valid_until' => $validated['valid_until'] ?? null,
-                'currency' => $validated['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            $quotation->items()->delete();
-
-            foreach ($totals['items'] as $item) {
-                $quotation->items()->create([
-                    'product_id' => $item['product_id'],
-                    'description' => $item['description'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'tax_rate' => $item['tax_rate'],
-                    'discount_percent' => $item['discount_percent'],
-                    'line_total' => $item['line_total'],
-                    'sort_order' => $item['sort_order'],
-                ]);
-            }
-        });
+        try {
+            $this->quotationService->update(
+                $quotation,
+                $request->validated(),
+                $request->user(),
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('quotations.edit', $quotation)
+                ->withInput()
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('quotations.show', $quotation)
@@ -189,7 +142,13 @@ class QuotationController extends Controller
 
     public function destroy(Quotation $quotation): RedirectResponse
     {
-        $quotation->delete();
+        try {
+            $this->quotationService->delete($quotation, auth()->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('quotations.show', $quotation)
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('quotations.index')
@@ -198,13 +157,38 @@ class QuotationController extends Controller
 
     public function updateStatus(UpdateQuotationStatusRequest $request, Quotation $quotation): RedirectResponse
     {
-        $quotation->update([
-            'status' => $request->validated('status'),
-        ]);
+        try {
+            $this->quotationService->updateStatus(
+                $quotation,
+                $request->validated('status'),
+                $request->user(),
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('quotations.show', $quotation)
+                ->withErrors($e->errors());
+        }
 
         return redirect()
             ->route('quotations.show', $quotation)
             ->with('status', 'quotation-status-updated');
+    }
+
+    public function convert(Request $request, Quotation $quotation): RedirectResponse
+    {
+        $this->authorize('convert', $quotation);
+
+        try {
+            $invoice = $this->conversionService->convert($quotation, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('quotations.show', $quotation)
+                ->withErrors($e->errors());
+        }
+
+        return redirect()
+            ->route('invoices.show', $invoice)
+            ->with('status', 'invoice-created-from-quotation');
     }
 
     public function sendMail(SendQuotationMailRequest $request, Quotation $quotation, TenantContext $tenant): RedirectResponse
@@ -242,8 +226,13 @@ class QuotationController extends Controller
                 ->with('error', __('Failed to send email: :message', ['message' => $e->getMessage()]));
         }
 
-        if (in_array($quotation->status, ['draft', 'expired'], true)) {
-            $quotation->update(['status' => 'sent']);
+        try {
+            $this->quotationService->markSentAfterEmail($quotation, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('quotations.show', $quotation)
+                ->with('status', 'quotation-email-sent')
+                ->withErrors($e->errors());
         }
 
         return redirect()

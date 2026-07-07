@@ -28,4 +28,16 @@ return [
         'medium' => 'Medium',
         'high' => 'High',
     ],
+
+    'intake_normalizations' => [
+        'visa_types' => [
+            'student' => 'Student Visa',
+            'visitor' => 'Visitor Visa',
+            'work' => 'Work Visa',
+            'permanent_resident' => 'Permanent Resident',
+            'pr' => 'Permanent Resident',
+            'tourist' => 'Visitor Visa',
+            'business' => 'Business Visa',
+        ],
+    ],
 ];

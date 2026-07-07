@@ -10,4 +10,9 @@ class UpdateQuotationRequest extends StoreQuotationRequest
 
         return $quotation && ($this->user()?->can('update', $quotation) ?? false);
     }
+
+    public function rules(): array
+    {
+        return $this->quotationFieldRules(isUpdate: true);
+    }
 }

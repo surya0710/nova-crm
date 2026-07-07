@@ -24,11 +24,24 @@ class QuotationPolicy
 
     public function update(User $user, Quotation $quotation): bool
     {
+        return $user->hasPermission('quotations.update', $quotation->organization)
+            && $quotation->isEditable();
+    }
+
+    public function changeStatus(User $user, Quotation $quotation): bool
+    {
         return $user->hasPermission('quotations.update', $quotation->organization);
     }
 
     public function delete(User $user, Quotation $quotation): bool
     {
-        return $user->hasPermission('quotations.delete', $quotation->organization);
+        return $user->hasPermission('quotations.delete', $quotation->organization)
+            && $quotation->isDeletable();
+    }
+
+    public function convert(User $user, Quotation $quotation): bool
+    {
+        return $user->hasPermission('invoices.create', $quotation->organization)
+            && $user->hasPermission('quotations.view', $quotation->organization);
     }
 }

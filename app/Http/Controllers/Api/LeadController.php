@@ -2,14 +2,21 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DuplicateLeadException;
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
+use App\Http\Requests\StoreApiLeadRequest;
 use App\Models\Lead;
+use App\Services\LeadService;
+use App\Services\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Throwable;
 
 class LeadController extends Controller
 {
+    public function __construct(protected LeadService $leadService) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         abort_unless($request->user()->hasPermission('leads.view'), 403);
@@ -34,28 +41,42 @@ class LeadController extends Controller
         return new \App\Http\Resources\LeadResource($lead);
     }
 
-    public function store(Request $request): \App\Http\Resources\LeadResource
+    public function store(StoreApiLeadRequest $request, TenantContext $tenant): JsonResponse
     {
-        $this->authorize('create', Lead::class);
+        $organization = $tenant->get();
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'company' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'source' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', 'string', 'max:50'],
-            'priority' => ['nullable', 'string', 'max:20'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-        ]);
+        if (! $organization) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Organization context is required.'),
+            ], 422);
+        }
 
-        $lead = Lead::query()->create([
-            ...$validated,
-            'status' => $validated['status'] ?? 'new',
-            'priority' => $validated['priority'] ?? 'medium',
-            'created_by' => $request->user()->id,
-        ]);
+        try {
+            $lead = $this->leadService->createFromApi(
+                $request->validated(),
+                $request->user(),
+                $organization,
+            );
+        } catch (DuplicateLeadException $e) {
+            return response()->json([
+                'success' => false,
+                'lead_id' => $e->lead->id,
+                'message' => $e->getMessage(),
+            ], 409);
+        } catch (Throwable $e) {
+            report($e);
 
-        return new \App\Http\Resources\LeadResource($lead);
+            return response()->json([
+                'success' => false,
+                'message' => __('An unexpected error occurred while creating the lead.'),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'lead_id' => $lead->id,
+            'message' => __('Lead created successfully.'),
+        ], 201);
     }
 }

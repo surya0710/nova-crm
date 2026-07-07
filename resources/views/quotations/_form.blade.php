@@ -81,13 +81,15 @@
                 <x-input-error :messages="$errors->get('currency')" class="mt-2" />
             </div>
             <div>
-                <x-input-label for="status" :value="__('Status')" />
-                <select id="status" name="status" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                    @foreach (config('quotations.statuses') as $value => $label)
-                        <option value="{{ $value }}" @selected(old('status', $quotation->status) === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('status')" class="mt-2" />
+                @if ($quotation->exists)
+                    <x-input-label :value="__('Status')" />
+                    <p class="mt-1 text-sm text-slate-700">{{ $quotation->status_label }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ __('Status is managed from the quotation detail page.') }}</p>
+                @else
+                    <input type="hidden" name="status" value="draft">
+                    <x-input-label :value="__('Status')" />
+                    <p class="mt-1 text-sm text-slate-700">{{ config('quotations.statuses.draft') }}</p>
+                @endif
             </div>
             <div class="sm:col-span-2">
                 <x-input-label for="notes" :value="__('Terms & Notes')" />

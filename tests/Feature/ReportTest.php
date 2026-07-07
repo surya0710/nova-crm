@@ -72,7 +72,7 @@ class ReportTest extends TestCase
             'customer_id' => $customer->id,
             'total' => 1000,
             'amount_paid' => 0,
-            'status' => 'sent',
+            'status' => 'issued',
             'created_by' => $user->id,
         ]);
 

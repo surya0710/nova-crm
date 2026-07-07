@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware(['auth:sanctum', 'set.organization', 'ensure.organization'])->group(function () {
     Route::middleware('permission:api.access')->group(function () {
         Route::get('leads', [ApiLeadController::class, 'index']);
-        Route::post('leads', [ApiLeadController::class, 'store']);
+        Route::post('leads', [ApiLeadController::class, 'store'])
+            ->middleware('throttle:api-lead-intake');
         Route::get('leads/{lead}', [ApiLeadController::class, 'show']);
 
         Route::get('customers', [ApiCustomerController::class, 'index']);

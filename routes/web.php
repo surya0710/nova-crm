@@ -59,13 +59,16 @@ Route::middleware(['auth', 'set.organization'])->group(function () {
 
         Route::resource('quotations', QuotationController::class);
         Route::patch('quotations/{quotation}/status', [QuotationController::class, 'updateStatus'])->name('quotations.status.update');
+        Route::post('quotations/{quotation}/convert', [QuotationController::class, 'convert'])->name('quotations.convert');
         Route::post('quotations/{quotation}/send', [QuotationController::class, 'sendMail'])->name('quotations.send');
 
         Route::resource('invoices', InvoiceController::class);
-        Route::patch('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.status.update');
+        Route::post('invoices/{invoice}/issue', [InvoiceController::class, 'issue'])->name('invoices.issue');
+        Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('invoices/{invoice}/send', [InvoiceController::class, 'sendMail'])->name('invoices.send');
 
-        Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+        Route::resource('payments', PaymentController::class)
+            ->only(['index', 'create', 'store', 'show']);
         Route::post('payments/{payment}/send', [PaymentController::class, 'sendMail'])->name('payments.send');
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');

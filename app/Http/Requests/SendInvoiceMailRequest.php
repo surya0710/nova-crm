@@ -13,7 +13,7 @@ class SendInvoiceMailRequest extends FormRequest
     {
         $invoice = $this->route('invoice');
 
-        return $invoice && ($this->user()?->can('update', $invoice) ?? false);
+        return $invoice && ($this->user()?->can('send', $invoice) ?? false);
     }
 
     public function rules(): array

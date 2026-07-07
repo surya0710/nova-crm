@@ -25,7 +25,7 @@ class ReportService
         $revenueCollected = (float) (clone $paymentQuery)->sum('amount');
 
         $outstandingInvoices = Invoice::query()
-            ->whereIn('status', ['sent', 'partial', 'overdue'])
+            ->whereIn('status', ['issued', 'partially_paid'])
             ->get();
 
         $outstandingAmount = $outstandingInvoices->sum(

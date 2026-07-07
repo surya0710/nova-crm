@@ -3,12 +3,29 @@
 return [
     'statuses' => [
         'draft' => 'Draft',
-        'sent' => 'Sent',
-        'partial' => 'Partially Paid',
+        'issued' => 'Issued',
+        'partially_paid' => 'Partially Paid',
         'paid' => 'Paid',
-        'overdue' => 'Overdue',
         'cancelled' => 'Cancelled',
     ],
+
+    /*
+    | Allowed manual status transitions. Empty = final.
+    | partially_paid and paid are system-managed via payment sync.
+    */
+    'transitions' => [
+        'draft' => ['issued', 'cancelled'],
+        'issued' => ['cancelled'],
+        'partially_paid' => ['cancelled'],
+        'paid' => [],
+        'cancelled' => [],
+    ],
+
+    'system_managed_statuses' => ['partially_paid', 'paid'],
+
+    'fully_editable_statuses' => ['draft'],
+
+    'deletable_statuses' => ['draft'],
 
     'currencies' => [
         'USD' => 'USD',

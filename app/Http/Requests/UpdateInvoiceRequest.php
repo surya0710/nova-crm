@@ -10,4 +10,9 @@ class UpdateInvoiceRequest extends StoreInvoiceRequest
 
         return $invoice && ($this->user()?->can('update', $invoice) ?? false);
     }
+
+    public function rules(): array
+    {
+        return $this->invoiceFieldRules(isUpdate: true);
+    }
 }
