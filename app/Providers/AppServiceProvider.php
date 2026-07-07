@@ -64,7 +64,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
-        Gate::before(function (User $user, string $ability) {
+        Gate::before(function ($user, string $ability) {
+            if (! $user instanceof User) {
+                return null;
+            }
+
             if ($user->is_super_admin) {
                 return true;
             }

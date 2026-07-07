@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
 use App\Http\Controllers\Api\LeadController as ApiLeadController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->middleware(['auth:sanctum', 'set.organization', 'ensure.organization'])->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'set.organization', 'ensure.organization', 'organization.api'])->group(function () {
     Route::middleware('permission:api.access')->group(function () {
         Route::get('leads', [ApiLeadController::class, 'index']);
         Route::post('leads', [ApiLeadController::class, 'store'])

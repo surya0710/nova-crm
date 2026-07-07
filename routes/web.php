@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    if (Auth::guard('platform')->check()) {
+        return redirect()->route('platform.dashboard');
+    }
+
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
@@ -31,11 +35,14 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::middleware(['auth', 'set.organization'])->group(function () {
+Route::get('impersonation/accept/{token}', [\App\Http\Controllers\Platform\ImpersonationController::class, 'accept'])
+    ->name('impersonation.accept');
+
+Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->group(function () {
     Route::get('organization/setup', [OrganizationSetupController::class, 'create'])->name('organization.setup');
     Route::post('organization/setup', [OrganizationSetupController::class, 'store'])->name('organization.setup.store');
 
-    Route::middleware('ensure.organization')->group(function () {
+    Route::middleware(['ensure.organization', 'organization.lifecycle'])->group(function () {
         Route::get('/dashboard', DashboardController::class)->middleware('verified')->name('dashboard');
 
         Route::post('leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
@@ -107,10 +114,13 @@ Route::middleware(['auth', 'set.organization'])->group(function () {
             ->middleware('permission:settings.manage')
             ->name('organization.test-mail');
         Route::post('organization/switch/{organization}', OrganizationSwitchController::class)->name('organization.switch');
+
+        Route::post('impersonation/stop', [\App\Http\Controllers\Platform\ImpersonationController::class, 'stop'])
+            ->name('impersonation.stop');
     });
 });
 
-Route::middleware(['auth', 'set.organization'])->group(function () {
+Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

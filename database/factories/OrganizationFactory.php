@@ -24,6 +24,26 @@ class OrganizationFactory extends Factory
             'timezone' => 'UTC',
             'currency' => 'USD',
             'is_active' => true,
+            'status' => 'active',
+            'plan' => 'starter',
+            'storage_used_bytes' => 0,
         ];
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn () => [
+            'status' => 'suspended',
+            'is_active' => false,
+        ]);
+    }
+
+    public function archived(): static
+    {
+        return $this->state(fn () => [
+            'status' => 'archived',
+            'is_active' => false,
+            'archived_at' => now(),
+        ]);
     }
 }

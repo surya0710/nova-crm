@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrganizationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,6 +35,11 @@ class Organization extends Model
         'currency',
         'settings',
         'is_active',
+        'status',
+        'plan',
+        'last_activity_at',
+        'archived_at',
+        'storage_used_bytes',
     ];
 
     protected function casts(): array
@@ -41,6 +47,10 @@ class Organization extends Model
         return [
             'settings' => 'array',
             'is_active' => 'boolean',
+            'status' => OrganizationStatus::class,
+            'last_activity_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'storage_used_bytes' => 'integer',
         ];
     }
 
@@ -130,5 +140,40 @@ class Organization extends Model
             'role' => $roleSlug,
             'is_owner' => $roleSlug === 'organization-owner',
         ]);
+    }
+
+    public function primaryOwner(): ?User
+    {
+        return $this->owners()->first() ?? $this->users()->first();
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === OrganizationStatus::Active;
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->status === OrganizationStatus::Suspended;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->status === OrganizationStatus::Archived;
+    }
+
+    public function planLabel(): string
+    {
+        return config("platform.plans.{$this->plan}", $this->plan);
+    }
+
+    public function touchActivity(): void
+    {
+        $this->update(['last_activity_at' => now()]);
+    }
+
+    public function syncActiveFlag(): void
+    {
+        $this->update(['is_active' => $this->isActive()]);
     }
 }

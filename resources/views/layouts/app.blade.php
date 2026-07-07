@@ -13,6 +13,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased bg-slate-50">
+        <x-impersonation-banner />
         <div x-data="{ sidebarOpen: false }" class="min-h-screen flex">
             <div
                 x-show="sidebarOpen"
