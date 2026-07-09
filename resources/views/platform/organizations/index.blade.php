@@ -1,6 +1,11 @@
 <x-platform-layout>
     <x-slot name="header">
-        <h1 class="text-lg font-semibold">{{ __('Organizations') }}</h1>
+        <div class="flex items-center justify-between gap-4">
+            <h1 class="text-lg font-semibold">{{ __('Organizations') }}</h1>
+            @if (auth('platform')->user()->hasPermission('platform.organizations.manage'))
+                <a href="{{ route('platform.organizations.create') }}" class="text-sm rounded-lg bg-violet-600 hover:bg-violet-500 px-3 py-1.5">{{ __('New Organization') }}</a>
+            @endif
+        </div>
     </x-slot>
 
     <form method="GET" class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-3">

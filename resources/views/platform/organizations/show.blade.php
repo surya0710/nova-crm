@@ -18,6 +18,13 @@
                 <div><dt class="text-slate-500">{{ __('Status') }}</dt><dd class="text-slate-200">{{ $organization->status->label() }}</dd></div>
                 <div><dt class="text-slate-500">{{ __('Owner') }}</dt><dd class="text-slate-200">{{ $owner?->name ?? '—' }} ({{ $owner?->email }})</dd></div>
                 <div><dt class="text-slate-500">{{ __('Users') }}</dt><dd class="text-slate-200">{{ $organization->users_count }}</dd></div>
+                <div><dt class="text-slate-500">{{ __('Industry Template') }}</dt><dd class="text-slate-200">
+                    @if ($template_application)
+                        {{ $template_application->template?->name ?? __('Deleted template') }} · v{{ $template_application->version?->version ?? '—' }}
+                    @else
+                        —
+                    @endif
+                </dd></div>
                 <div><dt class="text-slate-500">{{ __('Storage') }}</dt><dd class="text-slate-200">{{ number_format($organization->storage_used_bytes / 1048576, 2) }} MB</dd></div>
                 <div><dt class="text-slate-500">{{ __('API Tokens') }}</dt><dd class="text-slate-200">{{ $api_tokens }}</dd></div>
             </dl>

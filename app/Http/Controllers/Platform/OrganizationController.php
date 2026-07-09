@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\StoreOrganizationRequest;
+use App\Models\IndustryTemplate;
 use App\Models\Organization;
 use App\Services\Platform\OrganizationManagementService;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +26,36 @@ class OrganizationController extends Controller
             'plans' => config('platform.plans'),
             'filters' => $request->only(['search', 'status', 'plan', 'created_from', 'created_to']),
         ]);
+    }
+
+    public function create(): View
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        return view('platform.organizations.create', [
+            'plans' => config('platform.plans'),
+            'statuses' => config('platform.organization_statuses'),
+            'timezones' => timezone_identifiers_list(),
+            'currencies' => config('nova.currencies'),
+            'templates' => IndustryTemplate::query()
+                ->with('currentVersion')
+                ->where('status', 'published')
+                ->whereNotNull('current_version_id')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
+        ]);
+    }
+
+    public function store(StoreOrganizationRequest $request, OrganizationManagementService $service): RedirectResponse
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        $organization = $service->create($request->validated(), auth('platform')->user());
+
+        return redirect()
+            ->route('platform.organizations.show', $organization)
+            ->with('status', __('Organization created.'));
     }
 
     public function show(Organization $organization, OrganizationManagementService $service): View

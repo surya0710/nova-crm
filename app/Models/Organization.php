@@ -93,6 +93,19 @@ class Organization extends Model
         return $this->hasMany(Role::class);
     }
 
+    public function templateApplications(): HasMany
+    {
+        return $this->hasMany(OrganizationTemplateApplication::class);
+    }
+
+    public function initialTemplateApplication(): ?OrganizationTemplateApplication
+    {
+        return $this->templateApplications()
+            ->where('application_type', 'initial_onboarding')
+            ->with(['template', 'version'])
+            ->first();
+    }
+
     public function owners(): BelongsToMany
     {
         return $this->users()->wherePivot('is_owner', true);

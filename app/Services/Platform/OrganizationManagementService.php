@@ -5,6 +5,7 @@ namespace App\Services\Platform;
 use App\Enums\OrganizationStatus;
 use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Models\IndustryTemplateVersion;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -12,6 +13,7 @@ use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PlatformUser;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +22,7 @@ class OrganizationManagementService
     public function __construct(
         protected PlatformAuditService $audit,
         protected PlatformDashboardService $dashboard,
+        protected IndustryTemplateApplicationService $templateApplicationService,
     ) {}
 
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
@@ -104,7 +107,91 @@ class OrganizationManagementService
             'recent_logins' => $recentLogins,
             'recent_audit' => $recentAudit,
             'api_tokens' => $apiTokens,
+            'template_application' => $organization->initialTemplateApplication(),
         ];
+    }
+
+    public function create(array $data, PlatformUser $actor): Organization
+    {
+        return DB::transaction(function () use ($data, $actor) {
+            $version = null;
+
+            if (! empty($data['template_version_id'])) {
+                $version = IndustryTemplateVersion::query()
+                    ->with('template')
+                    ->findOrFail($data['template_version_id']);
+            }
+
+            $organization = Organization::create([
+                'name' => $data['name'],
+                'slug' => $data['slug'] ?? null,
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'website' => $data['website'] ?? null,
+                'plan' => $data['plan'],
+                'status' => $data['status'],
+                'is_active' => $data['status'] === 'active',
+                'timezone' => $data['timezone'] ?? 'UTC',
+                'currency' => strtoupper($data['currency'] ?? 'USD'),
+                'tax_name' => $data['tax_name'] ?? null,
+            ]);
+
+            if (! empty($data['owner_email'])) {
+                $owner = User::firstOrCreate(
+                    ['email' => $data['owner_email']],
+                    [
+                        'name' => $data['owner_name'],
+                        'password' => $data['owner_password'],
+                    ]
+                );
+
+                if ($owner->wasRecentlyCreated) {
+                    event(new Registered($owner));
+                }
+
+                $ownerRole = $organization->roles()->where('slug', 'organization-owner')->firstOrFail();
+
+                $organization->users()->syncWithoutDetaching([
+                    $owner->id => [
+                        'role_id' => $ownerRole->id,
+                        'role' => 'organization-owner',
+                        'is_owner' => true,
+                    ],
+                ]);
+            }
+
+            $application = null;
+            if ($version) {
+                $application = $this->templateApplicationService->applyToNewOrganization(
+                    $organization,
+                    $version,
+                    $actor,
+                    array_intersect_key($data, array_flip(['timezone', 'currency', 'tax_name'])),
+                );
+            }
+
+            $this->audit->log('organization.created', $actor, $organization, [
+                'organization_name' => $organization->name,
+                'plan' => $organization->plan,
+                'status' => (string) $organization->status->value,
+                'template_id' => $application?->industry_template_id,
+                'template_version_id' => $application?->industry_template_version_id,
+            ]);
+
+            if ($application) {
+                $this->audit->log('industry_template.applied_to_organization', $actor, $organization, [
+                    'template_id' => $application->industry_template_id,
+                    'template_version_id' => $application->industry_template_version_id,
+                    'payload_hash' => $application->payload_hash,
+                    'applied_sections' => $application->applied_sections,
+                    'skipped_sections' => $application->skipped_sections,
+                ]);
+            }
+
+            $this->dashboard->clearCache();
+
+            return $organization->fresh();
+        });
     }
 
     public function suspend(Organization $organization, PlatformUser $actor): Organization

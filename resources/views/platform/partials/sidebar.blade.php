@@ -21,6 +21,12 @@
             </a>
         @endif
 
+        @if ($user->hasPermission('platform.industry_templates.view'))
+            <a href="{{ route('platform.industry-templates.index') }}" class="block px-3 py-2 rounded-lg {{ request()->routeIs('platform.industry-templates.*') || request()->routeIs('platform.industry-template-versions.*') ? 'bg-violet-600/20 text-violet-300' : 'text-slate-300 hover:bg-slate-800' }}">
+                {{ __('Industry Templates') }}
+            </a>
+        @endif
+
         @if ($user->hasPermission('platform.reports.view'))
             <a href="{{ route('platform.reports.index') }}" class="block px-3 py-2 rounded-lg {{ request()->routeIs('platform.reports.*') ? 'bg-violet-600/20 text-violet-300' : 'text-slate-300 hover:bg-slate-800' }}">
                 {{ __('Reports') }}
