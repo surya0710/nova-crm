@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SendOrganizationTestMailRequest;
 use App\Http\Requests\UpdateOrganizationRequest;
 use App\Mail\TestOrganizationMail;
+use App\Services\MetadataFormResolver;
+use App\Services\MetadataFormValuePresenter;
+use App\Services\MetadataValueStorageService;
 use App\Services\OrganizationLogoService;
 use App\Services\OrganizationMailConfig;
 use App\Services\OrganizationMailer;
@@ -18,6 +21,9 @@ class OrganizationController extends Controller
     public function __construct(
         protected OrganizationLogoService $logoService,
         protected OrganizationMailer $organizationMailer,
+        protected MetadataFormResolver $metadataFormResolver,
+        protected MetadataFormValuePresenter $metadataPresenter,
+        protected MetadataValueStorageService $metadataValueStorage,
     ) {}
 
     public function edit(TenantContext $tenant): View
@@ -44,6 +50,8 @@ class OrganizationController extends Controller
             'mailSettings' => $mailConfig->toSettingsArray(),
             'mailDrivers' => config('organization_mail.drivers'),
             'mailEncryptions' => config('organization_mail.encryptions'),
+            'metadataFields' => $this->metadataFields($organization, 'edit'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
@@ -88,6 +96,7 @@ class OrganizationController extends Controller
         $data['settings'] = $settings;
 
         $organization->update($data);
+        $this->storeMetadataValues($organization, $request);
 
         return redirect()
             ->route('organization.edit')
@@ -120,5 +129,25 @@ class OrganizationController extends Controller
         return redirect()
             ->route('organization.edit')
             ->with('status', 'organization-mail-test-sent');
+    }
+
+    protected function metadataFields(\App\Models\Organization $organization, string $context)
+    {
+        return $this->metadataFormResolver->fieldsFor($organization, 'organization', $context);
+    }
+
+    protected function storeMetadataValues(\App\Models\Organization $organization, UpdateOrganizationRequest $request): void
+    {
+        $payload = $request->input('custom_fields', []);
+        $payload = is_array($payload) ? $payload : [];
+
+        $values = $this->metadataPresenter->extractSubmittedValues(
+            $this->metadataFields($organization, 'edit'),
+            $payload,
+        );
+
+        if ($values !== []) {
+            $this->metadataValueStorage->mergeValues($organization, $values);
+        }
     }
 }

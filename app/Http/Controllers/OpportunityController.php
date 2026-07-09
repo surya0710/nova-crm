@@ -10,7 +10,11 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityNote;
+use App\Models\Organization;
 use App\Models\User;
+use App\Services\MetadataFormResolver;
+use App\Services\MetadataFormValuePresenter;
+use App\Services\MetadataValueStorageService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,8 +22,11 @@ use Illuminate\View\View;
 
 class OpportunityController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        protected MetadataFormResolver $metadataFormResolver,
+        protected MetadataFormValuePresenter $metadataPresenter,
+        protected MetadataValueStorageService $metadataValueStorage,
+    ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
 
@@ -81,15 +88,18 @@ class OpportunityController extends Controller
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->whereNotIn('status', ['won', 'lost'])->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function store(StoreOpportunityRequest $request): RedirectResponse
+    public function store(StoreOpportunityRequest $request, TenantContext $tenant): RedirectResponse
     {
         $opportunity = Opportunity::query()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);
+        $this->storeMetadataValues($opportunity, $tenant->get(), 'create', $request);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -102,6 +112,8 @@ class OpportunityController extends Controller
 
         return view('pipeline.show', [
             'opportunity' => $opportunity,
+            'metadataFields' => $this->metadataFields($opportunity->organization, 'detail'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
@@ -112,12 +124,15 @@ class OpportunityController extends Controller
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function update(UpdateOpportunityRequest $request, Opportunity $opportunity): RedirectResponse
+    public function update(UpdateOpportunityRequest $request, Opportunity $opportunity, TenantContext $tenant): RedirectResponse
     {
         $opportunity->update($request->validated());
+        $this->storeMetadataValues($opportunity, $tenant->get(), 'edit', $request);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -182,5 +197,33 @@ class OpportunityController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
+    }
+
+    protected function metadataFields(?Organization $organization, string $context)
+    {
+        if (! $organization) {
+            return collect();
+        }
+
+        return $this->metadataFormResolver->fieldsFor($organization, 'opportunity', $context);
+    }
+
+    protected function storeMetadataValues(Opportunity $opportunity, ?Organization $organization, string $context, Request $request): void
+    {
+        if (! $organization) {
+            return;
+        }
+
+        $payload = $request->input('custom_fields', []);
+        $payload = is_array($payload) ? $payload : [];
+
+        $values = $this->metadataPresenter->extractSubmittedValues(
+            $this->metadataFields($organization, $context),
+            $payload,
+        );
+
+        if ($values !== []) {
+            $this->metadataValueStorage->mergeValues($opportunity, $values);
+        }
     }
 }

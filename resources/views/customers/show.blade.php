@@ -99,6 +99,12 @@
                 </dl>
             </div>
 
+            @include('metadata-fields._runtime_detail', [
+                'metadataFields' => $metadataFields ?? collect(),
+                'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+                'record' => $customer,
+            ])
+
             @if ($statement)
                 <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
                     <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3">

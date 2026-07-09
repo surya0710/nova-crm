@@ -154,6 +154,12 @@
                 </dl>
             </div>
 
+            @include('metadata-fields._runtime_detail', [
+                'metadataFields' => $metadataFields ?? collect(),
+                'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+                'record' => $opportunity,
+            ])
+
             <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 class="font-semibold text-slate-900">{{ __('Activity') }}</h3></div>
                 <div class="p-6">

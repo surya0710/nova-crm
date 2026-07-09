@@ -9,7 +9,11 @@ use App\Http\Requests\UpdateCustomerRequest;
 use App\Mail\CustomerMail;
 use App\Models\Customer;
 use App\Models\CustomerNote;
+use App\Models\Organization;
 use App\Models\User;
+use App\Services\MetadataFormResolver;
+use App\Services\MetadataFormValuePresenter;
+use App\Services\MetadataValueStorageService;
 use App\Services\OrganizationMailer;
 use App\Services\RevenueService;
 use App\Services\TenantContext;
@@ -19,8 +23,12 @@ use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
-    public function __construct(protected OrganizationMailer $organizationMailer)
-    {
+    public function __construct(
+        protected OrganizationMailer $organizationMailer,
+        protected MetadataFormResolver $metadataFormResolver,
+        protected MetadataFormValuePresenter $metadataPresenter,
+        protected MetadataValueStorageService $metadataValueStorage,
+    ) {
         $this->authorizeResource(Customer::class, 'customer');
     }
 
@@ -65,15 +73,18 @@ class CustomerController extends Controller
         return view('customers.create', [
             'customer' => new Customer(['status' => 'active']),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function store(StoreCustomerRequest $request): RedirectResponse
+    public function store(StoreCustomerRequest $request, TenantContext $tenant): RedirectResponse
     {
         $customer = Customer::query()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);
+        $this->storeMetadataValues($customer, $tenant->get(), 'create', $request);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -95,6 +106,8 @@ class CustomerController extends Controller
             'customer' => $customer,
             'organization' => $tenant->get(),
             'statement' => $statement,
+            'metadataFields' => $this->metadataFields($tenant->get(), 'detail'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
@@ -103,12 +116,15 @@ class CustomerController extends Controller
         return view('customers.edit', [
             'customer' => $customer,
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
+    public function update(UpdateCustomerRequest $request, Customer $customer, TenantContext $tenant): RedirectResponse
     {
         $customer->update($request->validated());
+        $this->storeMetadataValues($customer, $tenant->get(), 'edit', $request);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -187,5 +203,33 @@ class CustomerController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
+    }
+
+    protected function metadataFields(?Organization $organization, string $context)
+    {
+        if (! $organization) {
+            return collect();
+        }
+
+        return $this->metadataFormResolver->fieldsFor($organization, 'customer', $context);
+    }
+
+    protected function storeMetadataValues(Customer $customer, ?Organization $organization, string $context, Request $request): void
+    {
+        if (! $organization) {
+            return;
+        }
+
+        $payload = $request->input('custom_fields', []);
+        $payload = is_array($payload) ? $payload : [];
+
+        $values = $this->metadataPresenter->extractSubmittedValues(
+            $this->metadataFields($organization, $context),
+            $payload,
+        );
+
+        if ($values !== []) {
+            $this->metadataValueStorage->mergeValues($customer, $values);
+        }
     }
 }

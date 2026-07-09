@@ -11,10 +11,14 @@ use App\Http\Requests\UpdateLeadRequest;
 use App\Http\Requests\UpdateLeadStatusRequest;
 use App\Models\Lead;
 use App\Models\LeadNote;
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
 use App\Services\LeadService;
+use App\Services\MetadataFormResolver;
+use App\Services\MetadataFormValuePresenter;
+use App\Services\MetadataValueStorageService;
 use App\Services\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +34,9 @@ class LeadController extends Controller
         protected LeadFollowUpService $followUpService,
         protected LeadConversionService $conversionService,
         protected LeadService $leadService,
+        protected MetadataFormResolver $metadataFormResolver,
+        protected MetadataFormValuePresenter $metadataPresenter,
+        protected MetadataValueStorageService $metadataValueStorage,
     ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
@@ -79,14 +86,17 @@ class LeadController extends Controller
         return view('leads.create', [
             'lead' => new Lead(['status' => 'new', 'priority' => 'medium', 'source' => 'manual_entry']),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function store(StoreLeadRequest $request): RedirectResponse
+    public function store(StoreLeadRequest $request, TenantContext $tenant): RedirectResponse
     {
         $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
 
         $lead = $this->leadService->create($validated, $request->user());
+        $this->storeMetadataValues($lead, $tenant->get(), 'create', $request);
 
         return redirect()
             ->route('leads.show', $lead)
@@ -103,6 +113,8 @@ class LeadController extends Controller
 
         return view('leads.show', [
             'lead' => $lead,
+            'metadataFields' => $this->metadataFields($lead->organization, 'detail'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
@@ -111,12 +123,15 @@ class LeadController extends Controller
         return view('leads.edit', [
             'lead' => $lead,
             'assignees' => $this->organizationMembers($tenant->get()),
+            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
+            'metadataPresenter' => $this->metadataPresenter,
         ]);
     }
 
-    public function update(UpdateLeadRequest $request, Lead $lead): RedirectResponse
+    public function update(UpdateLeadRequest $request, Lead $lead, TenantContext $tenant): RedirectResponse
     {
         $lead->update($this->followUpService->normalizeValidatedFollowUp($request->validated()));
+        $this->storeMetadataValues($lead, $tenant->get(), 'edit', $request);
 
         return redirect()
             ->route('leads.show', $lead)
@@ -245,5 +260,33 @@ class LeadController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
+    }
+
+    protected function metadataFields(?Organization $organization, string $context)
+    {
+        if (! $organization) {
+            return collect();
+        }
+
+        return $this->metadataFormResolver->fieldsFor($organization, 'lead', $context);
+    }
+
+    protected function storeMetadataValues(Lead $lead, ?Organization $organization, string $context, Request $request): void
+    {
+        if (! $organization) {
+            return;
+        }
+
+        $payload = $request->input('custom_fields', []);
+        $payload = is_array($payload) ? $payload : [];
+
+        $values = $this->metadataPresenter->extractSubmittedValues(
+            $this->metadataFields($organization, $context),
+            $payload,
+        );
+
+        if ($values !== []) {
+            $this->metadataValueStorage->mergeValues($lead, $values);
+        }
     }
 }

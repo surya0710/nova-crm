@@ -48,6 +48,7 @@
                 <nav class="flex overflow-x-auto" aria-label="{{ __('Settings sections') }}">
                     @foreach ([
                         'general' => __('General'),
+                        'custom_fields' => __('Custom Fields'),
                         'brand' => __('Brand'),
                         'address' => __('Address'),
                         'preferences' => __('Tax & Preferences'),
@@ -117,6 +118,26 @@
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
                         </div>
                     </div>
+                </div>
+
+                {{-- Custom Fields --}}
+                <div x-show="tab === 'custom_fields'" x-cloak class="space-y-5">
+                    <div>
+                        <h3 class="text-base font-semibold text-slate-900">{{ __('Custom Fields') }}</h3>
+                        <p class="mt-1 text-sm text-slate-500">{{ __('Organization-level metadata configured for your workspace.') }}</p>
+                    </div>
+
+                    @include('metadata-fields._runtime_form', [
+                        'metadataFields' => $metadataFields ?? collect(),
+                        'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+                        'record' => $organization,
+                    ])
+
+                    @include('metadata-fields._runtime_detail', [
+                        'metadataFields' => $metadataFields ?? collect(),
+                        'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+                        'record' => $organization,
+                    ])
                 </div>
 
                 {{-- Brand --}}

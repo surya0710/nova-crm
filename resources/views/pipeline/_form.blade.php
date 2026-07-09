@@ -86,3 +86,9 @@
         <x-input-error :messages="$errors->get('description')" class="mt-2" />
     </div>
 </div>
+
+@include('metadata-fields._runtime_form', [
+    'metadataFields' => $metadataFields ?? collect(),
+    'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+    'record' => $opportunity,
+])
