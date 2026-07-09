@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\IndustryTemplate;
 use App\Models\IndustryTemplateVersion;
 use App\Models\Lead;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Organization;
 use App\Models\OrganizationTemplateApplication;
 use App\Models\PlatformAuditLog;
@@ -201,7 +202,16 @@ class PlatformTest extends TestCase
                 'reports' => [['key' => 'pipeline', 'name' => 'Pipeline', 'report_type' => 'pipeline_value']],
                 'notification_preferences' => [],
                 'task_blueprints' => [],
-                'field_blueprints' => [['entity' => 'lead', 'key' => 'budget', 'label' => 'Budget', 'type' => 'number']],
+                'field_blueprints' => [[
+                    'entity' => 'lead',
+                    'key' => 'budget',
+                    'label' => 'Budget',
+                    'type' => 'number',
+                    'group' => 'Qualification',
+                    'required' => true,
+                    'searchable' => true,
+                    'reportable' => true,
+                ]],
                 'automation_blueprints' => [],
                 'email_template_blueprints' => [],
             ],
@@ -231,7 +241,57 @@ class PlatformTest extends TestCase
         $this->assertSame('Asia/Kolkata', $organization->timezone);
         $this->assertSame('Prospect', $organization->settings['terminology']['entities']['lead']['singular']);
         $this->assertSame($version->id, $application->industry_template_version_id);
+        $this->assertSame(1, $application->summary['metadata_activation']['activated']);
+        $this->assertDatabaseHas('metadata_field_definitions', [
+            'organization_id' => $organization->id,
+            'entity_type' => 'lead',
+            'key' => 'budget',
+            'label' => 'Budget',
+            'type' => 'number',
+            'status' => 'active',
+            'source' => 'industry_template',
+            'source_identifier' => (string) $version->id,
+            'is_required' => true,
+            'is_searchable' => true,
+            'is_reportable' => true,
+        ]);
+        $field = MetadataFieldDefinition::where('organization_id', $organization->id)->where('key', 'budget')->firstOrFail();
+        $this->assertDatabaseHas('metadata_field_versions', [
+            'metadata_field_definition_id' => $field->id,
+            'version' => 1,
+            'event' => 'blueprint_activated',
+        ]);
         $this->assertDatabaseHas('platform_audit_logs', ['event' => 'industry_template.applied_to_organization']);
+    }
+
+    public function test_publish_rejects_unsupported_field_blueprint_contract(): void
+    {
+        $platformUser = $this->createPlatformUser();
+        $template = IndustryTemplate::create([
+            'name' => 'Unsupported Fields',
+            'slug' => 'unsupported-fields',
+            'status' => 'draft',
+            'visibility' => 'internal',
+            'draft_schema_version' => 1,
+            'draft_payload' => [
+                'schema_version' => 1,
+                'metadata' => [],
+                'field_blueprints' => [[
+                    'entity' => 'invoice',
+                    'key' => 'unsupported',
+                    'label' => 'Unsupported',
+                    'type' => 'unsupported_type',
+                ]],
+            ],
+            'created_by_platform_user_id' => $platformUser->id,
+        ]);
+
+        $this->actingAs($platformUser, 'platform')
+            ->post(route('platform.industry-templates.publish', $template))
+            ->assertSessionHasErrors([
+                'field_blueprints.0.entity',
+                'field_blueprints.0.type',
+            ]);
     }
 
     public function test_suspend_organization(): void

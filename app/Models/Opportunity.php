@@ -29,6 +29,7 @@ class Opportunity extends Model
         'won_at',
         'lost_reason',
         'description',
+        'custom_fields',
         'assigned_to',
         'created_by',
     ];
@@ -39,6 +40,7 @@ class Opportunity extends Model
             'amount' => 'decimal:2',
             'expected_close_date' => 'date',
             'won_at' => 'date',
+            'custom_fields' => 'array',
         ];
     }
 

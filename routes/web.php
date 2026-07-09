@@ -8,6 +8,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\MetadataFieldBlueprintActivationController;
+use App\Http\Controllers\MetadataFieldDefinitionController;
 use App\Http\Controllers\OpportunityController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSetupController;
@@ -89,6 +91,12 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
 
         Route::get('search', [SearchController::class, 'index'])->name('search.index');
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('permission:audit.view');
+        Route::post('metadata-fields/activate-blueprints', MetadataFieldBlueprintActivationController::class)->name('metadata-fields.activate-blueprints')->middleware('permission:metadata.manage');
+        Route::post('metadata-fields/{metadata_field}/publish', [MetadataFieldDefinitionController::class, 'publish'])->name('metadata-fields.publish')->middleware('permission:metadata.update');
+        Route::post('metadata-fields/{metadata_field}/activate', [MetadataFieldDefinitionController::class, 'activate'])->name('metadata-fields.activate')->middleware('permission:metadata.update');
+        Route::post('metadata-fields/{metadata_field}/deactivate', [MetadataFieldDefinitionController::class, 'deactivate'])->name('metadata-fields.deactivate')->middleware('permission:metadata.update');
+        Route::resource('metadata-fields', MetadataFieldDefinitionController::class)
+            ->middleware('permission:metadata.view');
         Route::post('attachments', [AttachmentController::class, 'store'])->name('attachments.store');
         Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
         Route::delete('attachments/{attachment}', [AttachmentController::class, 'destroy'])->name('attachments.destroy');

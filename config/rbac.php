@@ -16,6 +16,7 @@ return [
         'audit',
         'attachments',
         'api',
+        'metadata',
         'settings',
     ],
 
@@ -96,6 +97,12 @@ return [
         'api.access' => ['API', 'Access REST API endpoints'],
         'api.tokens' => ['API', 'Manage personal API tokens'],
 
+        'metadata.view' => ['Metadata Platform', 'View dynamic field metadata'],
+        'metadata.create' => ['Metadata Platform', 'Create dynamic field definitions'],
+        'metadata.update' => ['Metadata Platform', 'Edit dynamic field definitions'],
+        'metadata.delete' => ['Metadata Platform', 'Archive dynamic field definitions'],
+        'metadata.manage' => ['Metadata Platform', 'Manage metadata platform settings'],
+
         'settings.view' => ['Settings', 'View organization settings'],
         'settings.manage' => ['Settings', 'Manage organization settings'],
     ],
@@ -124,6 +131,7 @@ return [
                 'audit.view',
                 'attachments.view', 'attachments.create', 'attachments.delete',
                 'api.tokens', 'api.access',
+                'metadata.view', 'metadata.create', 'metadata.update', 'metadata.delete', 'metadata.manage',
                 'settings.view',
             ],
         ],

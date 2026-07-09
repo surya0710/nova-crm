@@ -34,6 +34,7 @@ class Organization extends Model
         'timezone',
         'currency',
         'settings',
+        'custom_fields',
         'is_active',
         'status',
         'plan',
@@ -46,6 +47,7 @@ class Organization extends Model
     {
         return [
             'settings' => 'array',
+            'custom_fields' => 'array',
             'is_active' => 'boolean',
             'status' => OrganizationStatus::class,
             'last_activity_at' => 'datetime',

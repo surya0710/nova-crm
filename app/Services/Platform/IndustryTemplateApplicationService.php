@@ -6,9 +6,14 @@ use App\Models\IndustryTemplateVersion;
 use App\Models\Organization;
 use App\Models\OrganizationTemplateApplication;
 use App\Models\PlatformUser;
+use App\Services\MetadataFieldBlueprintActivationService;
 
 class IndustryTemplateApplicationService
 {
+    public function __construct(
+        protected MetadataFieldBlueprintActivationService $metadataActivationService,
+    ) {}
+
     public function applyToNewOrganization(
         Organization $organization,
         IndustryTemplateVersion $version,
@@ -42,6 +47,10 @@ class IndustryTemplateApplicationService
         $organization->forceFill([
             'settings' => $settings,
         ])->save();
+
+        if (! empty($settings['field_blueprints'])) {
+            $summary['metadata_activation'] = $this->metadataActivationService->activateCopiedBlueprints($organization, $version);
+        }
 
         return OrganizationTemplateApplication::create([
             'organization_id' => $organization->id,

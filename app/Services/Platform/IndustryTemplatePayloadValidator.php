@@ -175,14 +175,35 @@ class IndustryTemplatePayloadValidator
     protected function validateFieldBlueprints(array $fields, array &$errors): void
     {
         $keysByEntity = [];
+        $supportedEntities = array_keys(config('metadata.entities', []));
+        $supportedTypes = array_keys(config('metadata.field_types', []));
+        $optionTypes = config('metadata.option_field_types', []);
 
         foreach ($fields as $index => $field) {
             $entity = $field['entity'] ?? null;
             $key = $field['key'] ?? null;
+            $label = $field['label'] ?? null;
+            $type = $field['type'] ?? null;
 
             if (! $entity || ! $key) {
                 $errors["field_blueprints.{$index}.key"] = __('Field blueprints require entity and key.');
                 continue;
+            }
+
+            if (! in_array($entity, $supportedEntities, true)) {
+                $errors["field_blueprints.{$index}.entity"] = __('Field blueprint entity is not supported.');
+            }
+
+            if (! $label) {
+                $errors["field_blueprints.{$index}.label"] = __('Field blueprints require a label.');
+            }
+
+            if (! in_array($type, $supportedTypes, true)) {
+                $errors["field_blueprints.{$index}.type"] = __('Field blueprint type is not supported.');
+            }
+
+            if (in_array($type, $optionTypes, true) && empty($field['options'])) {
+                $errors["field_blueprints.{$index}.options"] = __('Option-backed field blueprints require options.');
             }
 
             if (in_array($key, Arr::get($keysByEntity, $entity, []), true)) {

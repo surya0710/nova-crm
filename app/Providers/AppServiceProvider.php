@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\Payment;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Policies\CustomerPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\LeadPolicy;
+use App\Policies\MetadataFieldDefinitionPolicy;
 use App\Policies\OpportunityPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\OrganizationPolicy;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
     protected $policies = [
         Organization::class => OrganizationPolicy::class,
         Lead::class => LeadPolicy::class,
+        MetadataFieldDefinition::class => MetadataFieldDefinitionPolicy::class,
         Customer::class => CustomerPolicy::class,
         Invoice::class => InvoicePolicy::class,
         Opportunity::class => OpportunityPolicy::class,
@@ -55,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
+        Gate::policy(MetadataFieldDefinition::class, MetadataFieldDefinitionPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(Opportunity::class, OpportunityPolicy::class);
