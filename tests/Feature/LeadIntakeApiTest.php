@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Lead;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Notifications\CrmNotification;
@@ -175,6 +176,51 @@ class LeadIntakeApiTest extends TestCase
         $this->assertEquals('Student Visa', $lead->custom_fields['service_interest']);
     }
 
+    public function test_api_metadata_uses_storage_normalization_with_legacy_unknown_keys_allowed(): void
+    {
+        [$user, $organization] = $this->setupApiUser('manager');
+        $this->field($organization, 'ielts_score', 'decimal');
+
+        Sanctum::actingAs($user, ['*']);
+
+        $response = $this->postJson('/api/v1/leads', $this->validPayload([
+            'email' => 'metadata-api@example.com',
+            'phone' => '+1 555 0101',
+            'custom_fields' => [
+                'ielts_score' => '7.5',
+                'legacy_relationship' => 'Brother',
+            ],
+        ]), $this->apiHeaders($organization));
+
+        $response->assertCreated();
+
+        $lead = Lead::query()->find($response->json('lead_id'));
+
+        $this->assertSame(7.5, $lead->custom_fields['ielts_score']);
+        $this->assertSame('Brother', $lead->custom_fields['legacy_relationship']);
+    }
+
+    public function test_api_rejects_missing_required_metadata_field(): void
+    {
+        [$user, $organization] = $this->setupApiUser('manager');
+        $this->field($organization, 'visa_type', 'text', ['is_required' => true]);
+
+        Sanctum::actingAs($user, ['*']);
+
+        $response = $this->postJson('/api/v1/leads', $this->validPayload([
+            'email' => 'required-metadata@example.com',
+            'custom_fields' => [
+                'legacy_relationship' => 'Brother',
+            ],
+        ]), $this->apiHeaders($organization));
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors('custom_fields.visa_type');
+        $this->assertDatabaseMissing('leads', [
+            'email' => 'required-metadata@example.com',
+        ]);
+    }
+
     public function test_notifications_sent_for_api_leads(): void
     {
         Notification::fake();
@@ -323,5 +369,20 @@ class LeadIntakeApiTest extends TestCase
         $response = $this->postJson('/api/v1/leads', $this->validPayload(), $this->apiHeaders($organization));
 
         $response->assertForbidden();
+    }
+
+    protected function field(Organization $organization, string $key, string $type, array $attributes = []): MetadataFieldDefinition
+    {
+        return MetadataFieldDefinition::query()->create([
+            'organization_id' => $organization->id,
+            'entity_type' => 'lead',
+            'key' => $key,
+            'label' => str($key)->headline()->toString(),
+            'type' => $type,
+            'status' => 'active',
+            'published_at' => now(),
+            'activated_at' => now(),
+            ...$attributes,
+        ]);
     }
 }

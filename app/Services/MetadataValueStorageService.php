@@ -7,9 +7,11 @@ use App\Models\Lead;
 use App\Models\MetadataFieldDefinition;
 use App\Models\Opportunity;
 use App\Models\Organization;
+use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use Throwable;
 
 class MetadataValueStorageService
 {
@@ -66,7 +68,7 @@ class MetadataValueStorageService
                 ? $this->normalizeForStorage($definition, $value)
                 : $this->normalizeLegacyValue($value);
 
-            if ($value === null) {
+            if ($this->shouldClearValue($definition, $value, $normalized)) {
                 unset($next[$key]);
                 $normalized = null;
             } else {
@@ -131,16 +133,104 @@ class MetadataValueStorageService
         }
 
         return match ($definition->type) {
-            'number' => is_numeric($value) ? (int) $value : $value,
-            'decimal', 'currency', 'percentage' => is_numeric($value) ? (float) $value : $value,
+            'number' => is_numeric($this->trimScalar($value)) ? (int) $this->trimScalar($value) : $this->normalizeScalar($value),
+            'decimal', 'currency', 'percentage' => is_numeric($this->trimScalar($value)) ? (float) $this->trimScalar($value) : $this->normalizeScalar($value),
             'boolean' => $this->normalizeBoolean($value),
             'multi_select' => array_values(array_filter((array) $value, fn ($item) => $item !== null && $item !== '')),
-            'date' => $value instanceof DateTimeInterface ? $value->format('Y-m-d') : (string) $value,
-            'datetime' => $value instanceof DateTimeInterface ? $value->format(DateTimeInterface::ATOM) : (string) $value,
-            'time' => $value instanceof DateTimeInterface ? $value->format('H:i:s') : (string) $value,
-            'user', 'team' => is_numeric($value) ? (int) $value : $value,
-            default => is_scalar($value) ? (string) $value : $value,
+            'date' => $this->normalizeDate($value),
+            'datetime' => $this->normalizeDateTime($value),
+            'time' => $this->normalizeTime($value),
+            'user', 'team' => is_numeric($this->trimScalar($value)) ? (int) $this->trimScalar($value) : $this->normalizeScalar($value),
+            default => $this->normalizeScalar($value),
         };
+    }
+
+    protected function shouldClearValue(?MetadataFieldDefinition $definition, mixed $submitted, mixed $normalized): bool
+    {
+        if ($submitted === null || $normalized === null) {
+            return true;
+        }
+
+        return $definition?->type === 'multi_select'
+            && is_array($normalized)
+            && $normalized === [];
+    }
+
+    protected function normalizeScalar(mixed $value): mixed
+    {
+        if (! is_scalar($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+
+            return $value === '' ? null : $value;
+        }
+
+        return (string) $value;
+    }
+
+    protected function trimScalar(mixed $value): mixed
+    {
+        return is_string($value) ? trim($value) : $value;
+    }
+
+    protected function normalizeDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $value = $this->normalizeScalar($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format('Y-m-d');
+        } catch (Throwable) {
+            return (string) $value;
+        }
+    }
+
+    protected function normalizeDateTime(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format(DateTimeInterface::ATOM);
+        }
+
+        $value = $this->normalizeScalar($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format(DateTimeInterface::ATOM);
+        } catch (Throwable) {
+            return (string) $value;
+        }
+    }
+
+    protected function normalizeTime(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('H:i:s');
+        }
+
+        $value = $this->normalizeScalar($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format('H:i:s');
+        } catch (Throwable) {
+            return (string) $value;
+        }
     }
 
     protected function normalizeBoolean(mixed $value): bool

@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class MetadataFieldDefinitionService
 {
+    public function __construct(
+        protected MetadataProjectionService $projection,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -43,6 +47,7 @@ class MetadataFieldDefinitionService
     {
         return DB::transaction(function () use ($field, $data, $actor) {
             $payload = $this->definitionPayload($field->organization, $data, $field);
+            $shouldRebuildProjections = $this->shouldRebuildProjectionsAfterUpdate($field, $payload);
 
             if (! $field->isDraft()) {
                 unset($payload['key'], $payload['type'], $payload['entity_type']);
@@ -61,7 +66,13 @@ class MetadataFieldDefinitionService
 
             $this->snapshot($field->fresh(['options']), 'updated', $actor);
 
-            return $field->fresh(['group', 'options', 'versions']);
+            $field = $field->fresh(['group', 'options', 'versions']);
+
+            if ($shouldRebuildProjections) {
+                $this->projection->rebuildForField($field);
+            }
+
+            return $field;
         });
     }
 
@@ -127,8 +138,32 @@ class MetadataFieldDefinitionService
 
             $this->snapshot($field->fresh(['options']), $event, $actor);
 
-            return $field->fresh(['group', 'options', 'versions']);
+            $field = $field->fresh(['group', 'options', 'versions']);
+
+            if ($status === 'active') {
+                $this->projection->rebuildForField($field);
+            }
+
+            return $field;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function shouldRebuildProjectionsAfterUpdate(MetadataFieldDefinition $field, array $payload): bool
+    {
+        if ($field->status !== 'active' && ($payload['status'] ?? $field->status) !== 'active') {
+            return false;
+        }
+
+        foreach (['is_filterable', 'is_sortable', 'is_searchable'] as $capability) {
+            if (array_key_exists($capability, $payload) && ! $field->{$capability} && (bool) $payload[$capability]) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

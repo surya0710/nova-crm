@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\MetadataApiPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,11 @@ class CustomerResource extends JsonResource
                 'id' => $this->assignee?->id,
                 'name' => $this->assignee?->name,
             ]),
+            'custom_fields' => app(MetadataApiPresenter::class)->customFieldsFor(
+                (int) $this->organization_id,
+                'customer',
+                $this->custom_fields,
+            ),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

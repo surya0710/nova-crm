@@ -145,6 +145,84 @@ class MetadataValueStorageTest extends TestCase
         $this->assertSame('ORG-123', $organization->custom_fields['license_number']);
     }
 
+    public function test_empty_string_clears_existing_metadata_value(): void
+    {
+        [, $organization] = $this->setupOrganization();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'custom_fields' => ['destination_country' => 'Canada'],
+        ]);
+        $this->field($organization, 'lead', 'destination_country', 'text');
+
+        app(MetadataValueStorageService::class)->mergeValues($lead, [
+            'destination_country' => '',
+        ]);
+
+        $lead->refresh();
+
+        $this->assertNull($lead->custom_fields);
+    }
+
+    public function test_empty_multi_select_clears_existing_metadata_value(): void
+    {
+        [, $organization] = $this->setupOrganization();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'custom_fields' => [
+                'preferred_countries' => ['canada', 'australia'],
+                'destination_country' => 'Canada',
+            ],
+        ]);
+        $this->field($organization, 'lead', 'preferred_countries', 'multi_select');
+        $this->field($organization, 'lead', 'destination_country', 'text');
+
+        app(MetadataValueStorageService::class)->mergeValues($lead, [
+            'preferred_countries' => [],
+        ]);
+
+        $lead->refresh();
+
+        $this->assertArrayNotHasKey('preferred_countries', $lead->custom_fields);
+        $this->assertSame('Canada', $lead->custom_fields['destination_country']);
+    }
+
+    public function test_boolean_false_is_stored_as_false_not_cleared(): void
+    {
+        [, $organization] = $this->setupOrganization();
+        $lead = Lead::factory()->create(['organization_id' => $organization->id]);
+        $this->field($organization, 'lead', 'approved', 'boolean');
+
+        app(MetadataValueStorageService::class)->mergeValues($lead, [
+            'approved' => '0',
+        ]);
+
+        $lead->refresh();
+
+        $this->assertArrayHasKey('approved', $lead->custom_fields);
+        $this->assertFalse($lead->custom_fields['approved']);
+    }
+
+    public function test_date_and_datetime_values_are_normalized_for_storage(): void
+    {
+        [, $organization] = $this->setupOrganization();
+        $lead = Lead::factory()->create(['organization_id' => $organization->id]);
+        $this->field($organization, 'lead', 'arrival_date', 'date');
+        $this->field($organization, 'lead', 'appointment_at', 'datetime');
+        $this->field($organization, 'lead', 'appointment_time', 'time');
+
+        app(MetadataValueStorageService::class)->mergeValues($lead, [
+            'arrival_date' => '2026-09-15',
+            'appointment_at' => '2026-09-15T14:30',
+            'appointment_time' => '14:30',
+        ]);
+
+        $lead->refresh();
+
+        $this->assertSame('2026-09-15', $lead->custom_fields['arrival_date']);
+        $this->assertStringStartsWith('2026-09-15T14:30:00', $lead->custom_fields['appointment_at']);
+        $this->assertSame('14:30:00', $lead->custom_fields['appointment_time']);
+    }
+
     protected function field(Organization $organization, string $entity, string $key, string $type, string $status = 'active'): MetadataFieldDefinition
     {
         return MetadataFieldDefinition::query()->create([

@@ -111,6 +111,31 @@ class MetadataFieldDefinitionTest extends TestCase
         ]);
     }
 
+    public function test_metadata_validation_rules_reject_unsupported_keys(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('metadata-fields.store'), [
+                'entity_type' => 'lead',
+                'label' => 'Visa Type',
+                'key' => 'visa_type',
+                'type' => 'text',
+                'is_exportable' => '1',
+                'is_api_visible' => '1',
+                'validation_rules_json' => json_encode([
+                    'unsupported_rule' => true,
+                ]),
+            ]);
+
+        $response->assertSessionHasErrors(['validation_rules_json']);
+        $this->assertDatabaseMissing('metadata_field_definitions', [
+            'organization_id' => $organization->id,
+            'key' => 'visa_type',
+        ]);
+    }
+
     public function test_published_field_identity_is_locked(): void
     {
         [$user, $organization] = $this->setupUserWithOrg();

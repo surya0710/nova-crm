@@ -34,8 +34,8 @@
     <x-flash-messages />
 
     {{-- Filters --}}
-    <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
-        <form method="GET" action="{{ route('leads.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+    <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 mb-6 space-y-3">
+        <form method="GET" action="{{ route('leads.index') }}" id="leads-index-filters" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <div class="lg:col-span-2">
                 <x-text-input name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, company, email…') }}" class="w-full" />
             </div>
@@ -66,7 +66,9 @@
                 </select>
                 <x-primary-button type="submit">{{ __('Filter') }}</x-primary-button>
             </div>
+            @include('metadata-fields._index_query_controls')
         </form>
+        @include('metadata-fields._saved_filter_controls', ['filterFormId' => 'leads-index-filters'])
     </div>
 
     {{-- Table --}}

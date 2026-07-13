@@ -8,13 +8,8 @@ use Illuminate\Mail\Mailables\Address;
 
 trait UsesOrganizationMailFrom
 {
-    /**
-     * @return array<int, Address>
-     */
-    protected function organizationFrom(Organization $organization): array
+    protected function organizationFrom(Organization $organization): ?Address
     {
-        $from = app(OrganizationMailConfig::class)->for($organization)->fromAddress();
-
-        return $from ? [$from] : [];
+        return app(OrganizationMailConfig::class)->for($organization)->fromAddress();
     }
 }

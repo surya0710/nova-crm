@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\Lead;
+use App\Models\MetadataFieldDefinition;
+use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,6 +103,46 @@ class LeadConversionTest extends TestCase
         ]);
     }
 
+    public function test_conversion_copies_only_target_entity_metadata_fields(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+
+        $this->field($organization, 'customer', 'visa_type', 'text');
+        $this->field($organization, 'opportunity', 'budget_band', 'text');
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'status' => 'qualified',
+            'name' => 'Jane Prospect',
+            'email' => 'metadata@example.test',
+            'custom_fields' => [
+                'visa_type' => 'student',
+                'budget_band' => 'high',
+                'lead_only' => 'should-not-copy',
+            ],
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('leads.convert', $lead), [
+                'name' => 'Jane Prospect',
+                'email' => 'metadata@example.test',
+                'create_opportunity' => '1',
+            ]);
+
+        $customer = Customer::query()->where('email', 'metadata@example.test')->firstOrFail();
+        $opportunity = Opportunity::query()->where('lead_id', $lead->id)->firstOrFail();
+
+        $response->assertRedirect(route('customers.show', $customer));
+
+        $this->assertSame('student', $customer->custom_fields['visa_type']);
+        $this->assertArrayNotHasKey('budget_band', $customer->custom_fields);
+        $this->assertArrayNotHasKey('lead_only', $customer->custom_fields);
+        $this->assertSame('high', $opportunity->custom_fields['budget_band']);
+        $this->assertArrayNotHasKey('visa_type', $opportunity->custom_fields);
+    }
+
     public function test_duplicate_customer_shows_resolution_flow(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('sales-executive');
@@ -160,5 +202,19 @@ class LeadConversionTest extends TestCase
             ]);
 
         $response->assertForbidden();
+    }
+
+    protected function field(Organization $organization, string $entityType, string $key, string $type): MetadataFieldDefinition
+    {
+        return MetadataFieldDefinition::query()->create([
+            'organization_id' => $organization->id,
+            'entity_type' => $entityType,
+            'key' => $key,
+            'label' => str($key)->headline()->toString(),
+            'type' => $type,
+            'status' => 'active',
+            'published_at' => now(),
+            'activated_at' => now(),
+        ]);
     }
 }

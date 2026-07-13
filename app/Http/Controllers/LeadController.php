@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\DuplicateCustomerException;
+use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
 use App\Http\Requests\ConvertLeadRequest;
 use App\Http\Requests\StoreLeadNoteRequest;
 use App\Http\Requests\StoreLeadRequest;
@@ -11,14 +12,14 @@ use App\Http\Requests\UpdateLeadRequest;
 use App\Http\Requests\UpdateLeadStatusRequest;
 use App\Models\Lead;
 use App\Models\LeadNote;
-use App\Models\Organization;
 use App\Models\User;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
 use App\Services\LeadService;
-use App\Services\MetadataFormResolver;
-use App\Services\MetadataFormValuePresenter;
-use App\Services\MetadataValueStorageService;
+use App\Services\MetadataEntityFormService;
+use App\Services\MetadataQueryDefinitionService;
+use App\Services\MetadataQueryService;
+use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -30,13 +31,16 @@ use Throwable;
 
 class LeadController extends Controller
 {
+    use AppliesSavedIndexFilters;
+
     public function __construct(
         protected LeadFollowUpService $followUpService,
         protected LeadConversionService $conversionService,
         protected LeadService $leadService,
-        protected MetadataFormResolver $metadataFormResolver,
-        protected MetadataFormValuePresenter $metadataPresenter,
-        protected MetadataValueStorageService $metadataValueStorage,
+        protected MetadataEntityFormService $metadataForms,
+        protected MetadataQueryDefinitionService $metadataDefinitions,
+        protected MetadataQueryService $metadataQueries,
+        protected SavedFilterService $savedFilters,
     ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
@@ -44,12 +48,14 @@ class LeadController extends Controller
     public function index(Request $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
+        $saved = $this->resolveSavedIndexFilters($request, $tenant, 'lead', $this->savedFilters);
+        $filterInput = $saved['input'];
 
         $query = Lead::query()
-            ->with(['assignee', 'creator'])
-            ->latest();
+            ->with(['assignee', 'creator']);
 
-        if ($search = $request->string('search')->trim()->toString()) {
+        if ($search = ($filterInput['search'] ?? '')) {
+            $search = trim((string) $search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('company', 'like', "%{$search}%")
@@ -57,27 +63,43 @@ class LeadController extends Controller
             });
         }
 
-        if ($status = $request->string('status')->toString()) {
+        if ($status = ($filterInput['status'] ?? '')) {
             $query->where('status', $status);
         }
 
-        if ($source = $request->string('source')->toString()) {
+        if ($source = ($filterInput['source'] ?? '')) {
             $query->where('source', $source);
         }
 
-        if ($priority = $request->string('priority')->toString()) {
+        if ($priority = ($filterInput['priority'] ?? '')) {
             $query->where('priority', $priority);
         }
 
-        if ($assignedTo = $request->integer('assigned_to')) {
+        if ($assignedTo = (int) ($filterInput['assigned_to'] ?? 0)) {
             $query->where('assigned_to', $assignedTo);
         }
+
+        $metadataRequest = $this->metadataDefinitions->requestForWebIndex($organization->id, 'lead', $filterInput);
+        $this->metadataQueries->applyForWebIndex($query, $metadataRequest, $organization->id);
+
+        if (! $metadataRequest->sort) {
+            $query->latest();
+        }
+
+        $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'lead');
+        $filters = collect($filterInput)->only(['search', 'status', 'source', 'priority', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
 
         return view('leads.index', [
             'leads' => $query->paginate(15)->withQueryString(),
             'organization' => $organization,
             'assignees' => $this->organizationMembers($organization),
-            'filters' => $request->only(['search', 'status', 'source', 'priority', 'assigned_to']),
+            'filters' => $filters,
+            'metadataFilterFields' => $metadataFields['filterable'],
+            'metadataSortFields' => $metadataFields['sortable'],
+            'savedFilters' => $saved['savedFilters'],
+            'activeSavedFilter' => $saved['activeSavedFilter'],
+            'savedFilterRoute' => 'leads.index',
+            'savedFilterEntityType' => 'lead',
         ]);
     }
 
@@ -86,17 +108,18 @@ class LeadController extends Controller
         return view('leads.create', [
             'lead' => new Lead(['status' => 'new', 'priority' => 'medium', 'source' => 'manual_entry']),
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'lead', 'create'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function store(StoreLeadRequest $request, TenantContext $tenant): RedirectResponse
     {
         $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'lead', 'create', $request);
 
         $lead = $this->leadService->create($validated, $request->user());
-        $this->storeMetadataValues($lead, $tenant->get(), 'create', $request);
+        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
 
         return redirect()
             ->route('leads.show', $lead)
@@ -113,8 +136,8 @@ class LeadController extends Controller
 
         return view('leads.show', [
             'lead' => $lead,
-            'metadataFields' => $this->metadataFields($lead->organization, 'detail'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($lead->organization, 'lead', 'detail'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
@@ -123,15 +146,17 @@ class LeadController extends Controller
         return view('leads.edit', [
             'lead' => $lead,
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'lead', 'edit'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function update(UpdateLeadRequest $request, Lead $lead, TenantContext $tenant): RedirectResponse
     {
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest($lead, $tenant->get(), 'lead', 'edit', $request);
+
         $lead->update($this->followUpService->normalizeValidatedFollowUp($request->validated()));
-        $this->storeMetadataValues($lead, $tenant->get(), 'edit', $request);
+        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
 
         return redirect()
             ->route('leads.show', $lead)
@@ -260,33 +285,5 @@ class LeadController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
-    }
-
-    protected function metadataFields(?Organization $organization, string $context)
-    {
-        if (! $organization) {
-            return collect();
-        }
-
-        return $this->metadataFormResolver->fieldsFor($organization, 'lead', $context);
-    }
-
-    protected function storeMetadataValues(Lead $lead, ?Organization $organization, string $context, Request $request): void
-    {
-        if (! $organization) {
-            return;
-        }
-
-        $payload = $request->input('custom_fields', []);
-        $payload = is_array($payload) ? $payload : [];
-
-        $values = $this->metadataPresenter->extractSubmittedValues(
-            $this->metadataFields($organization, $context),
-            $payload,
-        );
-
-        if ($values !== []) {
-            $this->metadataValueStorage->mergeValues($lead, $values);
-        }
     }
 }

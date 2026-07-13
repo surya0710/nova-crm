@@ -14,6 +14,10 @@ use Illuminate\Support\Collection;
 
 class SearchService
 {
+    public function __construct(
+        protected MetadataSearchService $metadataSearch,
+    ) {}
+
     /**
      * @return Collection<int, array{type: string, label: string, title: string, subtitle: string|null, url: string}>
      */
@@ -65,6 +69,8 @@ class SearchService
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('company', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%");
+
+                $this->metadataSearch->applySearchConstraint($q, 'lead', $query);
             })
             ->limit(5)
             ->get()
@@ -84,6 +90,8 @@ class SearchService
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('company', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%");
+
+                $this->metadataSearch->applySearchConstraint($q, 'customer', $query);
             })
             ->limit(5)
             ->get()
@@ -99,7 +107,11 @@ class SearchService
     protected function searchOpportunities(string $query): Collection
     {
         return Opportunity::query()
-            ->where('title', 'like', "%{$query}%")
+            ->where(function ($q) use ($query) {
+                $q->where('title', 'like', "%{$query}%");
+
+                $this->metadataSearch->applySearchConstraint($q, 'opportunity', $query);
+            })
             ->limit(5)
             ->get()
             ->map(fn (Opportunity $opportunity) => [

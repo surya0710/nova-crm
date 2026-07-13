@@ -1,9 +1,11 @@
 @if (($metadataFields ?? collect())->isNotEmpty())
     <div class="space-y-8 pt-6 border-t border-slate-100">
-        <div>
-            <h4 class="text-sm font-semibold text-slate-900">{{ __('Custom Fields') }}</h4>
-            <p class="mt-1 text-xs text-slate-500">{{ __('Additional fields configured for your organization.') }}</p>
-        </div>
+        @if ($showMetadataHeader ?? true)
+            <div>
+                <h4 class="text-sm font-semibold text-slate-900">{{ __('Custom Fields') }}</h4>
+                <p class="mt-1 text-xs text-slate-500">{{ __('Additional fields configured for your organization.') }}</p>
+            </div>
+        @endif
 
         @foreach ($metadataFields->groupBy('group_key') as $groupKey => $fields)
             @php

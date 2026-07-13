@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Services\TenantContext;
+use App\Services\MetadataValidationService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -72,6 +73,23 @@ class StoreMetadataFieldDefinitionRequest extends FormRequest
             'display_rules' => ['array'],
             'permission_rules' => ['array'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $errors = app(MetadataValidationService::class)->validationRuleSchemaErrors(
+                $this->input('validation_rules', []),
+                $this->input('type'),
+            );
+
+            foreach ($errors as $key => $messages) {
+                foreach ($messages as $message) {
+                    $validator->errors()->add($key, $message);
+                    $validator->errors()->add('validation_rules_json', $message);
+                }
+            }
+        });
     }
 
     /**

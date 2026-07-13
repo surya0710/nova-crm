@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
 use App\Http\Requests\SendCustomerMailRequest;
 use App\Http\Requests\StoreCustomerNoteRequest;
 use App\Http\Requests\StoreCustomerRequest;
@@ -9,13 +10,13 @@ use App\Http\Requests\UpdateCustomerRequest;
 use App\Mail\CustomerMail;
 use App\Models\Customer;
 use App\Models\CustomerNote;
-use App\Models\Organization;
 use App\Models\User;
-use App\Services\MetadataFormResolver;
-use App\Services\MetadataFormValuePresenter;
-use App\Services\MetadataValueStorageService;
+use App\Services\MetadataEntityFormService;
+use App\Services\MetadataQueryDefinitionService;
+use App\Services\MetadataQueryService;
 use App\Services\OrganizationMailer;
 use App\Services\RevenueService;
+use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,11 +24,14 @@ use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
+    use AppliesSavedIndexFilters;
+
     public function __construct(
         protected OrganizationMailer $organizationMailer,
-        protected MetadataFormResolver $metadataFormResolver,
-        protected MetadataFormValuePresenter $metadataPresenter,
-        protected MetadataValueStorageService $metadataValueStorage,
+        protected MetadataEntityFormService $metadataForms,
+        protected MetadataQueryDefinitionService $metadataDefinitions,
+        protected MetadataQueryService $metadataQueries,
+        protected SavedFilterService $savedFilters,
     ) {
         $this->authorizeResource(Customer::class, 'customer');
     }
@@ -35,12 +39,13 @@ class CustomerController extends Controller
     public function index(Request $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
+        $saved = $this->resolveSavedIndexFilters($request, $tenant, 'customer', $this->savedFilters);
+        $filterInput = $saved['input'];
 
         $query = Customer::query()
-            ->with(['assignee', 'creator'])
-            ->latest();
+            ->with(['assignee', 'creator']);
 
-        if ($search = $request->string('search')->trim()->toString()) {
+        if ($search = trim((string) ($filterInput['search'] ?? ''))) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('company', 'like', "%{$search}%")
@@ -48,23 +53,39 @@ class CustomerController extends Controller
             });
         }
 
-        if ($status = $request->string('status')->toString()) {
+        if ($status = ($filterInput['status'] ?? '')) {
             $query->where('status', $status);
         }
 
-        if ($industry = $request->string('industry')->trim()->toString()) {
+        if ($industry = trim((string) ($filterInput['industry'] ?? ''))) {
             $query->where('industry', 'like', "%{$industry}%");
         }
 
-        if ($assignedTo = $request->integer('assigned_to')) {
+        if ($assignedTo = (int) ($filterInput['assigned_to'] ?? 0)) {
             $query->where('assigned_to', $assignedTo);
         }
+
+        $metadataRequest = $this->metadataDefinitions->requestForWebIndex($organization->id, 'customer', $filterInput);
+        $this->metadataQueries->applyForWebIndex($query, $metadataRequest, $organization->id);
+
+        if (! $metadataRequest->sort) {
+            $query->latest();
+        }
+
+        $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'customer');
+        $filters = collect($filterInput)->only(['search', 'status', 'industry', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
 
         return view('customers.index', [
             'customers' => $query->paginate(15)->withQueryString(),
             'organization' => $organization,
             'assignees' => $this->organizationMembers($organization),
-            'filters' => $request->only(['search', 'status', 'industry', 'assigned_to']),
+            'filters' => $filters,
+            'metadataFilterFields' => $metadataFields['filterable'],
+            'metadataSortFields' => $metadataFields['sortable'],
+            'savedFilters' => $saved['savedFilters'],
+            'activeSavedFilter' => $saved['activeSavedFilter'],
+            'savedFilterRoute' => 'customers.index',
+            'savedFilterEntityType' => 'customer',
         ]);
     }
 
@@ -73,18 +94,20 @@ class CustomerController extends Controller
         return view('customers.create', [
             'customer' => new Customer(['status' => 'active']),
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'customer', 'create'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function store(StoreCustomerRequest $request, TenantContext $tenant): RedirectResponse
     {
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'customer', 'create', $request);
+
         $customer = Customer::query()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);
-        $this->storeMetadataValues($customer, $tenant->get(), 'create', $request);
+        $this->metadataForms->persistValidatedValues($customer, $metadataValues);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -106,8 +129,8 @@ class CustomerController extends Controller
             'customer' => $customer,
             'organization' => $tenant->get(),
             'statement' => $statement,
-            'metadataFields' => $this->metadataFields($tenant->get(), 'detail'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'customer', 'detail'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
@@ -116,15 +139,17 @@ class CustomerController extends Controller
         return view('customers.edit', [
             'customer' => $customer,
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'customer', 'edit'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function update(UpdateCustomerRequest $request, Customer $customer, TenantContext $tenant): RedirectResponse
     {
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest($customer, $tenant->get(), 'customer', 'edit', $request);
+
         $customer->update($request->validated());
-        $this->storeMetadataValues($customer, $tenant->get(), 'edit', $request);
+        $this->metadataForms->persistValidatedValues($customer, $metadataValues);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -203,33 +228,5 @@ class CustomerController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
-    }
-
-    protected function metadataFields(?Organization $organization, string $context)
-    {
-        if (! $organization) {
-            return collect();
-        }
-
-        return $this->metadataFormResolver->fieldsFor($organization, 'customer', $context);
-    }
-
-    protected function storeMetadataValues(Customer $customer, ?Organization $organization, string $context, Request $request): void
-    {
-        if (! $organization) {
-            return;
-        }
-
-        $payload = $request->input('custom_fields', []);
-        $payload = is_array($payload) ? $payload : [];
-
-        $values = $this->metadataPresenter->extractSubmittedValues(
-            $this->metadataFields($organization, $context),
-            $payload,
-        );
-
-        if ($values !== []) {
-            $this->metadataValueStorage->mergeValues($customer, $values);
-        }
     }
 }

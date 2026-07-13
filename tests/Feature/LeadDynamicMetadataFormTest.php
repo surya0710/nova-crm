@@ -58,6 +58,72 @@ class LeadDynamicMetadataFormTest extends TestCase
         $this->assertArrayNotHasKey('unknown_key', $lead->custom_fields);
     }
 
+    public function test_lead_create_rejects_missing_required_metadata_before_creating_record(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+
+        $this->field($organization, 'visa_type', 'text', ['is_required' => true]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('leads.store'), $this->leadPayload());
+
+        $response->assertSessionHasErrors('custom_fields.visa_type');
+        $this->assertDatabaseMissing('leads', [
+            'email' => 'jane@example.com',
+        ]);
+    }
+
+    public function test_lead_create_rejects_invalid_metadata_option(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+
+        $visaType = $this->field($organization, 'visa_type', 'select');
+        $this->option($organization, $visaType, 'student', 'Student Visa');
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('leads.store'), [
+                ...$this->leadPayload(),
+                'custom_fields' => [
+                    'visa_type' => 'visitor',
+                ],
+            ]);
+
+        $response->assertSessionHasErrors('custom_fields.visa_type');
+        $this->assertDatabaseMissing('leads', [
+            'email' => 'jane@example.com',
+        ]);
+    }
+
+    public function test_optional_metadata_clear_remains_valid(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+
+        $this->field($organization, 'visa_type', 'text');
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+            'custom_fields' => [
+                'visa_type' => 'student',
+            ],
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->patch(route('leads.update', $lead), [
+                ...$this->leadPayload(),
+                'custom_fields' => [
+                    'visa_type' => '',
+                ],
+            ]);
+
+        $response->assertRedirect(route('leads.show', $lead));
+
+        $lead->refresh();
+        $this->assertNull($lead->custom_fields);
+    }
+
     public function test_lead_show_displays_metadata_option_labels(): void
     {
         [$user, $organization] = $this->setupUserWithOrg();
@@ -114,6 +180,30 @@ class LeadDynamicMetadataFormTest extends TestCase
 
         $this->assertSame('work', $lead->custom_fields['visa_type']);
         $this->assertSame('Canada', $lead->custom_fields['destination_country']);
+    }
+
+    public function test_lead_show_masks_sensitive_metadata_values(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+
+        $this->field($organization, 'passport_number', 'text', ['is_sensitive' => true]);
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+            'custom_fields' => [
+                'passport_number' => 'P1234567',
+            ],
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('leads.show', $lead));
+
+        $response->assertOk();
+        $response->assertSee('Passport Number');
+        $response->assertSee('********');
+        $response->assertDontSee('P1234567');
     }
 
     protected function setupUserWithOrg(): array

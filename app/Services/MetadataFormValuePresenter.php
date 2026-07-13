@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\MetadataFieldDefinition;
+use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class MetadataFormValuePresenter
 {
@@ -30,16 +32,16 @@ class MetadataFormValuePresenter
     public function formValue(MetadataFieldDefinition $field, ?Model $record = null, ?array $oldCustomFields = null): mixed
     {
         if (is_array($oldCustomFields) && array_key_exists($field->key, $oldCustomFields)) {
-            return $oldCustomFields[$field->key];
+            return $this->formatForInput($field, $oldCustomFields[$field->key]);
         }
 
         $recordValues = $record?->custom_fields ?? [];
 
         if (is_array($recordValues) && array_key_exists($field->key, $recordValues)) {
-            return $recordValues[$field->key];
+            return $this->formatForInput($field, $recordValues[$field->key]);
         }
 
-        return $field->default_value;
+        return $this->formatForInput($field, $field->default_value);
     }
 
     /**
@@ -119,6 +121,30 @@ class MetadataFormValuePresenter
         $option = $field->options->firstWhere('value', (string) $value);
 
         return $option?->label;
+    }
+
+    protected function formatForInput(MetadataFieldDefinition $field, mixed $value): mixed
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        try {
+            return match ($field->type) {
+                'date' => $value instanceof DateTimeInterface
+                    ? $value->format('Y-m-d')
+                    : Carbon::parse((string) $value)->format('Y-m-d'),
+                'datetime' => $value instanceof DateTimeInterface
+                    ? $value->format('Y-m-d\TH:i')
+                    : Carbon::parse((string) $value)->format('Y-m-d\TH:i'),
+                'time' => $value instanceof DateTimeInterface
+                    ? $value->format('H:i')
+                    : Carbon::parse((string) $value)->format('H:i'),
+                default => $value,
+            };
+        } catch (Throwable) {
+            return $value;
+        }
     }
 
     protected function truthy(mixed $value): bool

@@ -19,6 +19,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeamController;
@@ -88,6 +89,11 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
 
         Route::resource('tasks', TaskController::class);
         Route::patch('tasks/{task}/complete', [TaskController::class, 'complete'])->name('tasks.complete');
+
+        Route::post('saved-filters', [SavedFilterController::class, 'store'])->name('saved-filters.store');
+        Route::patch('saved-filters/{saved_filter}', [SavedFilterController::class, 'update'])->name('saved-filters.update');
+        Route::delete('saved-filters/{saved_filter}', [SavedFilterController::class, 'destroy'])->name('saved-filters.destroy');
+        Route::post('saved-filters/{saved_filter}/duplicate', [SavedFilterController::class, 'duplicate'])->name('saved-filters.duplicate');
 
         Route::get('search', [SearchController::class, 'index'])->name('search.index');
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('permission:audit.view');

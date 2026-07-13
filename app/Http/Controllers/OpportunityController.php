@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
 use App\Http\Requests\StoreOpportunityNoteRequest;
 use App\Http\Requests\StoreOpportunityRequest;
 use App\Http\Requests\UpdateOpportunityRequest;
@@ -10,11 +11,11 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityNote;
-use App\Models\Organization;
 use App\Models\User;
-use App\Services\MetadataFormResolver;
-use App\Services\MetadataFormValuePresenter;
-use App\Services\MetadataValueStorageService;
+use App\Services\MetadataEntityFormService;
+use App\Services\MetadataQueryDefinitionService;
+use App\Services\MetadataQueryService;
+use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,10 +23,13 @@ use Illuminate\View\View;
 
 class OpportunityController extends Controller
 {
+    use AppliesSavedIndexFilters;
+
     public function __construct(
-        protected MetadataFormResolver $metadataFormResolver,
-        protected MetadataFormValuePresenter $metadataPresenter,
-        protected MetadataValueStorageService $metadataValueStorage,
+        protected MetadataEntityFormService $metadataForms,
+        protected MetadataQueryDefinitionService $metadataDefinitions,
+        protected MetadataQueryService $metadataQueries,
+        protected SavedFilterService $savedFilters,
     ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
@@ -33,36 +37,53 @@ class OpportunityController extends Controller
     public function index(Request $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
+        $saved = $this->resolveSavedIndexFilters($request, $tenant, 'opportunity', $this->savedFilters);
+        $filterInput = $saved['input'];
 
         $query = Opportunity::query()
-            ->with(['customer', 'assignee', 'creator'])
-            ->latest();
+            ->with(['customer', 'assignee', 'creator']);
 
-        if ($search = $request->string('search')->trim()->toString()) {
+        if ($search = trim((string) ($filterInput['search'] ?? ''))) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhereHas('customer', fn ($c) => $c->where('company', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
             });
         }
 
-        if ($stage = $request->string('stage')->toString()) {
+        if ($stage = ($filterInput['stage'] ?? '')) {
             $query->where('stage', $stage);
         }
 
-        if ($customerId = $request->integer('customer_id')) {
+        if ($customerId = (int) ($filterInput['customer_id'] ?? 0)) {
             $query->where('customer_id', $customerId);
         }
 
-        if ($assignedTo = $request->integer('assigned_to')) {
+        if ($assignedTo = (int) ($filterInput['assigned_to'] ?? 0)) {
             $query->where('assigned_to', $assignedTo);
         }
+
+        $metadataRequest = $this->metadataDefinitions->requestForWebIndex($organization->id, 'opportunity', $filterInput);
+        $this->metadataQueries->applyForWebIndex($query, $metadataRequest, $organization->id);
+
+        if (! $metadataRequest->sort) {
+            $query->latest();
+        }
+
+        $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'opportunity');
+        $filters = collect($filterInput)->only(['search', 'stage', 'customer_id', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
 
         return view('pipeline.index', [
             'opportunities' => $query->paginate(15)->withQueryString(),
             'organization' => $organization,
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($organization),
-            'filters' => $request->only(['search', 'stage', 'customer_id', 'assigned_to']),
+            'filters' => $filters,
+            'metadataFilterFields' => $metadataFields['filterable'],
+            'metadataSortFields' => $metadataFields['sortable'],
+            'savedFilters' => $saved['savedFilters'],
+            'activeSavedFilter' => $saved['activeSavedFilter'],
+            'savedFilterRoute' => 'pipeline.index',
+            'savedFilterEntityType' => 'opportunity',
             'stageCounts' => Opportunity::query()
                 ->selectRaw('stage, count(*) as total')
                 ->groupBy('stage')
@@ -88,18 +109,20 @@ class OpportunityController extends Controller
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->whereNotIn('status', ['won', 'lost'])->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'create'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'opportunity', 'create'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function store(StoreOpportunityRequest $request, TenantContext $tenant): RedirectResponse
     {
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'opportunity', 'create', $request);
+
         $opportunity = Opportunity::query()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);
-        $this->storeMetadataValues($opportunity, $tenant->get(), 'create', $request);
+        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -112,8 +135,8 @@ class OpportunityController extends Controller
 
         return view('pipeline.show', [
             'opportunity' => $opportunity,
-            'metadataFields' => $this->metadataFields($opportunity->organization, 'detail'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($opportunity->organization, 'opportunity', 'detail'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
@@ -124,15 +147,17 @@ class OpportunityController extends Controller
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
-            'metadataFields' => $this->metadataFields($tenant->get(), 'edit'),
-            'metadataPresenter' => $this->metadataPresenter,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'opportunity', 'edit'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
     public function update(UpdateOpportunityRequest $request, Opportunity $opportunity, TenantContext $tenant): RedirectResponse
     {
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest($opportunity, $tenant->get(), 'opportunity', 'edit', $request);
+
         $opportunity->update($request->validated());
-        $this->storeMetadataValues($opportunity, $tenant->get(), 'edit', $request);
+        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -197,33 +222,5 @@ class OpportunityController extends Controller
         }
 
         return $organization->users()->orderBy('name')->get();
-    }
-
-    protected function metadataFields(?Organization $organization, string $context)
-    {
-        if (! $organization) {
-            return collect();
-        }
-
-        return $this->metadataFormResolver->fieldsFor($organization, 'opportunity', $context);
-    }
-
-    protected function storeMetadataValues(Opportunity $opportunity, ?Organization $organization, string $context, Request $request): void
-    {
-        if (! $organization) {
-            return;
-        }
-
-        $payload = $request->input('custom_fields', []);
-        $payload = is_array($payload) ? $payload : [];
-
-        $values = $this->metadataPresenter->extractSubmittedValues(
-            $this->metadataFields($organization, $context),
-            $payload,
-        );
-
-        if ($values !== []) {
-            $this->metadataValueStorage->mergeValues($opportunity, $values);
-        }
     }
 }

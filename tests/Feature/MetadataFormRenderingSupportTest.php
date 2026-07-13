@@ -136,6 +136,28 @@ class MetadataFormRenderingSupportTest extends TestCase
         ], $values);
     }
 
+    public function test_presenter_formats_temporal_values_for_browser_inputs(): void
+    {
+        $organization = Organization::factory()->create();
+        $date = $this->field($organization, 'lead', 'arrival_date', 'date');
+        $datetime = $this->field($organization, 'lead', 'appointment_at', 'datetime');
+        $time = $this->field($organization, 'lead', 'appointment_time', 'time');
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'custom_fields' => [
+                'arrival_date' => '2026-09-15',
+                'appointment_at' => '2026-09-15T14:30:00+00:00',
+                'appointment_time' => '14:30:00',
+            ],
+        ]);
+
+        $presenter = app(MetadataFormValuePresenter::class);
+
+        $this->assertSame('2026-09-15', $presenter->formValue($date, $lead));
+        $this->assertSame('2026-09-15T14:30', $presenter->formValue($datetime, $lead));
+        $this->assertSame('14:30', $presenter->formValue($time, $lead));
+    }
+
     protected function group(Organization $organization, string $entityType, string $key, string $label, int $sortOrder): MetadataFieldGroup
     {
         return MetadataFieldGroup::query()->create([

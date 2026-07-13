@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
 use App\Http\Controllers\Api\LeadController as ApiLeadController;
+use App\Http\Controllers\Api\OpportunityController as ApiOpportunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'set.organization', 'ensure.organization', 'organization.api'])->group(function () {
@@ -13,5 +14,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'set.organization', 'ensure.org
 
         Route::get('customers', [ApiCustomerController::class, 'index']);
         Route::get('customers/{customer}', [ApiCustomerController::class, 'show']);
+
+        Route::get('opportunities', [ApiOpportunityController::class, 'index']);
+        Route::get('opportunities/{opportunity}', [ApiOpportunityController::class, 'show']);
     });
 });

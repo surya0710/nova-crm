@@ -18,6 +18,7 @@ class LeadConversionService
     public function __construct(
         protected AuditLogger $auditLogger,
         protected TenantContext $tenantContext,
+        protected MetadataEntityFormService $metadataForms,
     ) {}
 
     /**
@@ -168,9 +169,10 @@ class LeadConversionService
             'assigned_to' => $lead->assigned_to,
             'lead_id' => $lead->id,
             'tags' => $lead->tags,
-            'custom_fields' => $lead->custom_fields,
             'created_by' => $user->id,
         ]);
+
+        $this->copyMetadataValues($lead, $customer);
 
         return [$customer, false];
     }
@@ -202,6 +204,8 @@ class LeadConversionService
             $customer->update(['lead_id' => $lead->id]);
         }
 
+        $this->copyMetadataValues($lead, $customer);
+
         return $customer->fresh();
     }
 
@@ -209,7 +213,7 @@ class LeadConversionService
     {
         $organization = $this->tenantContext->get();
 
-        return Opportunity::query()->create([
+        $opportunity = Opportunity::query()->create([
             'organization_id' => $lead->organization_id,
             'title' => $lead->company ?: $lead->name,
             'customer_id' => $customer->id,
@@ -220,6 +224,21 @@ class LeadConversionService
             'assigned_to' => $lead->assigned_to,
             'created_by' => $user->id,
         ]);
+
+        $this->copyMetadataValues($lead, $opportunity);
+
+        return $opportunity;
+    }
+
+    protected function copyMetadataValues(Lead $lead, Customer|Opportunity $target): void
+    {
+        $values = $lead->custom_fields ?? [];
+
+        if ($values === []) {
+            return;
+        }
+
+        $this->metadataForms->persistValues($target, $values, enforceRequired: false);
     }
 
     protected function markLeadConverted(Lead $lead, User $user): Lead

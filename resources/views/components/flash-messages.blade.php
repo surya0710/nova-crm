@@ -57,6 +57,10 @@
             'task-updated' => __('Task updated successfully.'),
             'task-completed' => __('Task marked as complete.'),
             'task-deleted' => __('Task deleted successfully.'),
+            'saved-filter-created' => __('Saved filter created successfully.'),
+            'saved-filter-updated' => __('Saved filter updated successfully.'),
+            'saved-filter-deleted' => __('Saved filter deleted successfully.'),
+            'saved-filter-duplicated' => __('Saved filter duplicated successfully.'),
         ];
         $message = $messages[session('status')] ?? session('status');
     @endphp

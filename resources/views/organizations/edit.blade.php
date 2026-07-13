@@ -18,6 +18,8 @@
             $activeTab = 'preferences';
         } elseif ($errors->hasAny(['industry_type', 'terminology', 'terminology.*'])) {
             $activeTab = 'terminology';
+        } elseif ($errors->hasAny(['custom_fields', 'custom_fields.*'])) {
+            $activeTab = 'custom_fields';
         } elseif ($errors->hasAny(['mail_enabled', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'])) {
             $activeTab = 'email';
         } elseif ($errors->hasAny(['name', 'email', 'phone', 'website', 'description'])) {
@@ -131,12 +133,7 @@
                         'metadataFields' => $metadataFields ?? collect(),
                         'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
                         'record' => $organization,
-                    ])
-
-                    @include('metadata-fields._runtime_detail', [
-                        'metadataFields' => $metadataFields ?? collect(),
-                        'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
-                        'record' => $organization,
+                        'showMetadataHeader' => false,
                     ])
                 </div>
 

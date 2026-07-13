@@ -4,41 +4,60 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\DuplicateLeadException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\IndexApiLeadRequest;
 use App\Http\Requests\StoreApiLeadRequest;
+use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Services\LeadService;
+use App\Services\MetadataQueryDefinitionService;
+use App\Services\MetadataQueryService;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class LeadController extends Controller
 {
-    public function __construct(protected LeadService $leadService) {}
+    public function __construct(
+        protected LeadService $leadService,
+        protected MetadataQueryDefinitionService $metadataDefinitions,
+        protected MetadataQueryService $metadataQueries,
+    ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexApiLeadRequest $request, TenantContext $tenant): AnonymousResourceCollection
     {
-        abort_unless($request->user()->hasPermission('leads.view'), 403);
-
-        $query = Lead::query()->with('assignee')->latest();
+        $organization = $tenant->get();
+        $query = Lead::query()->with('assignee');
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
         }
 
-        return \App\Http\Resources\LeadResource::collection(
-            $query->paginate($request->integer('per_page', 15))
+        $metadataRequest = $this->metadataDefinitions->requestForApi(
+            $organization->id,
+            'lead',
+            $request->all(),
+        );
+        $this->metadataQueries->applyForApi($query, $metadataRequest, $organization->id);
+
+        if (! $metadataRequest->sort) {
+            $query->latest();
+        }
+
+        return LeadResource::collection(
+            $query->paginate($request->perPage())
         );
     }
 
-    public function show(Request $request, Lead $lead): \App\Http\Resources\LeadResource
+    public function show(Request $request, Lead $lead): LeadResource
     {
         $this->authorize('view', $lead);
 
         $lead->load(['assignee', 'creator']);
 
-        return new \App\Http\Resources\LeadResource($lead);
+        return new LeadResource($lead);
     }
 
     public function store(StoreApiLeadRequest $request, TenantContext $tenant): JsonResponse
@@ -64,6 +83,11 @@ class LeadController extends Controller
                 'lead_id' => $e->lead->id,
                 'message' => $e->getMessage(),
             ], 409);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => __('The given data was invalid.'),
+                'errors' => $e->errors(),
+            ], 422);
         } catch (Throwable $e) {
             report($e);
 

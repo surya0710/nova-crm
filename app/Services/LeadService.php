@@ -16,6 +16,7 @@ class LeadService
     public function __construct(
         protected AuditLogger $auditLogger,
         protected LeadNormalizationService $normalizer,
+        protected MetadataEntityFormService $metadataForms,
     ) {}
 
     /**
@@ -35,6 +36,14 @@ class LeadService
     public function createFromApi(array $payload, User $user, Organization $organization): Lead
     {
         $data = $this->normalizer->normalize($payload);
+        $metadataValues = $this->metadataForms->validatedValues(
+            null,
+            $organization,
+            'lead',
+            $data['custom_fields'] ?? [],
+            allowUnknown: true,
+            context: 'create',
+        );
 
         $duplicate = $this->findDuplicate(
             $organization,
@@ -49,7 +58,7 @@ class LeadService
         $message = $data['message'] ?? null;
         unset($data['message']);
 
-        return DB::transaction(function () use ($data, $user, $organization, $message, $payload) {
+        return DB::transaction(function () use ($data, $user, $organization, $message, $payload, $metadataValues) {
             $lead = Lead::query()->create([
                 'organization_id' => $organization->id,
                 'name' => $data['name'],
@@ -59,9 +68,10 @@ class LeadService
                 'status' => 'new',
                 'priority' => $data['priority'] ?? 'medium',
                 'assigned_to' => $data['assigned_to'] ?? null,
-                'custom_fields' => $data['custom_fields'] ?? null,
                 'created_by' => $user->id,
             ]);
+
+            $this->metadataForms->persistValidatedValues($lead, $metadataValues, allowUnknown: true);
 
             if ($message) {
                 LeadNote::query()->create([
