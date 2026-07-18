@@ -18,6 +18,8 @@ return [
         'api',
         'metadata',
         'settings',
+        'imports',
+        'assignments',
     ],
 
     'actions' => [
@@ -105,6 +107,16 @@ return [
 
         'settings.view' => ['Settings', 'View organization settings'],
         'settings.manage' => ['Settings', 'Manage organization settings'],
+
+        'integrations.view' => ['Integrations', 'View organization integrations'],
+        'integrations.manage' => ['Integrations', 'Connect and manage organization integrations'],
+
+        'imports.view' => ['Imports', 'View import sessions and previews'],
+        'imports.create' => ['Imports', 'Upload files for import'],
+        'imports.manage' => ['Imports', 'Full import management'],
+
+        'assignments.view' => ['Assignments', 'View assignment pools and rules'],
+        'assignments.manage' => ['Assignments', 'Manage assignment pools and rules'],
     ],
 
     'roles' => [
@@ -133,6 +145,9 @@ return [
                 'api.tokens', 'api.access',
                 'metadata.view', 'metadata.create', 'metadata.update', 'metadata.delete', 'metadata.manage',
                 'settings.view',
+                'integrations.view', 'integrations.manage',
+                'imports.view', 'imports.create', 'imports.manage',
+                'assignments.view', 'assignments.manage',
             ],
         ],
         'sales-executive' => [

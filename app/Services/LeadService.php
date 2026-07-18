@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use App\Exceptions\DuplicateLeadException;
+use App\Models\AssignmentHistory;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\CrmNotification;
+use App\Services\Assignment\AssignmentContext;
+use App\Services\Assignment\AssignmentResult;
+use App\Services\Assignment\AssignmentService;
 use Illuminate\Support\Facades\DB;
 
 class LeadService
@@ -17,17 +21,61 @@ class LeadService
         protected AuditLogger $auditLogger,
         protected LeadNormalizationService $normalizer,
         protected MetadataEntityFormService $metadataForms,
+        protected MarketingAttributionService $attribution,
+        protected MarketingConversionService $conversions,
+        protected AssignmentService $assignment,
     ) {}
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data, User $user): Lead
+    public function create(array $data, User $user, string $assignmentReason = AssignmentHistory::REASON_AUTOMATIC): Lead
     {
-        return Lead::query()->create([
+        $signals = $this->extractAttributionSignals($data);
+        unset($data['visitor_uuid'], $data['session_uuid']);
+
+        $assignmentResult = null;
+        $usedAutoAssignment = false;
+
+        if (! $this->assignment->hasExplicitOwner($data)) {
+            $organizationId = (int) ($data['organization_id'] ?? app(TenantContext::class)->id());
+            $context = AssignmentContext::forLead($organizationId, $data);
+            $assignmentResult = $this->assignment->resolve($context);
+            $data['assigned_to'] = $assignmentResult->assigneeId();
+            $usedAutoAssignment = true;
+        }
+
+        $lead = Lead::query()->create([
             ...$data,
             'created_by' => $user->id,
         ]);
+
+        if ($usedAutoAssignment && $assignmentResult instanceof AssignmentResult && $assignmentResult->matched) {
+            $this->assignment->recordHistory(
+                context: AssignmentContext::forLead((int) $lead->organization_id, $data),
+                entityId: (int) $lead->id,
+                result: $assignmentResult,
+                reason: $assignmentReason,
+                assignedBy: $user,
+                previousOwnerId: null,
+            );
+
+            if ($assignmentResult->assigneeId()) {
+                $this->auditLogger->log($lead, 'assigned', [
+                    'from' => null,
+                    'to' => $assignmentResult->assigneeId(),
+                    'via' => 'assignment_platform',
+                    'strategy' => $assignmentResult->strategy,
+                    'rule_id' => $assignmentResult->rule?->id,
+                    'reason' => $assignmentReason,
+                ], $user);
+            }
+        }
+
+        $this->attribution->attributeLead($lead, $signals);
+        $this->conversions->recordLeadCreated($lead->fresh());
+
+        return $lead->fresh();
     }
 
     /**
@@ -35,7 +83,10 @@ class LeadService
      */
     public function createFromApi(array $payload, User $user, Organization $organization): Lead
     {
+        $signals = $this->extractAttributionSignals($payload);
         $data = $this->normalizer->normalize($payload);
+        unset($data['visitor_uuid'], $data['session_uuid']);
+
         $metadataValues = $this->metadataForms->validatedValues(
             null,
             $organization,
@@ -58,8 +109,8 @@ class LeadService
         $message = $data['message'] ?? null;
         unset($data['message']);
 
-        return DB::transaction(function () use ($data, $user, $organization, $message, $payload, $metadataValues) {
-            $lead = Lead::query()->create([
+        return DB::transaction(function () use ($data, $user, $organization, $message, $payload, $metadataValues, $signals) {
+            $leadPayload = [
                 'organization_id' => $organization->id,
                 'name' => $data['name'],
                 'email' => $data['email'] ?? null,
@@ -68,6 +119,27 @@ class LeadService
                 'status' => 'new',
                 'priority' => $data['priority'] ?? 'medium',
                 'assigned_to' => $data['assigned_to'] ?? null,
+                'custom_fields' => $data['custom_fields'] ?? [],
+            ];
+
+            if (isset($payload['country'])) {
+                $leadPayload['country'] = $payload['country'];
+            }
+
+            $assignmentResult = null;
+            $usedAutoAssignment = false;
+
+            if (! $this->assignment->hasExplicitOwner($leadPayload)) {
+                $context = AssignmentContext::forLead($organization->id, $leadPayload);
+                $assignmentResult = $this->assignment->resolve($context);
+                $leadPayload['assigned_to'] = $assignmentResult->assigneeId();
+                $usedAutoAssignment = true;
+            }
+
+            unset($leadPayload['country'], $leadPayload['custom_fields']);
+
+            $lead = Lead::query()->create([
+                ...$leadPayload,
                 'created_by' => $user->id,
             ]);
 
@@ -82,6 +154,36 @@ class LeadService
                 ]);
             }
 
+            if ($usedAutoAssignment && $assignmentResult instanceof AssignmentResult && $assignmentResult->matched) {
+                $this->assignment->recordHistory(
+                    context: AssignmentContext::forLead($organization->id, [
+                        'source' => $lead->source,
+                        'status' => $lead->status,
+                        'custom_fields' => $data['custom_fields'] ?? [],
+                    ]),
+                    entityId: (int) $lead->id,
+                    result: $assignmentResult,
+                    reason: AssignmentHistory::REASON_API,
+                    assignedBy: $user,
+                    previousOwnerId: null,
+                );
+
+                if ($assignmentResult->assigneeId()) {
+                    $this->auditLogger->log($lead, 'assigned', [
+                        'from' => null,
+                        'to' => $assignmentResult->assigneeId(),
+                        'via' => 'assignment_platform',
+                        'strategy' => $assignmentResult->strategy,
+                        'rule_id' => $assignmentResult->rule?->id,
+                        'reason' => AssignmentHistory::REASON_API,
+                    ], $user);
+                }
+            }
+
+            $this->attribution->attributeLead($lead, $signals);
+
+            $this->conversions->recordLeadCreated($lead);
+
             $this->auditLogger->log($lead, 'received_via_api', [
                 'source' => $lead->source,
                 'form_type' => $payload['form_type'] ?? null,
@@ -92,6 +194,25 @@ class LeadService
 
             return $lead->fresh();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{visitor_uuid?: string|null, session_uuid?: string|null}
+     */
+    protected function extractAttributionSignals(array $payload): array
+    {
+        $signals = [];
+
+        if (array_key_exists('visitor_uuid', $payload)) {
+            $signals['visitor_uuid'] = $payload['visitor_uuid'];
+        }
+
+        if (array_key_exists('session_uuid', $payload)) {
+            $signals['session_uuid'] = $payload['session_uuid'];
+        }
+
+        return $signals;
     }
 
     public function findDuplicate(Organization $organization, ?string $email, ?string $phone): ?Lead

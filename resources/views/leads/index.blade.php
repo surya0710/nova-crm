@@ -23,10 +23,34 @@
                 <p class="text-sm text-slate-500">{{ __('Manage and track your sales leads') }}</p>
             </div>
             @can('create', App\Models\Lead::class)
-                <a href="{{ route('leads.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition shrink-0">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    {{ __('Add Lead') }}
-                </a>
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    @if (auth()->user()?->hasPermission('imports.create'))
+                        <x-dropdown align="right" width="w-56">
+                            <x-slot name="trigger">
+                                <button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                    {{ __('Import') }}
+                                    <svg class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                            </x-slot>
+                            <x-slot name="content">
+                                <x-dropdown-link :href="route('leads.import.template.xlsx')">
+                                    {{ __('Download Excel Template') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('leads.import.template.csv')">
+                                    {{ __('Download CSV Template') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('leads.import.create')">
+                                    {{ __('Import Leads') }}
+                                </x-dropdown-link>
+                            </x-slot>
+                        </x-dropdown>
+                    @endif
+                    <a href="{{ route('leads.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        {{ __('Add Lead') }}
+                    </a>
+                </div>
             @endcan
         </div>
     </x-slot>

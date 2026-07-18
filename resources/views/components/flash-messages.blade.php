@@ -61,6 +61,21 @@
             'saved-filter-updated' => __('Saved filter updated successfully.'),
             'saved-filter-deleted' => __('Saved filter deleted successfully.'),
             'saved-filter-duplicated' => __('Saved filter duplicated successfully.'),
+            'integration-connected' => __('Integration connected successfully.'),
+            'integration-disconnected' => __('Integration disconnected.'),
+            'integration-assets-saved' => __('Asset selections saved.'),
+            'integration-assets-refreshed' => __('Asset list refreshed from the provider.'),
+            'integration-lead-forms-synced' => __('Lead forms synchronized.'),
+            'integration-lead-forms-synced-partial' => __('Lead forms synchronized with some failures. See details below.'),
+            'integration-leads-imported' => __('Leads imported successfully.'),
+            'integration-leads-imported-partial' => __('Lead import completed with some failures. See details below.'),
+            'integration-conversions-uploaded' => __('Conversions uploaded successfully.'),
+            'integration-conversions-uploaded-partial' => __('Conversion upload completed with some failures. See details below.'),
+            'integration-webhooks-processed' => __('Webhook events processed successfully.'),
+            'integration-webhooks-processed-partial' => __('Webhook processing completed with some failures. See details below.'),
+            'integration-webhooks-empty' => __('No pending webhook events to process.'),
+            'integration-health-check-healthy' => __('Health check completed. Provider is healthy.'),
+            'integration-health-check-unhealthy' => __('Health check completed. Provider reported issues.'),
         ];
         $message = $messages[session('status')] ?? session('status');
     @endphp

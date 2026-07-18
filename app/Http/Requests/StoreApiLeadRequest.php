@@ -34,6 +34,8 @@ class StoreApiLeadRequest extends FormRequest
                 'integer',
                 Rule::exists('organization_user', 'user_id')->where('organization_id', $organization?->id),
             ],
+            'visitor_uuid' => ['nullable', 'uuid'],
+            'session_uuid' => ['nullable', 'uuid'],
         ];
     }
 

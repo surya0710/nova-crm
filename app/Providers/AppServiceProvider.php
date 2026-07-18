@@ -19,13 +19,18 @@ use App\Policies\InvoicePolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\MetadataFieldDefinitionPolicy;
 use App\Policies\OpportunityPolicy;
-use App\Policies\PaymentPolicy;
 use App\Policies\OrganizationPolicy;
+use App\Policies\PaymentPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\QuotationPolicy;
 use App\Policies\SavedFilterPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
+use App\Services\Assignment\AssignmentStrategyRegistry;
+use App\Services\Import\ImportEntityRegistry;
+use App\Services\Import\Adapters\CustomerImportAdapter;
+use App\Services\Import\Adapters\LeadImportAdapter;
+use App\Services\Marketing\Providers\MarketingProviderRegistry;
 use App\Services\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -53,11 +58,38 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+
+        $this->app->singleton(ImportEntityRegistry::class);
+
+        $this->app->singleton(MarketingProviderRegistry::class, function ($app) {
+            $registry = new MarketingProviderRegistry;
+
+            foreach (config('marketing.providers.drivers', []) as $class) {
+                $registry->register($app->make($class));
+            }
+
+            return $registry;
+        });
+
+        $this->app->singleton(AssignmentStrategyRegistry::class, function ($app) {
+            $registry = new AssignmentStrategyRegistry;
+
+            foreach (config('assignment.strategies', []) as $class) {
+                $registry->register($app->make($class));
+            }
+
+            return $registry;
+        });
     }
 
     public function boot(): void
     {
         require_once app_path('helpers.php');
+
+        $this->app->make(ImportEntityRegistry::class)
+            ->register($this->app->make(LeadImportAdapter::class));
+        $this->app->make(ImportEntityRegistry::class)
+            ->register($this->app->make(CustomerImportAdapter::class));
 
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
@@ -92,6 +124,16 @@ class AppServiceProvider extends ServiceProvider
             $tokenId = $request->user()?->currentAccessToken()?->id;
 
             return Limit::perMinute(60)->by($tokenId ?? $request->ip());
+        });
+
+        RateLimiter::for('marketing-tracking', function (Request $request) {
+            return Limit::perMinute((int) config('marketing.tracking.rate_limit_per_minute'))
+                ->by($request->ip());
+        });
+
+        RateLimiter::for('marketing-webhooks', function (Request $request) {
+            return Limit::perMinute((int) config('marketing.providers.webhook_rate_limit_per_minute', 120))
+                ->by($request->ip());
         });
     }
 }

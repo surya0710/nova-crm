@@ -19,6 +19,8 @@ class LeadConversionService
         protected AuditLogger $auditLogger,
         protected TenantContext $tenantContext,
         protected MetadataEntityFormService $metadataForms,
+        protected MarketingAttributionService $attribution,
+        protected MarketingConversionService $conversions,
     ) {}
 
     /**
@@ -47,6 +49,18 @@ class LeadConversionService
                 : null;
 
             $lead = $this->markLeadConverted($lead, $user);
+
+            $this->attribution->propagateToConversion($lead, $customer, $opportunity);
+
+            $this->conversions->recordLeadConverted($lead, $customer, $opportunity);
+
+            if (! $reusedCustomer) {
+                $this->conversions->recordCustomerCreated($lead, $customer);
+            }
+
+            if ($opportunity) {
+                $this->conversions->recordOpportunityCreated($lead, $customer, $opportunity);
+            }
 
             $this->auditLogger->log($lead, 'converted', [
                 'customer_id' => $customer->id,

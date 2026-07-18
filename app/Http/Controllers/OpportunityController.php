@@ -11,10 +11,11 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\OpportunityNote;
-use App\Models\User;
+use App\Models\Organization;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
+use App\Services\OpportunityService;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,7 @@ class OpportunityController extends Controller
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
+        protected OpportunityService $opportunityService,
     ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
@@ -169,17 +171,7 @@ class OpportunityController extends Controller
         $validated = $request->validated();
         $stage = $validated['stage'];
 
-        $attributes = ['stage' => $stage];
-
-        if ($stage === 'closed_won') {
-            $attributes['won_at'] = $validated['won_at'];
-            $attributes['lost_reason'] = null;
-        } elseif ($stage === 'closed_lost') {
-            $attributes['lost_reason'] = $validated['lost_reason'];
-            $attributes['won_at'] = null;
-        }
-
-        $opportunity->update($attributes);
+        $this->opportunityService->updateStage($opportunity, $validated);
 
         $flashStatus = match ($stage) {
             'closed_won' => 'opportunity-won',
@@ -215,7 +207,7 @@ class OpportunityController extends Controller
             ->with('status', 'opportunity-note-added');
     }
 
-    protected function organizationMembers(?\App\Models\Organization $organization)
+    protected function organizationMembers(?Organization $organization)
     {
         if (! $organization) {
             return collect();

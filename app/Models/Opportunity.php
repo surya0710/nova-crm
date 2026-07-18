@@ -5,15 +5,17 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
+use Database\Factories\OpportunityFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Opportunity extends Model
 {
-    /** @use HasFactory<\Database\Factories\OpportunityFactory> */
+    /** @use HasFactory<OpportunityFactory> */
     use Auditable, BelongsToOrganization, HasAttachments, HasFactory;
 
     protected $fillable = [
@@ -52,6 +54,11 @@ class Opportunity extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
+    }
+
+    public function marketingAttribution(): HasOne
+    {
+        return $this->hasOne(MarketingAttribution::class)->where('is_primary', true);
     }
 
     public function assignee(): BelongsTo

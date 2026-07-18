@@ -132,6 +132,16 @@
                             {{ __('Organization') }}
                         </x-sidebar-link>
                     @endif
+                    @if ($can('integrations.view') || $can('integrations.manage'))
+                        <x-sidebar-link :href="route('integrations.index')" :active="request()->routeIs('integrations.*')" :icon="$iconShield">
+                            {{ __('Integrations') }}
+                        </x-sidebar-link>
+                    @endif
+                    @if ($can('assignments.view') || $can('assignments.manage'))
+                        <x-sidebar-link :href="route('assignments.index')" :active="request()->routeIs('assignments.*')" :icon="$iconUsers">
+                            {{ __('Assignments') }}
+                        </x-sidebar-link>
+                    @endif
                     @if ($can('metadata.view') || $can('metadata.manage'))
                         <x-sidebar-link :href="route('metadata-fields.index')" :active="request()->routeIs('metadata-fields.*')" :icon="$iconFields">
                             {{ __('Metadata Fields') }}

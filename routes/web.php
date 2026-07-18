@@ -1,27 +1,35 @@
 <?php
 
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\AssignmentSettingsController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\SearchController;
+use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\LeadImportController;
+use App\Http\Controllers\MarketingProviderOAuthController;
+use App\Http\Controllers\MarketingTrackingController;
 use App\Http\Controllers\MetadataFieldBlueprintActivationController;
 use App\Http\Controllers\MetadataFieldDefinitionController;
+use App\Http\Controllers\MetaWebhookController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OpportunityController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSetupController;
 use App\Http\Controllers\OrganizationSwitchController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\Platform\ImpersonationController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SavedFilterController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaskController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -38,8 +46,16 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('impersonation/accept/{token}', [\App\Http\Controllers\Platform\ImpersonationController::class, 'accept'])
+Route::get('impersonation/accept/{token}', [ImpersonationController::class, 'accept'])
     ->name('impersonation.accept');
+
+Route::post('marketing/track', [MarketingTrackingController::class, 'store'])
+    ->middleware(['throttle:marketing-tracking', 'marketing.tracking'])
+    ->name('marketing.track');
+
+Route::match(['get', 'post'], 'webhooks/marketing/{provider}', [MetaWebhookController::class, 'handle'])
+    ->middleware(['throttle:marketing-webhooks'])
+    ->name('webhooks.marketing');
 
 Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->group(function () {
     Route::get('organization/setup', [OrganizationSetupController::class, 'create'])->name('organization.setup');
@@ -50,6 +66,18 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
 
         Route::post('leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
         Route::get('leads/follow-ups/due', [LeadController::class, 'dueFollowUps'])->name('leads.follow-ups.due');
+
+        Route::get('imports/leads', [LeadImportController::class, 'create'])->name('leads.import.create');
+        Route::post('imports/leads', [LeadImportController::class, 'store'])->name('leads.import.store');
+        Route::get('imports/leads/template/csv', [LeadImportController::class, 'downloadCsvTemplate'])->name('leads.import.template.csv');
+        Route::get('imports/leads/template/xlsx', [LeadImportController::class, 'downloadXlsxTemplate'])->name('leads.import.template.xlsx');
+        Route::get('imports/leads/{session}', [LeadImportController::class, 'preview'])->name('leads.import.preview');
+        Route::post('imports/leads/{session}/execute', [LeadImportController::class, 'execute'])->name('leads.import.execute');
+        Route::get('imports/leads/{session}/summary', [LeadImportController::class, 'summary'])->name('leads.import.summary');
+        Route::get('imports/leads/{session}/errors', [LeadImportController::class, 'errors'])->name('leads.import.errors');
+        Route::get('imports/leads/{session}/report', [LeadImportController::class, 'validationReport'])->name('leads.import.report');
+        Route::get('imports/leads/{session}/report/xlsx', [LeadImportController::class, 'validationReportXlsx'])->name('leads.import.report.xlsx');
+
         Route::resource('leads', LeadController::class);
         Route::post('leads/{lead}/notes', [LeadController::class, 'storeNote'])->name('leads.notes.store');
         Route::patch('leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status.update');
@@ -57,6 +85,14 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('leads/{lead}/follow-up/acknowledge', [LeadController::class, 'acknowledgeFollowUp'])->name('leads.follow-up.acknowledge');
 
         Route::resource('customers', CustomerController::class);
+        Route::get('imports/customers', [CustomerImportController::class, 'create'])->name('customers.import.create');
+        Route::post('imports/customers', [CustomerImportController::class, 'store'])->name('customers.import.store');
+        Route::get('imports/customers/{session}', [CustomerImportController::class, 'preview'])->name('customers.import.preview');
+        Route::post('imports/customers/{session}/execute', [CustomerImportController::class, 'execute'])->name('customers.import.execute');
+        Route::get('imports/customers/{session}/summary', [CustomerImportController::class, 'summary'])->name('customers.import.summary');
+        Route::get('imports/customers/{session}/errors', [CustomerImportController::class, 'errors'])->name('customers.import.errors');
+        Route::get('imports/customers/{session}/report', [CustomerImportController::class, 'validationReport'])->name('customers.import.report');
+        Route::get('imports/customers/{session}/report/xlsx', [CustomerImportController::class, 'validationReportXlsx'])->name('customers.import.report.xlsx');
         Route::post('customers/{customer}/notes', [CustomerController::class, 'storeNote'])->name('customers.notes.store');
         Route::post('customers/{customer}/send', [CustomerController::class, 'sendMail'])->name('customers.send');
 
@@ -113,6 +149,66 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store')->middleware('permission:api.tokens');
         Route::delete('api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy')->middleware('permission:api.tokens');
 
+        Route::get('integrations', [IntegrationController::class, 'index'])
+            ->middleware('permission:integrations.view')
+            ->name('integrations.index');
+        Route::get('integrations/diagnostics', [IntegrationController::class, 'diagnostics'])
+            ->middleware('permission:integrations.view')
+            ->name('integrations.diagnostics');
+        Route::get('integrations/{provider}', [IntegrationController::class, 'show'])
+            ->middleware('permission:integrations.view')
+            ->name('integrations.show');
+        Route::post('integrations/{provider}/assets', [IntegrationController::class, 'saveAssets'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.assets.save');
+        Route::post('integrations/{provider}/assets/refresh', [IntegrationController::class, 'refreshAssets'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.assets.refresh');
+        Route::post('integrations/{provider}/lead-forms/sync', [IntegrationController::class, 'synchronizeLeadForms'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.lead-forms.sync');
+        Route::post('integrations/{provider}/leads/import', [IntegrationController::class, 'importLeads'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.leads.import');
+        Route::post('integrations/{provider}/conversions/upload', [IntegrationController::class, 'uploadConversions'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.conversions.upload');
+        Route::post('integrations/{provider}/webhooks/process', [IntegrationController::class, 'processWebhooks'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.webhooks.process');
+        Route::post('integrations/{provider}/health-check', [IntegrationController::class, 'runHealthCheck'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.health-check');
+        Route::post('integrations/{provider}/disconnect', [IntegrationController::class, 'disconnect'])
+            ->middleware('permission:integrations.manage')
+            ->name('integrations.disconnect');
+
+        Route::get('assignments', [AssignmentSettingsController::class, 'index'])
+            ->middleware('permission:assignments.view')
+            ->name('assignments.index');
+        Route::post('assignments/pools', [AssignmentSettingsController::class, 'storePool'])
+            ->middleware('permission:assignments.manage')
+            ->name('assignments.pools.store');
+        Route::put('assignments/pools/{pool}', [AssignmentSettingsController::class, 'updatePool'])
+            ->middleware('permission:assignments.manage')
+            ->name('assignments.pools.update');
+        Route::post('assignments/rules', [AssignmentSettingsController::class, 'storeRule'])
+            ->middleware('permission:assignments.manage')
+            ->name('assignments.rules.store');
+        Route::put('assignments/rules/{rule}', [AssignmentSettingsController::class, 'updateRule'])
+            ->middleware('permission:assignments.manage')
+            ->name('assignments.rules.update');
+
+        Route::get('marketing/providers/{provider}/connect', [MarketingProviderOAuthController::class, 'connect'])
+            ->middleware('permission:integrations.manage')
+            ->name('marketing.providers.connect');
+        Route::get('marketing/providers/{provider}/callback', [MarketingProviderOAuthController::class, 'callback'])
+            ->middleware('permission:integrations.manage')
+            ->name('marketing.providers.callback');
+        Route::post('marketing/providers/{provider}/disconnect', [MarketingProviderOAuthController::class, 'disconnect'])
+            ->middleware('permission:integrations.manage')
+            ->name('marketing.providers.disconnect');
+
         Route::get('team', [TeamController::class, 'index'])->name('team.index');
         Route::post('team', [TeamController::class, 'store'])->name('team.store');
         Route::patch('team/{member}', [TeamController::class, 'update'])->name('team.update');
@@ -129,7 +225,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->name('organization.test-mail');
         Route::post('organization/switch/{organization}', OrganizationSwitchController::class)->name('organization.switch');
 
-        Route::post('impersonation/stop', [\App\Http\Controllers\Platform\ImpersonationController::class, 'stop'])
+        Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])
             ->name('impersonation.stop');
     });
 });

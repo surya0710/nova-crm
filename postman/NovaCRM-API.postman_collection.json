@@ -1,0 +1,634 @@
+{
+	"info": {
+		"_postman_id": "novacrm-api-full-collection",
+		"name": "NovaCRM — Full API",
+		"description": "All HTTP APIs exposed by NovaCRM for integration testing.\n\n# Quick start\n1. Import this collection into Postman.\n2. Set collection variables:\n   - `base_url` — e.g. `http://localhost/nova-crm/public` or `http://nova-crm.test`\n   - `api_token` — Sanctum personal access token (create under **API Tokens** in the CRM UI; requires `api.tokens` permission)\n   - `organization_id` — your tenant organization ID\n   - `lead_id` / `customer_id` / `opportunity_id` — IDs returned from create/list calls\n   - `visitor_uuid` / `session_uuid` — copied from Set-Cookie after a marketing track call\n3. Authenticated `/api/v1/*` requests use Bearer auth + `X-Organization-Id`.\n\n# How to push leads\n\n## From your website (recommended)\n1. On landing pages, call **Marketing → Track Page View** so NovaCRM issues visitor/session cookies and captures UTMs / click IDs.\n2. On form submit, call **Leads → Create Lead (Website form)** with `source: \"website\"` and optional `visitor_uuid` / `session_uuid` from those cookies so attribution links.\n\n## From Google Ads traffic\nThere is **no separate Google Ads inbound lead-push API** in NovaCRM.\nAttribution works like this:\n1. Ad click lands on your site with `gclid=...` in the URL.\n2. Call **Marketing → Track Page View (Google Ads / gclid)** with that full URL — CRM stores `gclid` on the marketing touch and classifies paid search.\n3. Call **Leads → Create Lead (Google Ads attributed)** with `source: \"google_ads\"` (or `website`) plus the `visitor_uuid` / `session_uuid` from step 2.\nOffline conversion upload back to Google Ads is done from **Integrations** in the CRM UI (not a public create-lead endpoint).\n\n## From Meta (Facebook / Instagram)\nMeta pushes via **Webhooks → Meta Receive Event**. Lead forms are also synced/imported from **Integrations** in the CRM UI. The public webhook only verifies + ingests signed deliveries; processing is triggered from Integrations.\n\n# API surface in this collection\n| Area | Auth | Endpoints |\n| --- | --- | --- |\n| Leads | Sanctum + org | GET/POST list/create, GET show |\n| Customers | Sanctum + org | GET list, GET show |\n| Opportunities | Sanctum + org | GET list, GET show |\n| Marketing track | Public (cookies) | POST /marketing/track |\n| Meta webhooks | Public (signature / verify token) | GET verify, POST receive |\n\nWeb session UI routes (imports, assignments, OAuth connect) are **not** REST APIs and are omitted.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{api_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost/nova-crm/public"
+		},
+		{
+			"key": "api_token",
+			"value": ""
+		},
+		{
+			"key": "organization_id",
+			"value": "1"
+		},
+		{
+			"key": "lead_id",
+			"value": "1"
+		},
+		{
+			"key": "customer_id",
+			"value": "1"
+		},
+		{
+			"key": "opportunity_id",
+			"value": "1"
+		},
+		{
+			"key": "visitor_uuid",
+			"value": ""
+		},
+		{
+			"key": "session_uuid",
+			"value": ""
+		},
+		{
+			"key": "meta_verify_token",
+			"value": ""
+		},
+		{
+			"key": "meta_hub_challenge",
+			"value": "test_challenge_123"
+		}
+	],
+	"item": [
+		{
+			"name": "0. Setup",
+			"item": [
+				{
+					"name": "How to get an API token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api-tokens",
+							"host": ["{{base_url}}"],
+							"path": ["api-tokens"]
+						},
+						"description": "This is a **browser UI** page (not JSON). Log into the CRM as a user with `api.tokens` + `api.access`, open **API Tokens**, create a token, paste it into the collection variable `api_token`.\n\nEvery `/api/v1/*` call also needs `X-Organization-Id` = your organization ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Marketing Tracking (Website / Google Ads landings)",
+			"description": "Public, unauthenticated. Used by your website JS on page load. Sets `nova_mk_visitor` and `nova_mk_session` cookies. Capture those UUIDs into `visitor_uuid` / `session_uuid` for lead create attribution.",
+			"item": [
+				{
+					"name": "Track Page View (Website / organic)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Cookies are httpOnly — Postman may show them under Cookies.",
+									"// After a successful 204, copy visitor/session UUIDs from Set-Cookie",
+									"// into collection variables visitor_uuid and session_uuid.",
+									"pm.test('Returns 204 No Content', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"page_view\",\n    \"url\": \"https://www.example.com/contact\",\n    \"landing_page\": \"https://www.example.com/contact\",\n    \"referrer\": \"https://www.google.com/\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/marketing/track",
+							"host": ["{{base_url}}"],
+							"path": ["marketing", "track"]
+						},
+						"description": "Records an anonymous page view. Response is **204 No Content** and sets tracking cookies.\n\nRequired: `event` (`page_view`), `url`.\nOptional: `landing_page`, `referrer`, `occurred_at`."
+					},
+					"response": []
+				},
+				{
+					"name": "Track Page View (Google Ads / gclid)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Returns 204 No Content', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"page_view\",\n    \"url\": \"https://www.example.com/lp?utm_source=google&utm_medium=cpc&utm_campaign=brand&gclid=Cj0KCQjw_TEST_GCLID\",\n    \"landing_page\": \"https://www.example.com/lp?utm_source=google&utm_medium=cpc&utm_campaign=brand&gclid=Cj0KCQjw_TEST_GCLID\",\n    \"referrer\": \"https://www.google.com/\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/marketing/track",
+							"host": ["{{base_url}}"],
+							"path": ["marketing", "track"]
+						},
+						"description": "Same endpoint as organic tracking. Put the **full landing URL including `gclid`** (and UTMs) in `url` / `landing_page`.\n\nNovaCRM extracts `gclid`, classifies the channel as paid search, and stores the touch. Later lead create with the same visitor/session UUIDs attributes the lead to that Google Ads click.\n\nReplace `Cj0KCQjw_TEST_GCLID` with a real gclid from an ad preview / click."
+					},
+					"response": []
+				},
+				{
+					"name": "Track Page View (UTM campaign)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"page_view\",\n    \"url\": \"https://www.example.com/offer?utm_source=newsletter&utm_medium=email&utm_campaign=march_launch\",\n    \"landing_page\": \"https://www.example.com/offer?utm_source=newsletter&utm_medium=email&utm_campaign=march_launch\",\n    \"referrer\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/marketing/track",
+							"host": ["{{base_url}}"],
+							"path": ["marketing", "track"]
+						},
+						"description": "Example for non-Ads campaigns (email, social, etc.) via UTM parameters on the URL."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Leads API",
+			"description": "Authenticated Sanctum API. Permission: `api.access` + create/view lead abilities. Create is rate-limited (`api-lead-intake`).",
+			"item": [
+				{
+					"name": "List Leads",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/leads?per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "leads"],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "1–100 (default 15)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "new",
+									"description": "new | contacted | qualified | proposal_sent | negotiation | converted | won | lost",
+									"disabled": true
+								},
+								{
+									"key": "metadata_filters[0][key]",
+									"value": "destination_country",
+									"disabled": true
+								},
+								{
+									"key": "metadata_filters[0][operator]",
+									"value": "equals",
+									"disabled": true
+								},
+								{
+									"key": "metadata_filters[0][value]",
+									"value": "Canada",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Paginated leads for the organization."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Lead",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "leads", "{{lead_id}}"]
+						},
+						"description": "Single lead with assignee and creator."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lead (Website form)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    if (json.lead_id) {",
+									"        pm.collectionVariables.set('lead_id', String(json.lead_id));",
+									"    }",
+									"}",
+									"pm.test('Lead created or validation/duplicate response', function () {",
+									"    pm.expect([201, 409, 422]).to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Prospect\",\n    \"email\": \"jane.website@example.com\",\n    \"phone\": \"+1 555 0100\",\n    \"source\": \"website\",\n    \"form_type\": \"contact\",\n    \"source_url\": \"https://www.example.com/contact\",\n    \"service_interest\": \"student\",\n    \"message\": \"Interested in studying abroad.\",\n    \"visitor_uuid\": \"{{visitor_uuid}}\",\n    \"session_uuid\": \"{{session_uuid}}\",\n    \"custom_fields\": {\n        \"destination_country\": \"Canada\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/leads",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "leads"]
+						},
+						"description": "**Website → CRM lead push.**\n\nRequired: `name`, `phone`, `source`.\nOptional: `email`, `form_type`, `source_url`, `service_interest`, `message`, `custom_fields`, `assigned_to`, `visitor_uuid`, `session_uuid`.\n\nAfter tracking a page view, paste cookie UUIDs into `visitor_uuid` / `session_uuid` (or set collection vars) so first-touch attribution attaches.\n\nResponses: `201` created, `409` duplicate, `422` validation, `429` throttled."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lead (Google Ads attributed)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    if (json.lead_id) {",
+									"        pm.collectionVariables.set('lead_id', String(json.lead_id));",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Google Ads Lead\",\n    \"email\": \"ads.lead@example.com\",\n    \"phone\": \"+1 555 0200\",\n    \"source\": \"google_ads\",\n    \"form_type\": \"landing_page\",\n    \"source_url\": \"https://www.example.com/lp?gclid=Cj0KCQjw_TEST_GCLID\",\n    \"service_interest\": \"consultation\",\n    \"message\": \"Came from Google Ads landing page.\",\n    \"visitor_uuid\": \"{{visitor_uuid}}\",\n    \"session_uuid\": \"{{session_uuid}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/leads",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "leads"]
+						},
+						"description": "**Google Ads → CRM lead push (via website form).**\n\nFlow to test end-to-end:\n1. Run **Track Page View (Google Ads / gclid)** first.\n2. Copy visitor/session UUIDs from cookies into collection vars.\n3. Run this request with `source: \"google_ads\"`.\n\nThe `gclid` itself is **not** a create-lead field — it is captured on the marketing touch during tracking. Attribution uses `visitor_uuid` / `session_uuid`.\n\nValid `source` values include: `website`, `google_ads`, `facebook`, `referral`, `whatsapp`, `manual_entry`, `api`, `import`."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lead (minimal / API intake)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Minimal Lead\",\n    \"phone\": \"+1 555 0300\",\n    \"source\": \"api\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/leads",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "leads"]
+						},
+						"description": "Smallest valid payload. Owner assignment uses the Assignment Platform when `assigned_to` is omitted."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Customers API",
+			"description": "Read-only Sanctum API. Permission: `customers.view` (+ `api.access`).",
+			"item": [
+				{
+					"name": "List Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/customers?per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "customers"],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "Acme",
+									"description": "Search name or company",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Paginated customers. Optional `search` matches name/company. Supports the same metadata filter/sort query params as leads."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/customers/{{customer_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "customers", "{{customer_id}}"]
+						},
+						"description": "Single customer with assignee and creator."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Opportunities API",
+			"description": "Read-only Sanctum API. Permission: `opportunities.view` (+ `api.access`).",
+			"item": [
+				{
+					"name": "List Opportunities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/opportunities?per_page=15",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "opportunities"],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "stage",
+									"value": "qualification",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "Deal",
+									"description": "Search title or related customer name/company",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Paginated opportunities. Optional `stage` and `search` filters."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Opportunity",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Organization-Id",
+								"value": "{{organization_id}}"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/opportunities/{{opportunity_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "opportunities", "{{opportunity_id}}"]
+						},
+						"description": "Single opportunity with assignee, creator, and customer."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Meta / Marketing Webhooks",
+			"description": "Public webhook entry for marketing providers. Path param `{provider}` is typically `meta`. Google Ads does **not** use this inbound webhook for lead create in NovaCRM.",
+			"item": [
+				{
+					"name": "Meta Webhook Verify (GET)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/webhooks/marketing/meta?hub.mode=subscribe&hub.verify_token={{meta_verify_token}}&hub.challenge={{meta_hub_challenge}}",
+							"host": ["{{base_url}}"],
+							"path": ["webhooks", "marketing", "meta"],
+							"query": [
+								{
+									"key": "hub.mode",
+									"value": "subscribe"
+								},
+								{
+									"key": "hub.verify_token",
+									"value": "{{meta_verify_token}}",
+									"description": "Must match the tenant Meta webhook verify token configured in Integrations"
+								},
+								{
+									"key": "hub.challenge",
+									"value": "{{meta_hub_challenge}}"
+								}
+							]
+						},
+						"description": "Meta subscription challenge. On success returns plain-text challenge (200). Wrong token → 403. Unknown provider → 404.\n\nSet `meta_verify_token` to the value configured for your org’s Meta integration."
+					},
+					"response": []
+				},
+				{
+					"name": "Meta Webhook Receive (POST)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Hub-Signature-256",
+								"value": "sha256=REPLACE_WITH_VALID_HMAC",
+								"description": "HMAC-SHA256 of raw body using Meta app secret. Invalid signature is rejected."
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"object\": \"page\",\n    \"entry\": [\n        {\n            \"id\": \"PAGE_ID\",\n            \"time\": 1710000000,\n            \"changes\": [\n                {\n                    \"field\": \"leadgen\",\n                    \"value\": {\n                        \"leadgen_id\": \"LEADGEN_ID\",\n                        \"page_id\": \"PAGE_ID\",\n                        \"form_id\": \"FORM_ID\",\n                        \"created_time\": 1710000000\n                    }\n                }\n            ]\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/marketing/meta",
+							"host": ["{{base_url}}"],
+							"path": ["webhooks", "marketing", "meta"]
+						},
+						"description": "Ingests a signed Meta webhook delivery. Successful accept returns plain text `EVENT_RECEIVED`.\n\n**Note:** This endpoint records the event; lead import/processing is driven from Integrations (`process webhooks` / lead import), not automatically from this POST alone in all setups.\n\nYou must compute a real `X-Hub-Signature-256` for the raw body or the request will be rejected (401)."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

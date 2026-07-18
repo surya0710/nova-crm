@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
+use Database\Factories\LeadFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Lead extends Model
 {
-    /** @use HasFactory<\Database\Factories\LeadFactory> */
+    /** @use HasFactory<LeadFactory> */
     use Auditable, BelongsToOrganization, HasAttachments, HasFactory;
 
     protected $fillable = [
@@ -85,6 +87,11 @@ class Lead extends Model
         return $this->hasOne(Customer::class);
     }
 
+    public function marketingAttribution(): HasOne
+    {
+        return $this->hasOne(MarketingAttribution::class)->where('is_primary', true);
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(LeadNote::class)->latest();
@@ -151,8 +158,8 @@ class Lead extends Model
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<Lead>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<Lead>
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
      */
     public function scopeDueForFollowUpAlert($query)
     {
