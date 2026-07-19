@@ -10,11 +10,11 @@ use App\Http\Requests\UpdateOpportunityStageRequest;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityNote;
 use App\Models\Organization;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
+use App\Services\NoteService;
 use App\Services\OpportunityService;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
@@ -32,6 +32,7 @@ class OpportunityController extends Controller
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
         protected OpportunityService $opportunityService,
+        protected NoteService $noteService,
     ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
@@ -120,11 +121,7 @@ class OpportunityController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'opportunity', 'create', $request);
 
-        $opportunity = Opportunity::query()->create([
-            ...$request->validated(),
-            'created_by' => $request->user()->id,
-        ]);
-        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
+        $opportunity = $this->opportunityService->create($request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -158,8 +155,7 @@ class OpportunityController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest($opportunity, $tenant->get(), 'opportunity', 'edit', $request);
 
-        $opportunity->update($request->validated());
-        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
+        $this->opportunityService->update($opportunity, $request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -171,7 +167,7 @@ class OpportunityController extends Controller
         $validated = $request->validated();
         $stage = $validated['stage'];
 
-        $this->opportunityService->updateStage($opportunity, $validated);
+        $this->opportunityService->updateStage($opportunity, $validated, $request->user());
 
         $flashStatus = match ($stage) {
             'closed_won' => 'opportunity-won',
@@ -195,12 +191,7 @@ class OpportunityController extends Controller
 
     public function storeNote(StoreOpportunityNoteRequest $request, Opportunity $opportunity): RedirectResponse
     {
-        OpportunityNote::query()->create([
-            'organization_id' => $opportunity->organization_id,
-            'opportunity_id' => $opportunity->id,
-            'user_id' => $request->user()->id,
-            'body' => $request->validated('body'),
-        ]);
+        $this->noteService->add($opportunity, $request->validated('body'), $request->user());
 
         return redirect()
             ->route('pipeline.show', $opportunity)

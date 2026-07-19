@@ -76,6 +76,11 @@
             'integration-webhooks-empty' => __('No pending webhook events to process.'),
             'integration-health-check-healthy' => __('Health check completed. Provider is healthy.'),
             'integration-health-check-unhealthy' => __('Health check completed. Provider reported issues.'),
+            'workflow-created' => __('Workflow draft created successfully.'),
+            'workflow-updated' => __('Workflow saved successfully.'),
+            'workflow-deleted' => __('Workflow deleted successfully.'),
+            'workflow-enabled' => __('Workflow enabled successfully.'),
+            'workflow-disabled' => __('Workflow disabled successfully.'),
         ];
         $message = $messages[session('status')] ?? session('status');
     @endphp

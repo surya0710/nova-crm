@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Events\InvoiceCreated;
 use App\Models\Invoice;
 use App\Models\Organization;
+use App\Models\Quotation;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +31,46 @@ class InvoiceService
 
         $totals = $this->calculator->calculateTotals($data['items']);
 
+        return $this->persistNewInvoice($organization, $data, $totals, $user);
+    }
+
+    public function createFromQuotation(Quotation $quotation, User $user): Invoice
+    {
+        $quotation->loadMissing(['organization', 'items']);
+
+        $data = [
+            'customer_id' => $quotation->customer_id,
+            'quotation_id' => $quotation->id,
+            'opportunity_id' => $quotation->opportunity_id,
+            'title' => $quotation->title,
+            'status' => 'draft',
+            'issue_date' => now()->toDateString(),
+            'due_date' => ($quotation->valid_until ?? now()->addDays(30))->toDateString(),
+            'currency' => $quotation->currency,
+            'notes' => $this->quotationInvoiceNotes($quotation),
+        ];
+        $totals = [
+            'subtotal' => $quotation->subtotal,
+            'discount_amount' => $quotation->discount_amount,
+            'tax_total' => $quotation->tax_total,
+            'total' => $quotation->total,
+            'items' => $quotation->items->map(fn ($item): array => [
+                'product_id' => $item->product_id,
+                'description' => $item->description,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'tax_rate' => $item->tax_rate,
+                'discount_percent' => $item->discount_percent,
+                'line_total' => $item->line_total,
+                'sort_order' => $item->sort_order,
+            ])->all(),
+        ];
+
+        return $this->persistNewInvoice($quotation->organization, $data, $totals, $user);
+    }
+
+    protected function persistNewInvoice(Organization $organization, array $data, array $totals, User $user): Invoice
+    {
         return DB::transaction(function () use ($organization, $data, $totals, $user) {
             $invoice = Invoice::query()->create([
                 'number' => Invoice::generateNumber($organization),
@@ -50,8 +92,10 @@ class InvoiceService
             ]);
 
             $this->syncItems($invoice, $totals['items']);
+            $invoice = $invoice->fresh(['items']);
+            event(InvoiceCreated::forModel($invoice, ['actor_id' => $user->id]));
 
-            return $invoice->fresh(['items']);
+            return $invoice;
         });
     }
 
@@ -358,6 +402,13 @@ class InvoiceService
                 'sort_order' => $item['sort_order'],
             ]);
         }
+    }
+
+    protected function quotationInvoiceNotes(Quotation $quotation): string
+    {
+        $reference = __('Generated from quotation :number.', ['number' => $quotation->number]);
+
+        return $quotation->notes ? $reference."\n\n".$quotation->notes : $reference;
     }
 
     protected function notifyIssued(Invoice $invoice, User $actor): void

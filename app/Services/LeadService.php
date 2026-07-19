@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\LeadAssigned;
+use App\Events\LeadCreated;
+use App\Events\LeadUpdated;
 use App\Exceptions\DuplicateLeadException;
 use App\Models\AssignmentHistory;
 use App\Models\Lead;
@@ -13,7 +16,9 @@ use App\Notifications\CrmNotification;
 use App\Services\Assignment\AssignmentContext;
 use App\Services\Assignment\AssignmentResult;
 use App\Services\Assignment\AssignmentService;
+use App\Workflow\WorkflowRuntimeContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class LeadService
 {
@@ -29,8 +34,12 @@ class LeadService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data, User $user, string $assignmentReason = AssignmentHistory::REASON_AUTOMATIC): Lead
-    {
+    public function create(
+        array $data,
+        User $user,
+        string $assignmentReason = AssignmentHistory::REASON_AUTOMATIC,
+        array $metadataValues = [],
+    ): Lead {
         $signals = $this->extractAttributionSignals($data);
         unset($data['visitor_uuid'], $data['session_uuid']);
 
@@ -75,7 +84,18 @@ class LeadService
         $this->attribution->attributeLead($lead, $signals);
         $this->conversions->recordLeadCreated($lead->fresh());
 
-        return $lead->fresh();
+        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $lead = $lead->fresh();
+        if ($lead->assigned_to) {
+            event(LeadAssigned::forModel($lead, [
+                'previous_owner_id' => null,
+                'owner_id' => (int) $lead->assigned_to,
+                'actor_id' => $user->id,
+            ]));
+        }
+        event(LeadCreated::forModel($lead, ['actor_id' => $user->id]));
+
+        return $lead;
     }
 
     /**
@@ -192,7 +212,17 @@ class LeadService
 
             $this->notifyApiLeadRecipients($lead, $user);
 
-            return $lead->fresh();
+            $lead = $lead->fresh();
+            if ($lead->assigned_to) {
+                event(LeadAssigned::forModel($lead, [
+                    'previous_owner_id' => null,
+                    'owner_id' => (int) $lead->assigned_to,
+                    'actor_id' => $user->id,
+                ]));
+            }
+            event(LeadCreated::forModel($lead, ['actor_id' => $user->id, 'source' => 'api']));
+
+            return $lead;
         });
     }
 
@@ -279,5 +309,49 @@ class LeadService
                     organizationId: $lead->organization_id,
                 ));
             });
+    }
+
+    public function update(Lead $lead, array $data, User $actor, array $metadataValues = []): Lead
+    {
+        $beforeOwner = $lead->assigned_to;
+        $ordinaryChanges = collect($data)->except(['assigned_to'])->all();
+        $before = $lead->only(array_keys($ordinaryChanges));
+
+        $lead->update($ordinaryChanges);
+        if (array_key_exists('assigned_to', $data) && (int) $beforeOwner !== (int) $data['assigned_to']) {
+            $this->assignment->assignOwner($lead, $data['assigned_to'] ? (int) $data['assigned_to'] : null, $actor);
+        }
+
+        $metadataResult = $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $lead = $lead->fresh();
+        $changed = array_keys(array_filter(
+            $ordinaryChanges,
+            fn (mixed $value, string $key) => $before[$key] != $lead->getAttribute($key),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+        if ($metadataResult['changed'] ?? false) {
+            $changed[] = 'custom_fields';
+        }
+        if ($changed !== []) {
+            $runtime = app(WorkflowRuntimeContext::class);
+            event(LeadUpdated::forModel(
+                $lead,
+                ['actor_id' => $actor->id, 'changes' => $changed],
+                causationId: $runtime->causationId,
+                depth: $runtime->causationId ? $runtime->depth + 1 : 0,
+            ));
+        }
+
+        return $lead;
+    }
+
+    public function changeStatus(Lead $lead, string $status, User $actor): Lead
+    {
+        $allowed = array_keys(config('leads.statuses', []));
+        if ($allowed !== [] && ! in_array($status, $allowed, true)) {
+            throw ValidationException::withMessages(['status' => 'Invalid lead status.']);
+        }
+
+        return $this->update($lead, ['status' => $status], $actor);
     }
 }

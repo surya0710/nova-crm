@@ -20,6 +20,7 @@ return [
         'settings',
         'imports',
         'assignments',
+        'workflows',
     ],
 
     'actions' => [
@@ -117,6 +118,12 @@ return [
 
         'assignments.view' => ['Assignments', 'View assignment pools and rules'],
         'assignments.manage' => ['Assignments', 'Manage assignment pools and rules'],
+
+        'workflows.view' => ['Workflows', 'View workflow definitions and execution history'],
+        'workflows.create' => ['Workflows', 'Create workflow definitions'],
+        'workflows.update' => ['Workflows', 'Edit workflow definitions'],
+        'workflows.delete' => ['Workflows', 'Delete workflow definitions'],
+        'workflows.manage' => ['Workflows', 'Enable, disable, and fully manage workflows'],
     ],
 
     'roles' => [
@@ -148,6 +155,7 @@ return [
                 'integrations.view', 'integrations.manage',
                 'imports.view', 'imports.create', 'imports.manage',
                 'assignments.view', 'assignments.manage',
+                'workflows.view', 'workflows.create', 'workflows.update', 'workflows.delete', 'workflows.manage',
             ],
         ],
         'sales-executive' => [

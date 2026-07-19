@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\CustomerCreated;
+use App\Events\LeadConverted;
+use App\Events\OpportunityCreated;
 use App\Exceptions\DuplicateCustomerException;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -69,6 +72,18 @@ class LeadConversionService
             ], $user);
 
             $this->notifyAssignee($lead, $customer, $user);
+
+            event(LeadConverted::forModel($lead, [
+                'actor_id' => $user->id,
+                'customer_id' => $customer->id,
+                'opportunity_id' => $opportunity?->id,
+            ]));
+            if (! $reusedCustomer) {
+                event(CustomerCreated::forModel($customer, ['actor_id' => $user->id, 'lead_id' => $lead->id]));
+            }
+            if ($opportunity) {
+                event(OpportunityCreated::forModel($opportunity, ['actor_id' => $user->id, 'lead_id' => $lead->id]));
+            }
 
             return [
                 'lead' => $lead->fresh(['assignee', 'customer', 'convertedBy']),

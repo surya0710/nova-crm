@@ -6,9 +6,11 @@ use App\Models\AssignmentHistory;
 use App\Models\AssignmentPool;
 use App\Models\AssignmentPoolMember;
 use App\Models\AssignmentRule;
+use App\Models\AuditLog;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
+use App\Notifications\CrmNotification;
 use App\Services\Assignment\AssignmentContext;
 use App\Services\Assignment\AssignmentService;
 use App\Services\Assignment\Strategies\LeastLoadedStrategy;
@@ -19,6 +21,7 @@ use App\Services\LeadService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AssignmentPlatformTest extends TestCase
@@ -65,6 +68,26 @@ class AssignmentPlatformTest extends TestCase
             ->forPool($pool)
             ->defaultRule()
             ->create($overrides);
+    }
+
+    public function test_automatic_assignment_preserves_existing_owner_when_no_rule_assigns(): void
+    {
+        [$owner, $organization, $existingOwner] = $this->setupOrgWithMembers();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $owner->id,
+            'assigned_to' => $existingOwner->id,
+        ]);
+
+        $result = app(AssignmentService::class)->assignOwner($lead, null, $owner, automatic: true);
+
+        $this->assertNull($result->assigneeId());
+        $this->assertSame($existingOwner->id, (int) $lead->fresh()->assigned_to);
+        $this->assertDatabaseMissing('assignment_histories', [
+            'entity_type' => 'lead',
+            'entity_id' => $lead->id,
+            'new_owner_id' => null,
+        ]);
     }
 
     public function test_round_robin_assigns_sequentially(): void
@@ -325,6 +348,82 @@ class AssignmentPlatformTest extends TestCase
             'entity_id' => $lead->id,
         ]);
         $this->assertSame(0, $pool->fresh()->rotation_position);
+    }
+
+    public function test_assign_owner_notifies_the_new_assignee(): void
+    {
+        [$owner, $organization, $assignee] = $this->setupOrgWithMembers();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'assigned_to' => null,
+            'created_by' => $owner->id,
+        ]);
+
+        Notification::fake();
+        $this->actingAs($owner);
+
+        app(AssignmentService::class)->assignOwner($lead, $assignee->id, $owner);
+
+        Notification::assertSentTo(
+            $assignee,
+            CrmNotification::class,
+            fn (CrmNotification $notification) => $notification->title === 'New assignment'
+                && $notification->organizationId === $organization->id
+        );
+        Notification::assertSentToTimes($assignee, CrmNotification::class, 1);
+    }
+
+    public function test_assign_owner_does_not_notify_when_the_owner_is_unchanged(): void
+    {
+        [$owner, $organization, $assignee] = $this->setupOrgWithMembers();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'assigned_to' => $assignee->id,
+            'created_by' => $owner->id,
+        ]);
+
+        Notification::fake();
+        $this->actingAs($owner);
+
+        app(AssignmentService::class)->assignOwner($lead, $assignee->id, $owner);
+
+        Notification::assertNothingSent();
+        $this->assertSame(0, AuditLog::query()
+            ->where('auditable_type', $lead->getMorphClass())
+            ->where('auditable_id', $lead->id)
+            ->where('event', 'assigned')
+            ->count());
+    }
+
+    public function test_assign_owner_records_assignment_platform_audit_context(): void
+    {
+        [$owner, $organization, $previousOwner, $newOwner] = $this->setupOrgWithMembers();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'assigned_to' => $previousOwner->id,
+            'created_by' => $owner->id,
+        ]);
+
+        Notification::fake();
+        $this->actingAs($owner);
+
+        app(AssignmentService::class)->assignOwner($lead, $newOwner->id, $owner);
+
+        $audit = AuditLog::query()
+            ->where('auditable_type', $lead->getMorphClass())
+            ->where('auditable_id', $lead->id)
+            ->where('event', 'assigned')
+            ->sole();
+
+        $this->assertSame($owner->id, $audit->user_id);
+        $this->assertSame([
+            'from' => $previousOwner->id,
+            'to' => $newOwner->id,
+            'via' => 'assignment_platform',
+            'strategy' => 'manual',
+            'rule_id' => null,
+            'reason' => AssignmentHistory::REASON_REASSIGNED,
+        ], $audit->properties);
     }
 
     public function test_api_lead_uses_assignment_when_owner_blank(): void

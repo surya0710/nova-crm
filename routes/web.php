@@ -31,6 +31,8 @@ use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\WorkflowController;
+use App\Http\Controllers\WorkflowExecutionController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -198,6 +200,17 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::put('assignments/rules/{rule}', [AssignmentSettingsController::class, 'updateRule'])
             ->middleware('permission:assignments.manage')
             ->name('assignments.rules.update');
+
+        Route::post('workflows/{workflow}/enable', [WorkflowController::class, 'enable'])
+            ->name('workflows.enable');
+        Route::post('workflows/{workflow}/disable', [WorkflowController::class, 'disable'])
+            ->name('workflows.disable');
+        Route::get('workflows/{workflow}/executions', [WorkflowExecutionController::class, 'index'])
+            ->name('workflows.executions.index');
+        Route::get('workflows/{workflow}/executions/{execution}', [WorkflowExecutionController::class, 'show'])
+            ->scopeBindings()
+            ->name('workflows.executions.show');
+        Route::resource('workflows', WorkflowController::class);
 
         Route::get('marketing/providers/{provider}/connect', [MarketingProviderOAuthController::class, 'connect'])
             ->middleware('permission:integrations.manage')

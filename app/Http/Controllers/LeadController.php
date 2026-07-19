@@ -11,7 +11,7 @@ use App\Http\Requests\UpdateLeadFollowUpRequest;
 use App\Http\Requests\UpdateLeadRequest;
 use App\Http\Requests\UpdateLeadStatusRequest;
 use App\Models\Lead;
-use App\Models\LeadNote;
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
@@ -19,12 +19,14 @@ use App\Services\LeadService;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
+use App\Services\NoteService;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
@@ -41,6 +43,7 @@ class LeadController extends Controller
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
+        protected NoteService $noteService,
     ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
@@ -118,8 +121,11 @@ class LeadController extends Controller
         $validated = $this->followUpService->normalizeValidatedFollowUp($request->validated());
         $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'lead', 'create', $request);
 
-        $lead = $this->leadService->create($validated, $request->user());
-        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $lead = $this->leadService->create(
+            $validated,
+            $request->user(),
+            metadataValues: $metadataValues,
+        );
 
         return redirect()
             ->route('leads.show', $lead)
@@ -155,8 +161,12 @@ class LeadController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest($lead, $tenant->get(), 'lead', 'edit', $request);
 
-        $lead->update($this->followUpService->normalizeValidatedFollowUp($request->validated()));
-        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $this->leadService->update(
+            $lead,
+            $this->followUpService->normalizeValidatedFollowUp($request->validated()),
+            $request->user(),
+            $metadataValues,
+        );
 
         return redirect()
             ->route('leads.show', $lead)
@@ -165,7 +175,7 @@ class LeadController extends Controller
 
     public function updateStatus(UpdateLeadStatusRequest $request, Lead $lead): RedirectResponse
     {
-        $lead->update(['status' => $request->validated('status')]);
+        $this->leadService->changeStatus($lead, $request->validated('status'), $request->user());
 
         return redirect()
             ->route('leads.show', $lead)
@@ -183,12 +193,7 @@ class LeadController extends Controller
 
     public function storeNote(StoreLeadNoteRequest $request, Lead $lead): RedirectResponse
     {
-        LeadNote::query()->create([
-            'organization_id' => $lead->organization_id,
-            'lead_id' => $lead->id,
-            'user_id' => $request->user()->id,
-            'body' => $request->validated('body'),
-        ]);
+        $this->noteService->add($lead, $request->validated('body'), $request->user());
 
         return redirect()
             ->route('leads.show', $lead)
@@ -276,9 +281,9 @@ class LeadController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    protected function organizationMembers(?\App\Models\Organization $organization)
+    protected function organizationMembers(?Organization $organization)
     {
         if (! $organization) {
             return collect();

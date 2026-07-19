@@ -2,9 +2,15 @@
 
 namespace App\Services\Assignment;
 
+use App\Events\LeadAssigned;
 use App\Models\AssignmentHistory;
+use App\Models\Lead;
 use App\Models\User;
+use App\Services\AuditLogger;
+use App\Workflow\WorkflowRuntimeContext;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Sole orchestration entry for assignment resolution and history.
@@ -15,6 +21,7 @@ class AssignmentService
 {
     public function __construct(
         protected AssignmentRuleEngine $engine,
+        protected AuditLogger $auditLogger,
     ) {}
 
     /**
@@ -92,5 +99,71 @@ class AssignmentService
         $owner = $data['assigned_to'];
 
         return $owner !== null && $owner !== '' && (int) $owner > 0;
+    }
+
+    public function assignOwner(Model $entity, ?int $userId, User $actor, bool $automatic = false): AssignmentResult
+    {
+        if (! in_array('assigned_to', $entity->getFillable(), true)) {
+            throw ValidationException::withMessages(['subject' => 'This entity cannot be assigned.']);
+        }
+
+        $organization = $entity->organization;
+        if (! $organization?->users()->whereKey($actor->id)->exists()) {
+            throw ValidationException::withMessages(['actor' => 'The actor is not an organization member.']);
+        }
+
+        return DB::transaction(function () use ($entity, $userId, $actor, $automatic) {
+            $locked = $entity::query()->whereKey($entity->getKey())->lockForUpdate()->firstOrFail();
+            $previous = $locked->assigned_to ? (int) $locked->assigned_to : null;
+            $context = new AssignmentContext(
+                (int) $locked->organization_id,
+                strtolower(class_basename($locked)),
+                ['status' => $locked->getAttribute('status'), 'metadata' => $locked->getAttribute('custom_fields') ?? []],
+            );
+
+            if ($automatic) {
+                $result = $this->resolve($context);
+                if (! $result->matched || ! $result->assigneeId()) {
+                    return $result;
+                }
+            } else {
+                $assignee = $userId
+                    ? $locked->organization->users()->whereKey($userId)->first()
+                    : null;
+                if ($userId && ! $assignee) {
+                    throw ValidationException::withMessages(['user_id' => 'The owner is not an organization member.']);
+                }
+                $result = new AssignmentResult($assignee, 'manual', matched: true);
+            }
+
+            $locked->updateQuietly(['assigned_to' => $result->assigneeId()]);
+            $reason = $automatic
+                ? AssignmentHistory::REASON_AUTOMATIC
+                : ($previous === null ? AssignmentHistory::REASON_MANUAL : AssignmentHistory::REASON_REASSIGNED);
+            $this->recordHistory($context, (int) $locked->getKey(), $result, $reason, $actor, $previous);
+
+            if ($previous !== $result->assigneeId()) {
+                $this->auditLogger->log($locked, 'assigned', [
+                    'from' => $previous,
+                    'to' => $result->assigneeId(),
+                    'via' => 'assignment_platform',
+                    'strategy' => $result->strategy,
+                    'rule_id' => $result->rule?->id,
+                    'reason' => $reason,
+                ], $actor);
+            }
+
+            if ($locked instanceof Lead && $previous !== $result->assigneeId()) {
+                $runtime = app(WorkflowRuntimeContext::class);
+                event(LeadAssigned::forModel(
+                    $locked->fresh(),
+                    ['previous_owner_id' => $previous, 'owner_id' => $result->assigneeId(), 'actor_id' => $actor->id],
+                    causationId: $runtime->causationId,
+                    depth: $runtime->causationId ? $runtime->depth + 1 : 0,
+                ));
+            }
+
+            return $result;
+        });
     }
 }

@@ -18,6 +18,7 @@
     $iconShield = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>';
     $iconTask = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
     $iconFields = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h10M4 18h7M17 10v8m-4-4h8"/></svg>';
+    $iconWorkflow = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 7h5m4 0h5M8 7a2 2 0 11-4 0 2 2 0 014 0zm12 10h-5m-4 0H5m11 0a2 2 0 104 0 2 2 0 00-4 0zM12 7v10"/></svg>';
 @endphp
 
 <aside class="h-full bg-slate-900 text-white flex flex-col w-64 overflow-hidden">
@@ -140,6 +141,11 @@
                     @if ($can('assignments.view') || $can('assignments.manage'))
                         <x-sidebar-link :href="route('assignments.index')" :active="request()->routeIs('assignments.*')" :icon="$iconUsers">
                             {{ __('Assignments') }}
+                        </x-sidebar-link>
+                    @endif
+                    @if ($can('workflows.view'))
+                        <x-sidebar-link :href="route('workflows.index')" :active="request()->routeIs('workflows.*')" :icon="$iconWorkflow">
+                            {{ __('Workflows') }}
                         </x-sidebar-link>
                     @endif
                     @if ($can('metadata.view') || $can('metadata.manage'))

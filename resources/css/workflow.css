@@ -1,0 +1,31 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+.workflow-bootstrap {
+    --bs-primary: #4f46e5;
+    --bs-primary-rgb: 79, 70, 229;
+    --bs-link-color: #4f46e5;
+    --bs-link-hover-color: #3730a3;
+}
+
+.workflow-bootstrap .workflow-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.workflow-bootstrap .condition-group {
+    border-left: 3px solid #818cf8;
+    background: #f8fafc;
+}
+
+.workflow-bootstrap .condition-row {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.workflow-bootstrap .execution-json {
+    max-height: 28rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

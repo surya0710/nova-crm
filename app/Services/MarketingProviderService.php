@@ -9,6 +9,8 @@ use App\Contracts\MarketingProviderLeadImportInterface;
 use App\Contracts\MarketingProviderLeadRetrievalInterface;
 use App\Contracts\MarketingProviderSynchronizationInterface;
 use App\Contracts\MarketingProviderWebhookInterface;
+use App\Events\MarketingLeadImported;
+use App\Models\AssignmentHistory;
 use App\Models\MarketingConversion;
 use App\Models\MarketingProvider;
 use App\Models\MarketingProviderCredential;
@@ -1783,7 +1785,7 @@ class MarketingProviderService
             $lead = $this->leads->create(
                 $leadPayload,
                 $user,
-                \App\Models\AssignmentHistory::REASON_IMPORTED,
+                AssignmentHistory::REASON_IMPORTED,
             );
 
             MarketingProviderImportedLead::query()->create([
@@ -1795,6 +1797,12 @@ class MarketingProviderService
                 'raw_payload' => $entry['raw'] ?? $entry,
                 'imported_at' => now(),
             ]);
+
+            event(MarketingLeadImported::forModel($lead->fresh(), [
+                'actor_id' => $user->id,
+                'marketing_provider_id' => $provider->id,
+                'external_lead_id' => $externalLeadId,
+            ]));
 
             return ['result' => 'imported', 'lead_id' => $lead->id, 'error' => null];
         } catch (Throwable $e) {

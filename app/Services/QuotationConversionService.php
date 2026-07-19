@@ -11,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 class QuotationConversionService
 {
-    public function __construct(protected AuditLogger $auditLogger) {}
+    public function __construct(
+        protected AuditLogger $auditLogger,
+        protected InvoiceService $invoices,
+    ) {}
 
     public function convert(Quotation $quotation, User $user): Invoice
     {
@@ -30,39 +33,7 @@ class QuotationConversionService
 
             $this->assertEligible($quotation);
 
-            $organization = $quotation->organization;
-
-            $invoice = Invoice::query()->create([
-                'number' => Invoice::generateNumber($organization),
-                'customer_id' => $quotation->customer_id,
-                'quotation_id' => $quotation->id,
-                'opportunity_id' => $quotation->opportunity_id,
-                'title' => $quotation->title,
-                'status' => 'draft',
-                'issue_date' => now()->toDateString(),
-                'due_date' => ($quotation->valid_until ?? now()->addDays(30))->toDateString(),
-                'currency' => $quotation->currency,
-                'subtotal' => $quotation->subtotal,
-                'discount_amount' => $quotation->discount_amount,
-                'tax_total' => $quotation->tax_total,
-                'total' => $quotation->total,
-                'amount_paid' => 0,
-                'notes' => $this->buildInvoiceNotes($quotation),
-                'created_by' => $user->id,
-            ]);
-
-            foreach ($quotation->items as $item) {
-                $invoice->items()->create([
-                    'product_id' => $item->product_id,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'tax_rate' => $item->tax_rate,
-                    'discount_percent' => $item->discount_percent,
-                    'line_total' => $item->line_total,
-                    'sort_order' => $item->sort_order,
-                ]);
-            }
+            $invoice = $this->invoices->createFromQuotation($quotation, $user);
 
             $previousStatus = $quotation->status;
 
@@ -132,17 +103,6 @@ class QuotationConversionService
             ->where('status', '!=', 'cancelled')
             ->latest('id')
             ->first();
-    }
-
-    protected function buildInvoiceNotes(Quotation $quotation): ?string
-    {
-        $reference = __('Generated from quotation :number.', ['number' => $quotation->number]);
-
-        if ($quotation->notes) {
-            return $reference."\n\n".$quotation->notes;
-        }
-
-        return $reference;
     }
 
     protected function notifyInternalUsers(Quotation $quotation, Invoice $invoice, User $converter): void

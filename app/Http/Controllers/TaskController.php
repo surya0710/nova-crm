@@ -9,15 +9,17 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\TaskService;
 use App\Services\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class TaskController extends Controller
 {
-    public function __construct()
+    public function __construct(protected TaskService $taskService)
     {
         $this->authorizeResource(Task::class, 'task');
     }
@@ -93,18 +95,14 @@ class TaskController extends Controller
         $validated = $request->validated();
         $taskable = $this->resolveTaskable($validated);
 
-        $task = Task::query()->create([
+        $task = $this->taskService->create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'priority' => $validated['priority'],
             'due_at' => $validated['due_at'] ?? null,
             'assigned_to' => $validated['assigned_to'] ?? null,
-            'taskable_type' => $taskable?->getMorphClass(),
-            'taskable_id' => $taskable?->getKey(),
-            'created_by' => $request->user()->id,
-            'completed_at' => $validated['status'] === 'completed' ? now() : null,
-        ]);
+        ], $request->user(), $taskable);
 
         if ($request->boolean('redirect_back') && $taskable) {
             return back()->with('status', 'task-created');
@@ -185,7 +183,7 @@ class TaskController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
     protected function organizationMembers($organization)
     {

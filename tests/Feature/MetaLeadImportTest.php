@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\MarketingLeadImported;
 use App\Models\Lead;
 use App\Models\MarketingProvider;
 use App\Models\MarketingProviderImportedLead;
@@ -14,6 +15,7 @@ use App\Services\MarketingProviderService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -145,7 +147,14 @@ class MetaLeadImportTest extends TestCase
         app(TenantContext::class)->set($organization);
         $provider = $this->connectMeta($organization);
 
-        $result = $this->providers->importLeadEntries($provider, $user);
+        Event::fake([MarketingLeadImported::class]);
+        $transactionManager = app('db.transactions');
+        app()->offsetUnset('db.transactions');
+        try {
+            $result = $this->providers->importLeadEntries($provider, $user);
+        } finally {
+            app()->instance('db.transactions', $transactionManager);
+        }
 
         $this->assertTrue($result['ok']);
         $this->assertSame(2, $result['imported']);
@@ -172,6 +181,12 @@ class MetaLeadImportTest extends TestCase
         $this->assertSame(2, $run->imported_count);
         $this->assertSame(0, $run->skipped_count);
         $this->assertSame($user->id, $run->triggered_by);
+        Event::assertDispatchedTimes(MarketingLeadImported::class, 2);
+        Event::assertDispatched(MarketingLeadImported::class, fn (MarketingLeadImported $event): bool => $event->organizationId === $organization->id
+            && $event->subjectId === $jane->id
+            && (int) $event->payload['actor_id'] === $user->id
+            && $event->payload['marketing_provider_id'] === $provider->id
+            && $event->payload['external_lead_id'] === 'meta_lead_1');
     }
 
     public function test_repeat_import_skips_duplicates(): void

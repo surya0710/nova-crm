@@ -10,6 +10,7 @@ use App\Models\Organization;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Throwable;
 
@@ -44,8 +45,12 @@ class MetadataValueStorageService
      *     ignored: array<int, string>
      * }
      */
-    public function mergeValues(Model $record, array $values, bool $allowUnknown = false): array
-    {
+    public function mergeValues(
+        Model $record,
+        array $values,
+        bool $allowUnknown = false,
+        bool $rejectUnknown = false,
+    ): array {
         $entityType = $this->entityTypeFor($record);
         $organizationId = $this->organizationIdFor($record);
         $definitions = $this->activeDefinitions($organizationId, $entityType);
@@ -59,7 +64,13 @@ class MetadataValueStorageService
             $definition = $definitions->get($key);
 
             if (! $definition && ! $allowUnknown) {
+                if ($rejectUnknown) {
+                    throw ValidationException::withMessages([
+                        "values.{$key}" => 'The metadata field is unknown or inactive.',
+                    ]);
+                }
                 $ignored[] = $key;
+
                 continue;
             }
 

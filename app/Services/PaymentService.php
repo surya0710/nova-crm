@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\PaymentReceived;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Payment;
@@ -69,7 +70,14 @@ class PaymentService
 
             $this->notifyPaymentRecorded($invoice, $payment, $user);
 
-            return $payment->fresh(['invoice', 'customer', 'recorder']);
+            $payment = $payment->fresh(['invoice', 'customer', 'recorder']);
+            event(PaymentReceived::forModel($payment, [
+                'actor_id' => $user->id,
+                'invoice_id' => $invoice->id,
+                'amount' => (float) $payment->amount,
+            ]));
+
+            return $payment;
         });
     }
 
