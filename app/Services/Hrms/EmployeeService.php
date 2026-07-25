@@ -158,9 +158,10 @@ class EmployeeService
         return app(EmployeeProvisioningService::class)->provisionUserForEmployee($employee, [
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => $data['password'] ?? null,
-            'role' => $data['role'] ?? 'employee',
+            'role' => $data['role'] ?? config('identity.default_employee_role', 'employee'),
             'notify' => $data['notify'] ?? true,
+            'send_invitation' => $data['send_invitation'] ?? true,
+            'portal_access' => $data['portal_access'] ?? true,
         ], $actor);
     }
 

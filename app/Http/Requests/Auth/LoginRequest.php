@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
+use App\Services\Identity\UserAccountService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,8 +44,19 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $email = Str::lower($this->string('email'));
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user) {
+            app(UserAccountService::class)->assertCanLogin($user);
+        }
+
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+
+            if ($user) {
+                app(UserAccountService::class)->recordFailedLogin($user);
+            }
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),

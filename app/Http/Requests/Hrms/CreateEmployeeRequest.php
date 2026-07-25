@@ -68,8 +68,10 @@ class CreateEmployeeRequest extends FormRequest
             'experiences.*.description' => ['nullable', 'string', 'max:5000'],
 
             'create_user' => ['sometimes', 'boolean'],
-            'user_email' => ['nullable', 'email', 'max:255'],
-            'role' => ['nullable', 'string', 'max:100'],
+            'user_email' => ['nullable', 'required_if:create_user,1', 'email', 'max:255'],
+            'role' => ['nullable', 'string', Rule::in(array_keys(config('rbac.roles', [])))],
+            'send_invitation' => ['sometimes', 'boolean'],
+            'portal_access' => ['sometimes', 'boolean'],
         ];
     }
 }

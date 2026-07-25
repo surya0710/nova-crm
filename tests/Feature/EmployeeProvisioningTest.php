@@ -43,9 +43,9 @@ class EmployeeProvisioningTest extends TestCase
 
     public function test_hrms_create_with_user_flag_uses_provisioning(): void
     {
-        [$organization, $hr] = $this->organizationWithHrUser();
+        [$organization, $owner] = $this->organizationWithOwner();
 
-        $this->actingAs($hr)
+        $this->actingAs($owner)
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('hrms.employees.store'), [
                 'first_name' => 'Grace',
@@ -56,12 +56,15 @@ class EmployeeProvisioningTest extends TestCase
                 'user_email' => 'grace@example.com',
                 'email' => 'grace@example.com',
                 'role' => 'employee',
+                'send_invitation' => 1,
+                'portal_access' => 1,
             ])
             ->assertRedirect();
 
         $employee = Employee::query()->where('email', 'grace@example.com')->firstOrFail();
         $this->assertNotNull($employee->user_id);
         $this->assertSame('grace@example.com', $employee->user->email);
+        $this->assertSame(\App\Enums\UserAccountStatus::PendingInvitation, $employee->user->account_status);
     }
 
     public function test_missing_employee_record_renders_empty_state_not_forbidden(): void

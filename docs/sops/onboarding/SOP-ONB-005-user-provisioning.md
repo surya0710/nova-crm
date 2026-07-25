@@ -45,27 +45,32 @@ Create initial administrators and key users with correct roles so the customer c
 
 ### 2. Provision cohort
 
-1. Invite key users within seat limits.
+1. Invite key users from **Administration → Users** (Team). Do **not** set passwords — invitations are emailed automatically.
 2. Assign roles per signed role map (SOP-ADM-004).
-3. Verify MFA expectations with Security (SOP-SEC-002) when enforced.
+3. For employee self-service cohorts, use **HR → Employees** Create Login Account or bulk Generate Login Accounts.
+4. Verify invitees accept the link and set their own password before go-live.
+5. Verify MFA expectations with Security (SOP-SEC-002) when enforced.
 
 ## Validation Checklist
 
 - [ ] Primary admin login verified
-- [ ] Key users invited within seat limits
+- [ ] Key users invited within seat limits (invitation emails sent)
+- [ ] Invitees activated accounts (no pending/expired invitations for go-live cohort)
 - [ ] Roles match signed map
+- [ ] Employee Workspace (ESS) access confirmed where required
 - [ ] No excess seats consumed
 - [ ] Evidence attached to the controlling ticket / change record
 
 ## Rollback Procedure
 
-Disable incorrectly provisioned users; reassign roles; reclaim seats.
+Disable incorrectly provisioned users (or revoke portal access); reassign roles; reclaim seats. Do not reset passwords as an administrator — send a password-reset or re-invitation instead.
 
 ## Exceptions
 
 | Exception | Handling | Approver |
 |-----------|----------|----------|
-| None documented | Follow change-management exception path | Operations Lead |
+| Existing users with legacy admin-set passwords | Leave active; optionally re-invite to standardize | Operations Lead |
+| None other documented | Follow change-management exception path | Operations Lead |
 
 ## Audit Trail
 
@@ -95,6 +100,7 @@ Record the following for every execution:
 
 | Version | Author | Date | Summary | Approval |
 |---------|--------|------|---------|----------|
+| 1.1 | Operations | 2026-07-25 | Invitation-only tenant provisioning; Employee Workspace = ESS (Release 1.1.1) | Operations Lead |
 | 1.0 | Operations | 2026-07-25 | Initial release for Program 15.1.1 SOP library foundation | Operations Lead |
 
 ---

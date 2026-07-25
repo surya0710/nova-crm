@@ -3,11 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserAccountStatus;
 use App\Services\Rbac\AuthorizationService;
 use App\Services\TenantContext;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -22,6 +25,15 @@ class User extends Authenticatable
         'email',
         'password',
         'is_super_admin',
+        'account_status',
+        'portal_access_enabled',
+        'locked_at',
+        'disabled_at',
+        'failed_login_attempts',
+        'last_login_at',
+        'last_logout_at',
+        'login_count',
+        'password_changed_at',
     ];
 
     protected $hidden = [
@@ -35,6 +47,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
+            'account_status' => UserAccountStatus::class,
+            'portal_access_enabled' => 'boolean',
+            'locked_at' => 'datetime',
+            'disabled_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'last_logout_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -43,6 +62,50 @@ class User extends Authenticatable
         return $this->belongsToMany(Organization::class)
             ->withPivot(['role', 'role_id', 'is_owner'])
             ->withTimestamps();
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(UserInvitation::class);
+    }
+
+    public function latestInvitation(): HasOne
+    {
+        return $this->hasOne(UserInvitation::class)->latestOfMany();
+    }
+
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
+
+    public function displayAccountStatus(): string
+    {
+        $status = $this->account_status ?? UserAccountStatus::Active;
+
+        if ($status === UserAccountStatus::PendingInvitation) {
+            $invitation = $this->latestInvitation;
+            if ($invitation && $invitation->isExpired()) {
+                return 'invitation_expired';
+            }
+        }
+
+        return $status->value;
+    }
+
+    public function displayAccountStatusLabel(): string
+    {
+        return match ($this->displayAccountStatus()) {
+            'invitation_expired' => __('Invitation Expired'),
+            default => ($this->account_status ?? UserAccountStatus::Active)->label(),
+        };
+    }
+
+    public function canAuthenticate(): bool
+    {
+        $status = $this->account_status ?? UserAccountStatus::Active;
+
+        return $status->canAuthenticate();
     }
 
     public function ownedOrganizations(): BelongsToMany

@@ -345,6 +345,9 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->except(['create', 'show', 'edit'])
             ->middleware('permission:hrms.view')
             ->names('hrms.teams');
+        Route::post('hrms/employees/bulk-provision', [HrmsEmployeeController::class, 'bulkProvision'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.bulk-provision');
         Route::resource('hrms/employees', HrmsEmployeeController::class)
             ->middleware('permission:hrms.view')
             ->names('hrms.employees');
@@ -357,6 +360,24 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::delete('hrms/employees/{employee}/unlink-user', [HrmsEmployeeController::class, 'unlinkUser'])
             ->middleware('permission:hrms.manage')
             ->name('hrms.employees.unlink-user');
+        Route::post('hrms/employees/{employee}/resend-invitation', [HrmsEmployeeController::class, 'resendInvitation'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.resend-invitation');
+        Route::post('hrms/employees/{employee}/portal/enable', [HrmsEmployeeController::class, 'enablePortal'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.portal.enable');
+        Route::post('hrms/employees/{employee}/portal/disable', [HrmsEmployeeController::class, 'disablePortal'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.portal.disable');
+        Route::post('hrms/employees/{employee}/account/lock', [HrmsEmployeeController::class, 'lockAccount'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.account.lock');
+        Route::post('hrms/employees/{employee}/account/unlock', [HrmsEmployeeController::class, 'unlockAccount'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.account.unlock');
+        Route::post('hrms/employees/{employee}/password-reset', [HrmsEmployeeController::class, 'resetPassword'])
+            ->middleware('permission:hrms.manage')
+            ->name('hrms.employees.password-reset');
 
         Route::prefix('hrms/employees/{employee}')->scopeBindings()->group(function () {
             Route::get('documents', [HrmsEmployeeDocumentController::class, 'index'])

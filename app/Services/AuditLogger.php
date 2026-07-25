@@ -25,7 +25,13 @@ class AuditLogger
     {
         $organizationId = $model instanceof Organization
             ? $model->id
-            : ($model->organization_id ?? app(TenantContext::class)->id());
+            : ($model->organization_id
+                ?? ($properties['organization_id'] ?? null)
+                ?? app(TenantContext::class)->id());
+
+        if ($organizationId === null) {
+            throw new \RuntimeException('Cannot write audit log without an organization context.');
+        }
 
         $resolvedUser = $user;
         if ($resolvedUser === null) {

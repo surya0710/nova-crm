@@ -18,7 +18,7 @@
                     <x-slot:header>
                         <div>
                             <h3 class="font-semibold text-ink-heading">{{ __('Invite User') }}</h3>
-                            <p class="text-sm text-ink-muted mt-0.5">{{ __('Create a new account or add an existing user by email.') }}</p>
+                            <p class="text-sm text-ink-muted mt-0.5">{{ __('Invite a new teammate or add an existing user by email. They will set their own password.') }}</p>
                         </div>
                     </x-slot:header>
                     <form id="invite" method="POST" action="{{ route('team.store') }}" class="space-y-5">
@@ -38,16 +38,16 @@
                                     @endforeach
                                 </x-forms.select>
                             </x-forms.field>
-                            <x-forms.field :label="__('Password')" name="password">
-                                <x-forms.input id="password" type="password" name="password" autocomplete="new-password" />
-                                <p class="mt-1 text-xs text-ink-muted">{{ __('Required for new accounts. Leave blank if the user already exists.') }}</p>
-                            </x-forms.field>
-                            <x-forms.field :label="__('Confirm Password')" name="password_confirmation" class="sm:col-span-2">
-                                <x-forms.input id="password_confirmation" type="password" name="password_confirmation" autocomplete="new-password" class="sm:max-w-md" />
-                            </x-forms.field>
+                            <div class="sm:col-span-2">
+                                <p class="text-sm text-ink-muted">{{ __('New users receive an invitation email to set their own password. Administrators never assign passwords.') }}</p>
+                                <label class="mt-2 inline-flex items-center gap-2 text-sm text-ink-heading">
+                                    <input type="checkbox" name="send_invitation" value="1" @checked(old('send_invitation', true)) class="rounded border-line text-primary-600 focus:ring-primary-500">
+                                    {{ __('Send invitation email') }}
+                                </label>
+                            </div>
                         </div>
                         <div class="flex justify-end">
-                            <x-ui.button type="submit" variant="primary">{{ __('Add Member') }}</x-ui.button>
+                            <x-ui.button type="submit" variant="primary">{{ __('Send Invitation') }}</x-ui.button>
                         </div>
                     </form>
                 </x-ui.card>
@@ -73,6 +73,9 @@
                                 <tr>
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Member') }}</th>
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Role') }}</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted hidden md:table-cell">{{ __('Account') }}</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted hidden lg:table-cell">{{ __('Portal') }}</th>
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted hidden lg:table-cell">{{ __('Last login') }}</th>
                                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted hidden sm:table-cell">{{ __('Joined') }}</th>
                                     <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Actions') }}</th>
                                 </tr>
@@ -116,6 +119,18 @@
                                                     {{ $member->organizationRole?->name ?? '—' }}
                                                 </x-ui.badge>
                                             @endif
+                                        </td>
+                                        <td class="px-5 py-4 hidden md:table-cell">
+                                            <x-ui.badge variant="neutral">{{ $member->displayAccountStatusLabel() }}</x-ui.badge>
+                                            @if ($member->employees->isNotEmpty())
+                                                <p class="mt-1 text-xs text-ink-muted">{{ __('Linked:') }} {{ $member->employees->first()->full_name }}</p>
+                                            @endif
+                                        </td>
+                                        <td class="px-5 py-4 hidden lg:table-cell text-sm text-ink-muted">
+                                            {{ $member->portal_access_enabled ? __('Enabled') : __('Disabled') }}
+                                        </td>
+                                        <td class="px-5 py-4 hidden lg:table-cell text-sm text-ink-muted">
+                                            {{ $member->last_login_at?->format('M j, Y') ?? '—' }}
                                         </td>
                                         <td class="px-5 py-4 hidden sm:table-cell text-sm text-ink-muted">
                                             {{ $member->pivot->created_at?->format('M j, Y') ?? '—' }}

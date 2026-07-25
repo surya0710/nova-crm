@@ -91,4 +91,46 @@
             </x-forms.field>
         </div>
     </x-entity.section>
+
+    @if (! $employee->exists || ! $employee->user_id)
+        <x-entity.section :title="__('Login account')">
+            <div class="space-y-4" x-data="{ createLogin: {{ old('create_user', false) ? 'true' : 'false' }} }">
+                <label class="inline-flex items-center gap-2 text-sm text-ink-heading">
+                    <input
+                        type="checkbox"
+                        name="create_user"
+                        value="1"
+                        x-model="createLogin"
+                        @checked(old('create_user'))
+                        class="rounded border-line text-primary-600 focus:ring-primary-500"
+                    >
+                    {{ __('Create Login Account') }}
+                </label>
+                <p class="text-xs text-ink-muted">{{ __('The employee will receive an invitation to set their own password. Administrators never assign passwords.') }}</p>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2" x-show="createLogin" x-cloak>
+                    <x-forms.field :label="__('Work email')" name="user_email" required>
+                        <x-forms.input type="email" name="user_email" :value="old('user_email', $employee->email)" />
+                    </x-forms.field>
+                    <x-forms.field :label="__('Role')" name="role">
+                        <x-forms.select name="role">
+                            @foreach (collect(config('rbac.roles', []))->except('organization-owner') as $slug => $role)
+                                <option value="{{ $slug }}" @selected(old('role', config('identity.default_employee_role', 'employee')) === $slug)>
+                                    {{ $role['name'] ?? $slug }}
+                                </option>
+                            @endforeach
+                        </x-forms.select>
+                    </x-forms.field>
+                    <label class="inline-flex items-center gap-2 text-sm text-ink-heading">
+                        <input type="checkbox" name="send_invitation" value="1" @checked(old('send_invitation', true)) class="rounded border-line text-primary-600 focus:ring-primary-500">
+                        {{ __('Send Invitation') }}
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-ink-heading">
+                        <input type="checkbox" name="portal_access" value="1" @checked(old('portal_access', true)) class="rounded border-line text-primary-600 focus:ring-primary-500">
+                        {{ __('Portal Access (Employee Workspace)') }}
+                    </label>
+                </div>
+            </div>
+        </x-entity.section>
+    @endif
 </div>

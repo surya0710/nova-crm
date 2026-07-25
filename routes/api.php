@@ -59,6 +59,10 @@ use App\Http\Controllers\Dashboard\RecentActivitiesController;
 use App\Http\Controllers\Dashboard\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
+Route::prefix('v1')->group(function () {
+    require __DIR__.'/api_identity.php';
+});
+
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organization', 'ensure.organization', 'organization.api'])->group(function () {
     require __DIR__.'/api_rbac.php';
 

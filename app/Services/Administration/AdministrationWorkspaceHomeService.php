@@ -80,7 +80,7 @@ class AdministrationWorkspaceHomeService
             $kpis[] = [
                 'label' => __('Pending invitations'),
                 'value' => $this->pendingInvitationCount($organization),
-                'hint' => __('Unverified members'),
+                'hint' => __('Awaiting acceptance'),
             ];
         }
 
@@ -118,7 +118,7 @@ class AdministrationWorkspaceHomeService
             if ($pending > 0 && Route::has('team.index')) {
                 $items->push([
                     'title' => __(':count pending invitations', ['count' => $pending]),
-                    'subtitle' => __('Members awaiting email verification'),
+                    'subtitle' => __('Members awaiting invitation acceptance'),
                     'href' => route('team.index'),
                     'badge' => __('Invite'),
                 ]);
@@ -202,12 +202,22 @@ class AdministrationWorkspaceHomeService
             return collect();
         }
 
-        return $organization->users()->whereNull('email_verified_at')->orderBy('name')->limit(8)->get();
+        return $organization->users()
+            ->where('account_status', \App\Enums\UserAccountStatus::PendingInvitation->value)
+            ->orderBy('name')
+            ->limit(8)
+            ->get();
     }
 
     protected function pendingInvitationCount($organization): int
     {
-        return $organization ? $organization->users()->whereNull('email_verified_at')->count() : 0;
+        if (! $organization) {
+            return 0;
+        }
+
+        return $organization->users()
+            ->where('account_status', \App\Enums\UserAccountStatus::PendingInvitation->value)
+            ->count();
     }
 
     protected function recentActivity(User $user): Collection

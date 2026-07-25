@@ -29,8 +29,8 @@ class TeamTest extends TestCase
             ->get(route('team.index'));
 
         $response->assertOk();
-        $response->assertSee('Team');
-        $response->assertSee('Add Team Member');
+        $response->assertSee('Users');
+        $response->assertSee('Invite User');
     }
 
     public function test_employee_cannot_view_team_page(): void
@@ -54,8 +54,7 @@ class TeamTest extends TestCase
                 'name' => 'New Sales Rep',
                 'email' => 'sales@example.com',
                 'role' => 'sales-executive',
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'send_invitation' => 1,
             ]);
 
         $response->assertRedirect(route('team.index'));
@@ -65,6 +64,7 @@ class TeamTest extends TestCase
         $this->assertNotNull($newUser);
         $this->assertTrue($newUser->belongsToOrganization($organization));
         $this->assertEquals('Sales Executive', $newUser->getRoleNameInOrganization($organization));
+        $this->assertSame(\App\Enums\UserAccountStatus::PendingInvitation, $newUser->account_status);
     }
 
     public function test_manager_can_add_existing_user_to_organization(): void

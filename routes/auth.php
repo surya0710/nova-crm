@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AcceptInvitationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -33,6 +34,14 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    Route::get('invitations/{token}', [AcceptInvitationController::class, 'show'])
+        ->middleware('throttle:20,1')
+        ->name('invitations.accept');
+
+    Route::post('invitations/{token}', [AcceptInvitationController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('invitations.accept.store');
 });
 
 Route::middleware('auth')->group(function () {

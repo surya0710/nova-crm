@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use App\Services\Identity\UserAccountService;
 use App\Services\Navigation\WorkspaceResolver;
 use App\Services\Platform\OrganizationLifecycleService;
 use App\Services\Theme\ThemeService;
@@ -24,12 +26,17 @@ class AuthenticatedSessionController extends Controller
         OrganizationLifecycleService $lifecycle,
         ThemeService $theme,
         WorkspaceResolver $workspaces,
+        UserAccountService $accounts,
     ): RedirectResponse {
         $request->authenticate();
 
         $request->session()->regenerate();
 
         $user = Auth::user();
+        if ($user instanceof User) {
+            $accounts->recordSuccessfulLogin($user);
+        }
+
         $organization = $user->organizations()->first();
 
         if ($organization) {
@@ -45,8 +52,13 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('dashboard'));
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, UserAccountService $accounts): RedirectResponse
     {
+        $user = Auth::user();
+        if ($user instanceof User) {
+            $accounts->recordLogout($user);
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

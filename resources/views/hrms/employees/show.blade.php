@@ -58,6 +58,107 @@
             </x-entity.definition-list>
         </x-entity.section>
 
+        <x-entity.section :title="__('Login & portal access')">
+            @if ($employee->user)
+                <x-entity.definition-list>
+                    <x-entity.definition-item :label="__('Account status')">{{ $employee->user->displayAccountStatusLabel() }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Portal access')">{{ $employee->user->portal_access_enabled ? __('Enabled') : __('Disabled') }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Last login')">{{ $loginActivity['last_login_at'] ? \Illuminate\Support\Carbon::parse($loginActivity['last_login_at'])->format('M j, Y g:i A') : '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Last logout')">{{ $loginActivity['last_logout_at'] ? \Illuminate\Support\Carbon::parse($loginActivity['last_logout_at'])->format('M j, Y g:i A') : '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Login count')">{{ $loginActivity['login_count'] ?? 0 }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Failed attempts')">{{ $loginActivity['failed_login_attempts'] ?? 0 }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Last password change')">{{ $loginActivity['password_changed_at'] ? \Illuminate\Support\Carbon::parse($loginActivity['password_changed_at'])->format('M j, Y g:i A') : '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Invitation')">
+                        @if (($invitationStatus['invitation']['accepted_at'] ?? null))
+                            {{ __('Accepted') }}
+                        @elseif (($invitationStatus['invitation']['is_expired'] ?? false))
+                            {{ __('Expired') }}
+                        @elseif (($invitationStatus['invitation']['is_pending'] ?? false))
+                            {{ __('Pending') }}
+                            @if ($invitationStatus['invitation']['expires_at'] ?? null)
+                                <span class="text-ink-muted text-xs">({{ __('expires') }} {{ \Illuminate\Support\Carbon::parse($invitationStatus['invitation']['expires_at'])->format('M j, Y') }})</span>
+                            @endif
+                        @else
+                            —
+                        @endif
+                    </x-entity.definition-item>
+                </x-entity.definition-list>
+
+                @if (auth()->user()->hasPermission('hrms.manage'))
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        @if ($employee->user->displayAccountStatus() !== 'active' || ($invitationStatus['invitation']['is_pending'] ?? false) || ($invitationStatus['invitation']['is_expired'] ?? false))
+                            <form method="POST" action="{{ route('hrms.employees.resend-invitation', $employee) }}">
+                                @csrf
+                                <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Resend Invitation') }}</x-ui.button>
+                            </form>
+                        @endif
+                        @if ($employee->user->portal_access_enabled)
+                            <form method="POST" action="{{ route('hrms.employees.portal.disable', $employee) }}">
+                                @csrf
+                                <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Disable Portal Access') }}</x-ui.button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('hrms.employees.portal.enable', $employee) }}">
+                                @csrf
+                                <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Enable Portal Access') }}</x-ui.button>
+                            </form>
+                        @endif
+                        @if ($employee->user->account_status?->value === 'locked')
+                            <form method="POST" action="{{ route('hrms.employees.account.unlock', $employee) }}">
+                                @csrf
+                                <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Unlock Account') }}</x-ui.button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('hrms.employees.account.lock', $employee) }}">
+                                @csrf
+                                <x-ui.button type="submit" variant="ghost" size="sm">{{ __('Lock Account') }}</x-ui.button>
+                            </form>
+                        @endif
+                        <form method="POST" action="{{ route('hrms.employees.password-reset', $employee) }}">
+                            @csrf
+                            <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Send Password Reset') }}</x-ui.button>
+                        </form>
+                    </div>
+                @endif
+            @else
+                <p class="text-sm text-ink-muted mb-3">{{ __('This employee does not have a login account yet.') }}</p>
+                @if (auth()->user()->hasPermission('hrms.manage'))
+                    <form method="POST" action="{{ route('hrms.employees.link-user', $employee) }}" class="space-y-3" x-data="{ createLogin: true }">
+                        @csrf
+                        <input type="hidden" name="create_user" value="1">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <x-forms.field :label="__('Name')" name="name">
+                                <x-forms.input name="name" :value="old('name', $employee->full_name)" required />
+                            </x-forms.field>
+                            <x-forms.field :label="__('Work email')" name="email">
+                                <x-forms.input type="email" name="email" :value="old('email', $employee->email)" required />
+                            </x-forms.field>
+                            <x-forms.field :label="__('Role')" name="role">
+                                <x-forms.select name="role">
+                                    @foreach (collect(config('rbac.roles', []))->except('organization-owner') as $slug => $role)
+                                        <option value="{{ $slug }}" @selected(old('role', config('identity.default_employee_role', 'employee')) === $slug)>
+                                            {{ $role['name'] ?? $slug }}
+                                        </option>
+                                    @endforeach
+                                </x-forms.select>
+                            </x-forms.field>
+                        </div>
+                        <label class="inline-flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="send_invitation" value="1" checked class="rounded border-line text-primary-600">
+                            {{ __('Send Invitation') }}
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="portal_access" value="1" checked class="rounded border-line text-primary-600">
+                            {{ __('Portal Access') }}
+                        </label>
+                        <div>
+                            <x-ui.button type="submit" variant="primary" size="sm">{{ __('Create Login Account') }}</x-ui.button>
+                        </div>
+                    </form>
+                @endif
+            @endif
+        </x-entity.section>
+
         <x-entity.section :title="__('Emergency contacts')">
             @forelse ($employee->emergencyContacts as $contact)
                 <div class="flex flex-wrap items-baseline justify-between gap-2 py-2 border-b border-line last:border-0 text-sm">
@@ -179,21 +280,22 @@
                 </form>
             </x-entity.section>
 
-            <x-entity.section :title="__('Link user account')">
-                <form method="POST" action="{{ route('hrms.employees.link-user', $employee) }}" class="space-y-3">
-                    @csrf
-                    <x-forms.field :label="__('User')" name="user_id">
-                        <x-forms.select name="user_id">
-                            <option value="">{{ __('Select User') }}</option>
-                            @foreach ($organizationUsers as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
-                            @endforeach
-                        </x-forms.select>
-                    </x-forms.field>
-                    <x-ui.button type="submit" variant="primary" size="sm">{{ __('Link User') }}</x-ui.button>
-                </form>
-                @if ($employee->user_id)
-                    <form method="POST" action="{{ route('hrms.employees.unlink-user', $employee) }}" class="mt-3">
+            <x-entity.section :title="__('Link existing user')">
+                @if (! $employee->user_id)
+                    <form method="POST" action="{{ route('hrms.employees.link-user', $employee) }}" class="space-y-3">
+                        @csrf
+                        <x-forms.field :label="__('User')" name="user_id">
+                            <x-forms.select name="user_id">
+                                <option value="">{{ __('Select User') }}</option>
+                                @foreach ($organizationUsers as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                                @endforeach
+                            </x-forms.select>
+                        </x-forms.field>
+                        <x-ui.button type="submit" variant="primary" size="sm">{{ __('Link User') }}</x-ui.button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('hrms.employees.unlink-user', $employee) }}" class="mt-1">
                         @csrf
                         @method('DELETE')
                         <x-ui.button type="submit" variant="ghost" size="sm">{{ __('Unlink User') }}</x-ui.button>

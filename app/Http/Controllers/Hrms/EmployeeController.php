@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Hrms;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Hrms\BulkProvisionEmployeesRequest;
 use App\Http\Requests\Hrms\CreateEmployeeRequest;
 use App\Http\Requests\Hrms\ExitEmployeeRequest;
 use App\Http\Requests\Hrms\LinkEmployeeUserRequest;
@@ -14,6 +15,9 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Services\Hrms\EmployeeProvisioningService;
 use App\Services\Hrms\EmployeeService;
+use App\Services\Identity\BulkEmployeeUserProvisioningService;
+use App\Services\Identity\UserAccountService;
+use App\Services\Identity\UserInvitationService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -24,6 +28,9 @@ class EmployeeController extends Controller
         protected EmployeeService $service,
         protected EmployeeProvisioningService $provisioning,
         protected TenantContext $tenantContext,
+        protected UserInvitationService $invitations,
+        protected UserAccountService $accounts,
+        protected BulkEmployeeUserProvisioningService $bulkProvisioning,
     ) {
         $this->authorizeResource(Employee::class, 'employee');
     }
@@ -32,7 +39,7 @@ class EmployeeController extends Controller
     {
         return view('hrms.employees.index', [
             'employees' => Employee::query()
-                ->with(['branch', 'department', 'designation', 'reportingManager', 'user'])
+                ->with(['branch', 'department', 'designation', 'reportingManager', 'user.latestInvitation'])
                 ->latest()
                 ->paginate(15),
         ]);
@@ -64,9 +71,12 @@ class EmployeeController extends Controller
                 'user' => [
                     'name' => trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')),
                     'email' => $data['user_email'] ?? $data['email'] ?? null,
-                    'role' => $data['role'] ?? 'employee',
+                    'role' => $data['role'] ?? config('identity.default_employee_role', 'employee'),
                 ],
-                'role' => $data['role'] ?? 'employee',
+                'role' => $data['role'] ?? config('identity.default_employee_role', 'employee'),
+                'send_invitation' => $request->boolean('send_invitation', true),
+                'portal_access' => $request->boolean('portal_access', true),
+                'notify' => $request->boolean('send_invitation', true),
             ], $request->user());
         } else {
             $employee = $this->service->createEmployee($data, $request->user());
@@ -83,7 +93,7 @@ class EmployeeController extends Controller
             'department',
             'designation',
             'reportingManager',
-            'user',
+            'user.latestInvitation',
             'emergencyContacts',
             'bankAccounts',
             'identities',
@@ -95,11 +105,21 @@ class EmployeeController extends Controller
             'attendanceRecords' => fn ($query) => $query->latest('attendance_date')->limit(5),
         ]);
 
+        $loginActivity = $employee->user
+            ? $this->accounts->loginActivity($employee->user)
+            : null;
+
+        $invitationStatus = ($employee->user && $organization)
+            ? $this->invitations->invitationStatus($employee->user, $organization)
+            : null;
+
         return view('hrms.employees.show', [
             'employee' => $employee,
             'organizationUsers' => $organization?->users()->orderBy('users.name')->get() ?? collect(),
             'documentCount' => $employee->documents()->count(),
             'assetCount' => $employee->assets()->count(),
+            'loginActivity' => $loginActivity,
+            'invitationStatus' => $invitationStatus,
         ]);
     }
 
@@ -158,5 +178,107 @@ class EmployeeController extends Controller
         $this->service->unlinkUser($employee, request()->user());
 
         return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-employee-user-unlinked');
+    }
+
+    public function resendInvitation(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->invitations->resend($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-invitation-resent');
+    }
+
+    public function enablePortal(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->accounts->enablePortal($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-portal-enabled');
+    }
+
+    public function disablePortal(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->accounts->disablePortal($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-portal-disabled');
+    }
+
+    public function lockAccount(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->accounts->lock($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-account-locked');
+    }
+
+    public function unlockAccount(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->accounts->unlock($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-account-unlocked');
+    }
+
+    public function resetPassword(Employee $employee): RedirectResponse
+    {
+        $this->authorize('manage', $employee);
+        $organization = $this->requireOrganization();
+        $user = $this->requireLinkedUser($employee);
+
+        $this->accounts->sendPasswordReset($user, $organization, request()->user());
+
+        return redirect()->route('hrms.employees.show', $employee)->with('status', 'hrms-password-reset-sent');
+    }
+
+    public function bulkProvision(BulkProvisionEmployeesRequest $request): RedirectResponse
+    {
+        $organization = $this->requireOrganization();
+        $batch = $this->bulkProvisioning->start(
+            $organization,
+            $request->user(),
+            $request->validated('employee_ids'),
+            [
+                'role' => $request->validated('role') ?? config('identity.default_employee_role', 'employee'),
+                'send_invitation' => $request->boolean('send_invitation', true),
+                'portal_access' => $request->boolean('portal_access', true),
+            ]
+        );
+
+        return redirect()
+            ->route('hrms.employees.index')
+            ->with('status', __('Login account generation started (:total employees).', ['total' => $batch->total]));
+    }
+
+    protected function requireOrganization()
+    {
+        $organization = $this->tenantContext->get();
+        abort_unless($organization, 404);
+
+        return $organization;
+    }
+
+    protected function requireLinkedUser(Employee $employee): User
+    {
+        abort_unless($employee->user_id, 422);
+        $user = $employee->user ?? User::query()->find($employee->user_id);
+        abort_unless($user, 404);
+
+        return $user;
     }
 }

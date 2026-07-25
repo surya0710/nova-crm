@@ -23,6 +23,7 @@ class TeamController extends Controller
         abort_unless($organization, 404);
 
         $members = $organization->users()
+            ->with(['latestInvitation', 'employees' => fn ($q) => $q->where('organization_id', $organization->id)])
             ->orderBy('name')
             ->get();
 
@@ -54,7 +55,7 @@ class TeamController extends Controller
         $organization = $tenant->get();
         abort_unless($organization, 404);
 
-        $this->memberService->addMember($organization, $request->validated());
+        $this->memberService->addMember($organization, $request->validated(), $request->user());
 
         return redirect()
             ->route('team.index')

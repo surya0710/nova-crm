@@ -2,11 +2,14 @@
 
 namespace App\Services\Hrms;
 
+use App\Enums\UserAccountStatus;
 use App\Models\Employee;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Dashboard\DashboardProvisioningService;
+use App\Services\Identity\UserAccountService;
+use App\Services\Identity\UserInvitationService;
 use App\Services\NotificationService;
 use App\Services\TenantContext;
 use Illuminate\Support\Arr;
@@ -20,7 +23,7 @@ use Illuminate\Validation\ValidationException;
  * HRMS, API, and import flows.
  *
  * Always creates (as applicable): User, Employee, profile relations,
- * organization membership, role assignment, and optional dashboard/notifications.
+ * organization membership, role assignment, invitation, and optional dashboard/notifications.
  */
 class EmployeeProvisioningService
 {
@@ -30,6 +33,8 @@ class EmployeeProvisioningService
         protected AuditLogger $auditLogger,
         protected NotificationService $notificationService,
         protected DashboardProvisioningService $dashboardProvisioning,
+        protected UserInvitationService $invitations,
+        protected UserAccountService $accounts,
     ) {}
 
     /**
@@ -41,9 +46,11 @@ class EmployeeProvisioningService
      *     email?: string|null,
      *     create_user?: bool,
      *     user_id?: int|null,
-     *     user?: array{name?: string, email?: string, password?: string|null, role?: string}|null,
+     *     user?: array{name?: string, email?: string, role?: string}|null,
      *     role?: string,
      *     notify?: bool,
+     *     send_invitation?: bool,
+     *     portal_access?: bool,
      *     provision_dashboard?: bool,
      * }  $data
      */
@@ -53,16 +60,17 @@ class EmployeeProvisioningService
 
         return DB::transaction(function () use ($data, $actor, $organization): Employee {
             $createUser = (bool) ($data['create_user'] ?? ! empty($data['user']) || ! empty($data['user_id']));
-            $roleSlug = (string) ($data['role'] ?? $data['user']['role'] ?? 'employee');
+            $roleSlug = (string) ($data['role'] ?? $data['user']['role'] ?? config('identity.default_employee_role', 'employee'));
             $employeeData = Arr::except($data, [
                 'create_user', 'user', 'user_id', 'role', 'notify', 'provision_dashboard', 'password',
-                'user_email', 'entry_point',
+                'user_email', 'entry_point', 'send_invitation', 'portal_access',
             ]);
 
             $user = null;
+            $createdNewUser = false;
 
             if ($createUser) {
-                $user = $this->resolveOrCreateUser($organization, $data, $roleSlug);
+                [$user, $createdNewUser] = $this->resolveOrCreateUser($organization, $data, $roleSlug);
                 $employeeData['user_id'] = $user->id;
 
                 if (empty($employeeData['email']) && $user->email) {
@@ -77,18 +85,29 @@ class EmployeeProvisioningService
                 $employee->refresh();
             }
 
-            if (($data['provision_dashboard'] ?? false) === true) {
-                $this->dashboardProvisioning->provision($organization);
+            if ($user !== null) {
+                $portalAccess = (bool) ($data['portal_access'] ?? true);
+                $user->forceFill(['portal_access_enabled' => $portalAccess])->save();
+
+                $sendInvitation = (bool) ($data['send_invitation'] ?? $createdNewUser);
+                if ($sendInvitation && ($user->account_status === UserAccountStatus::PendingInvitation || $createdNewUser)) {
+                    $this->invitations->invite($user, $organization, $actor, [
+                        'send_email' => ($data['notify'] ?? true) === true,
+                    ]);
+                } elseif (($data['notify'] ?? true) === true && ! $sendInvitation) {
+                    $this->notifyProvisioned($organization, $employee);
+                }
             }
 
-            if (($data['notify'] ?? true) === true && $employee->user_id) {
-                $this->notifyProvisioned($organization, $employee);
+            if (($data['provision_dashboard'] ?? false) === true) {
+                $this->dashboardProvisioning->provision($organization);
             }
 
             $this->auditLogger->log($employee, 'employee_provisioned', [
                 'user_id' => $employee->user_id,
                 'role' => $roleSlug,
                 'entry_point' => $data['entry_point'] ?? 'hrms',
+                'invitation_sent' => (bool) ($data['send_invitation'] ?? $createdNewUser),
             ], $actor);
 
             return $employee->fresh(['user', 'branch', 'department', 'designation', 'emergencyContacts']);
@@ -96,9 +115,9 @@ class EmployeeProvisioningService
     }
 
     /**
-     * Ensure an existing employee has a linked user + membership + role.
+     * Ensure an existing employee has a linked user + membership + role + invitation.
      *
-     * @param  array{name?: string, email: string, password?: string|null, role?: string, notify?: bool}  $data
+     * @param  array{name?: string, email: string, role?: string, notify?: bool, send_invitation?: bool, portal_access?: bool}  $data
      */
     public function provisionUserForEmployee(Employee $employee, array $data, User $actor): Employee
     {
@@ -111,23 +130,30 @@ class EmployeeProvisioningService
                 ]);
             }
 
-            $roleSlug = (string) ($data['role'] ?? 'employee');
-            $user = $this->resolveOrCreateUser($organization, [
+            $roleSlug = (string) ($data['role'] ?? config('identity.default_employee_role', 'employee'));
+            [$user, $createdNewUser] = $this->resolveOrCreateUser($organization, [
                 'user' => [
                     'name' => $data['name'] ?? $employee->full_name,
                     'email' => $data['email'],
-                    'password' => $data['password'] ?? null,
                     'role' => $roleSlug,
                 ],
             ], $roleSlug);
 
             $employee = $this->employeeService->linkUser($employee, $user, $actor);
 
-            if (($data['notify'] ?? true) === true) {
+            $portalAccess = (bool) ($data['portal_access'] ?? true);
+            $user->forceFill(['portal_access_enabled' => $portalAccess])->save();
+
+            $sendInvitation = (bool) ($data['send_invitation'] ?? true);
+            if ($sendInvitation) {
+                $this->invitations->invite($user, $organization, $actor, [
+                    'send_email' => ($data['notify'] ?? true) === true,
+                ]);
+            } elseif (($data['notify'] ?? true) === true) {
                 $this->notifyProvisioned($organization, $employee);
             }
 
-            return $employee;
+            return $employee->fresh(['user']);
         });
     }
 
@@ -143,6 +169,7 @@ class EmployeeProvisioningService
             'create_user' => (bool) ($row['create_user'] ?? ! empty($row['email'])),
             'entry_point' => 'import',
             'notify' => (bool) ($row['notify'] ?? false),
+            'send_invitation' => (bool) ($row['send_invitation'] ?? true),
         ], $actor, $organization);
     }
 
@@ -162,8 +189,9 @@ class EmployeeProvisioningService
 
     /**
      * @param  array<string, mixed>  $data
+     * @return array{0: User, 1: bool} [user, createdNewUser]
      */
-    protected function resolveOrCreateUser(Organization $organization, array $data, string $roleSlug): User
+    protected function resolveOrCreateUser(Organization $organization, array $data, string $roleSlug): array
     {
         if (! empty($data['user_id'])) {
             $user = User::query()->findOrFail((int) $data['user_id']);
@@ -183,11 +211,11 @@ class EmployeeProvisioningService
                 ]);
             }
 
-            return $user;
+            return [$user, false];
         }
 
         $userPayload = $data['user'] ?? [];
-        $email = strtolower(trim((string) ($userPayload['email'] ?? $data['email'] ?? '')));
+        $email = strtolower(trim((string) ($userPayload['email'] ?? $data['email'] ?? $data['user_email'] ?? '')));
 
         if ($email === '') {
             throw ValidationException::withMessages([
@@ -218,19 +246,23 @@ class EmployeeProvisioningService
                 ]);
             }
 
-            return $existingUser;
+            return [$existingUser, false];
         }
 
-        $password = $userPayload['password'] ?? null;
         $user = User::query()->create([
             'name' => $name,
             'email' => $email,
-            'password' => $password ? Hash::make($password) : Hash::make(Str::password(16)),
+            // Unusable until invitation accepted — never admin-assigned.
+            'password' => Hash::make(Str::password(32)),
+            'account_status' => UserAccountStatus::PendingInvitation,
+            'portal_access_enabled' => true,
+            'email_verified_at' => null,
+            'password_changed_at' => null,
         ]);
 
         $organization->addMember($user, $roleSlug);
 
-        return $user;
+        return [$user, true];
     }
 
     protected function notifyProvisioned(Organization $organization, Employee $employee): void
