@@ -1,44 +1,49 @@
-# Program 15 — Launch Readiness & Customer Success
+# Program 15.8 — Pilot Customer Program & Operational Validation
 
-Operational library that transitions NovaCRM from a completed product into a commercially deployable SaaS business.
+**Status:** Executed (local / SOP validation)  
+**Date:** 2026-07-25  
+**Scope:** Prove commercial onboarding and operations without inventing production-infra results from XAMPP.
 
-**Scope:** processes, onboarding, demos, documentation, sales assets, training, production ops, and pilot rollout — **not** new application features.
+## How to run pilots locally
 
-## Directory map
+```bash
+php artisan pilot:seed
+# or
+php artisan db:seed --class=PilotCustomerSeeder
+```
 
-| Path | Purpose |
-|------|---------|
-| [`../sops/`](../sops/) | Standard operating procedures |
-| [`../onboarding/`](../onboarding/) | Customer onboarding playbooks and go-live |
-| [`../demos/`](../demos/) | Demo environment, scripts, industry scenarios |
-| [`../sales/`](../sales/) | Sales & marketing collateral |
-| [`../customer-success/`](../customer-success/) | Adoption, QBR, renewal, churn prevention |
-| [`../operations/`](../operations/) | Production operations checklists |
-| [`../deployment/`](../deployment/) | Deployment and upgrade playbooks |
-| [`../support/`](../support/) | Support, SLA, incident handling |
-| [`../training/`](../training/) | Internal training curricula |
-| [`./`](./) | Pilot program and launch approval |
+All pilot owner passwords: `password`
 
-## Acceptance criteria
+## Evidence pack index
 
-- [x] Complete operational SOP library
-- [x] Demo organization prepared (`php artisan demo:seed-presentation`)
-- [x] Master demo script + industry scenarios
-- [x] Customer documentation entry points
-- [x] Sales assets
-- [x] Internal training material
-- [x] Production operations documented
-- [x] Pilot customer program prepared
+| Deliverable | Document |
+|-------------|----------|
+| 1 — Pilot Customer Profiles | [pilot-customer-profiles.md](./pilot-customer-profiles.md) |
+| 2–4, 7 — Onboarding / licensing / RBAC / workspaces | [execution-log.md](./execution-log.md) |
+| 5 — Organization upgrade | [execution-log.md](./execution-log.md#deliverable-5--organization-upgrade) |
+| 6 — Data migration | [data-migration-validation.md](./data-migration-validation.md) |
+| 8 — Deployment validation | [deployment-validation-report.md](./deployment-validation-report.md) |
+| 9 — Operational validation | [operational-validation-report.md](./operational-validation-report.md) |
+| 10 — Customer Acceptance Testing | [customer-acceptance-testing.md](./customer-acceptance-testing.md) |
+| 11 — Performance | [performance-validation.md](./performance-validation.md) |
+| 12 — Security | [security-validation.md](./security-validation.md) |
+| 13 — Documentation | [documentation-validation.md](./documentation-validation.md) |
+| 14 — Issue Register | [issue-register.md](./issue-register.md) |
+| 15 — Launch Readiness | [launch-readiness-checklist.md](./launch-readiness-checklist.md) · [ga-recommendation.md](./ga-recommendation.md) |
+| Risk Register | [risk-register.md](./risk-register.md) |
+| Sample import datasets | [datasets/](./datasets/) |
 
-## How to use
+## Related libraries
 
-1. Sales and CS teams start at [`../sops/README.md`](../sops/README.md).
-2. Implementation uses [`../onboarding/go-live-checklist.md`](../onboarding/go-live-checklist.md).
-3. Demo prep uses [`../demos/data-guide.md`](../demos/data-guide.md).
-4. Launch gate uses [`launch-approval.md`](launch-approval.md).
+- SOPs: [`../sops/`](../sops/)
+- Onboarding: [`../onboarding/`](../onboarding/)
+- Operations: [`../operations/`](../operations/)
+- Deployment: [`../deployment/`](../deployment/)
+- Engineering readiness: [`../release/production-readiness.md`](../release/production-readiness.md)
 
-## Related engineering docs
+## Engineering rules followed
 
-- [Deployment overview](../deployment/overview.md)
-- [Production readiness (Phase 14.9)](../release/production-readiness.md)
-- [Troubleshooting](../troubleshooting/overview.md)
+- No new business modules
+- Bug fixes / docs / operational tooling only
+- Existing customer data preserved (`organization:upgrade` is additive/idempotent)
+- Production deploy evidence deferred to real staging/production hosts

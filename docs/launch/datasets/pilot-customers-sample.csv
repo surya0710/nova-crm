@@ -1,0 +1,5 @@
+Name,Email,Phone,Company,Industry,Status,City,Country
+Accounts Northwind,accounts@northwind-pilot.test,+91 22 51001001,Northwind Traders Accounts,Technology,active,Mumbai,India
+Accounts Contoso,accounts@contoso-pilot.test,+91 22 51001002,Contoso Retail Accounts,Retail,active,Bengaluru,India
+Accounts Fabrikam,accounts@fabrikam-pilot.test,+91 22 51001003,Fabrikam Logistics Accounts,Logistics,active,Pune,India
+Accounts Adventure,accounts@adventure-pilot.test,+91 22 51001004,Adventure Works Accounts,Manufacturing,active,Chennai,India

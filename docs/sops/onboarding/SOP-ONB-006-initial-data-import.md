@@ -20,8 +20,12 @@ Import agreed historical or seed data with validation so go-live starts with tru
 
 ## Scope
 
-- **In scope:** Scoped CRM/HR/project imports, validation logs, and customer acceptance of imported counts.
+- **In scope:** Agreed initial data load with validation logs and customer acceptance of imported counts.
+- **Import Platform (spreadsheet) as of Release 1.0:** Leads and Customers only (CSV/XLSX).
+- **HRMS / Projects initial load:** Use UI entry, agreed scripts/seeders (e.g. pilot datasets), or custom migration — not the Import Platform adapters. Permissions such as `projects.import` may exist without a shipped CSV adapter.
 - **Out of scope:** Ongoing integrations and post-go-live migrations (Migrations folder SOPs when published).
+
+See also: `docs/launch/data-migration-validation.md` (Program 15.8).
 
 ## Preconditions
 
@@ -101,6 +105,7 @@ Record the following for every execution:
 | Version | Author | Date | Summary | Approval |
 |---------|--------|------|---------|----------|
 | 1.0 | Operations | 2026-07-25 | Initial release for Program 15.1.1 SOP library foundation | Operations Lead |
+| 1.1 | Operations | 2026-07-25 | Clarify Import Platform coverage (Leads/Customers); HRMS/Projects via UI/scripts (15.8) | Operations Lead |
 
 ---
 

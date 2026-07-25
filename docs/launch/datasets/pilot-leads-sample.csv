@@ -1,0 +1,6 @@
+Name,Email,Phone,Company,Source,Industry,Priority,Status
+Riya Sharma,riya.sharma@northwind-prospect.test,+91 9810001001,Northwind Traders Pilot,website,Technology,high,new
+Amit Verma,amit.verma@contoso-prospect.test,+91 9810001002,Contoso Retail Pilot,referral,Retail,medium,contacted
+Priya Nair,priya.nair@fabrikam-prospect.test,+91 9810001003,Fabrikam Logistics Pilot,linkedin,Logistics,high,qualified
+Dev Kapoor,dev.kapoor@adventure-prospect.test,+91 9810001004,Adventure Works Pilot,google_ads,Manufacturing,low,new
+Sneha Iyer,sneha.iyer@litware-prospect.test,+91 9810001005,Litware Media Pilot,website,Media,medium,contacted

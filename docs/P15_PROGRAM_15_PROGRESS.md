@@ -1,6 +1,6 @@
 # Program 15 — Progress Tracker
 
-**Status:** Complete (documentation & operational library)  
+**Status:** Complete (documentation & operational library + 15.8 pilot evidence)  
 **Date:** 2026-07-25
 
 ## Workstreams
@@ -14,7 +14,7 @@
 | 15.5 | Sales & Marketing Assets | Done | `docs/sales/` |
 | 15.6 | Internal Training | Done | `docs/training/` |
 | 15.7 | Production Operations | Done | `docs/operations/` + `docs/deployment/` |
-| 15.8 | Pilot Customer Program | Done | `docs/launch/` |
+| 15.8 | Pilot Customer Program | Done | `docs/launch/` evidence pack + `php artisan pilot:seed` (5 orgs); GA conditional on staging/prod infra + live CAT |
 
 ## Engineering rules followed
 
@@ -22,3 +22,4 @@
 - No architectural redesign
 - Version-controlled SOPs with document control blocks
 - Executable checklists (no tribal knowledge)
+- 15.8: validation/stabilization only — seeder + docs; no production deploy from XAMPP
