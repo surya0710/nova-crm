@@ -30,17 +30,19 @@
                     ->where('data->organization_id', $currentOrganization->id)
                     ->count();
             }
-            $shellEndpoints = [
-                'preferences' => route('shell.preferences.update'),
-                'workspace' => route('shell.workspace.switch'),
-                'favorites' => route('shell.favorites.toggle'),
-                'recents' => route('shell.recents.store'),
-                'recentsClear' => route('shell.recents.clear'),
-                'commands' => route('shell.commands.index'),
-                'commandsRecord' => route('shell.commands.record'),
-                'search' => route('shell.search.index'),
-                'notifications' => route('shell.notifications.index'),
-            ];
+            $shellEndpoints = collect([
+                'preferences' => 'shell.preferences.update',
+                'workspace' => 'shell.workspace.switch',
+                'favorites' => 'shell.favorites.toggle',
+                'recents' => 'shell.recents.store',
+                'recentsClear' => 'shell.recents.clear',
+                'commands' => 'shell.commands.index',
+                'commandsRecord' => 'shell.commands.record',
+                'search' => 'shell.search.index',
+                'notifications' => 'shell.notifications.index',
+            ])->mapWithKeys(fn ($name, $key) => [
+                $key => \Illuminate\Support\Facades\Route::has($name) ? route($name) : null,
+            ])->all();
         @endphp
 
         <div
