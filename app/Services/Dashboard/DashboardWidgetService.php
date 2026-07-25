@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class DashboardWidgetService
@@ -148,6 +149,10 @@ class DashboardWidgetService
 
     public function seedSystemWidgets(): void
     {
+        if (! Schema::hasTable('dashboard_sections') || ! Schema::hasTable('dashboard_widgets')) {
+            return;
+        }
+
         DB::transaction(function () {
             foreach (config('dashboard.sections', []) as $sectionDef) {
                 DashboardSection::query()->updateOrCreate(

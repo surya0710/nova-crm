@@ -12,6 +12,7 @@ use App\Services\AuditLogger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 class QuickActionService
 {
@@ -118,6 +119,10 @@ class QuickActionService
 
     public function seedSystemActions(): void
     {
+        if (! Schema::hasTable('dashboard_quick_actions')) {
+            return;
+        }
+
         DB::transaction(function () {
             foreach (config('dashboard.quick_actions', []) as $key => $def) {
                 $this->register(array_merge($def, ['action_key' => $key]));

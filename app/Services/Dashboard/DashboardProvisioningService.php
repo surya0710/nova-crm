@@ -8,6 +8,7 @@ use App\Models\DashboardWidget;
 use App\Models\Organization;
 use App\Models\OrganizationDashboardWidget;
 use App\Models\OrganizationQuickAction;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardProvisioningService
 {
@@ -19,6 +20,10 @@ class DashboardProvisioningService
 
     public function provision(Organization $organization): void
     {
+        if (! Schema::hasTable('dashboard_widgets') || ! Schema::hasTable('dashboard_quick_actions')) {
+            return;
+        }
+
         $this->widgetService->seedSystemWidgets();
         $this->quickActionService->seedSystemActions();
 
@@ -36,11 +41,19 @@ class DashboardProvisioningService
 
     public function provisionForAllOrganizations(): void
     {
+        if (! Schema::hasTable('dashboard_widgets') || ! Schema::hasTable('organization_dashboard_widgets')) {
+            return;
+        }
+
         Organization::query()->each(fn (Organization $org) => $this->installDefaults($org));
     }
 
     protected function installDefaults(Organization $organization): void
     {
+        if (! Schema::hasTable('dashboard_widgets') || ! Schema::hasTable('organization_dashboard_widgets')) {
+            return;
+        }
+
         $availableModules = $this->subscriptionService->availableModules($organization);
 
         DashboardWidget::query()

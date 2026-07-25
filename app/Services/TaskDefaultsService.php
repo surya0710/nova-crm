@@ -5,11 +5,16 @@ namespace App\Services;
 use App\Models\Organization;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
+use Illuminate\Support\Facades\Schema;
 
 class TaskDefaultsService
 {
     public function seedAll(Organization $organization): void
     {
+        if (! Schema::hasTable('task_statuses')) {
+            return;
+        }
+
         $this->seedStatuses($organization);
         $this->seedPriorities($organization);
     }

@@ -7,11 +7,16 @@ use App\Models\ProjectCategory;
 use App\Models\ProjectLifecycleStage;
 use App\Models\ProjectStatus;
 use App\Models\ProjectType;
+use Illuminate\Support\Facades\Schema;
 
 class ProjectDefaultsService
 {
     public function seedAll(Organization $organization): void
     {
+        if (! Schema::hasTable('project_categories')) {
+            return;
+        }
+
         $this->seedCategories($organization);
         $this->seedTypes($organization);
         $this->seedStatuses($organization);

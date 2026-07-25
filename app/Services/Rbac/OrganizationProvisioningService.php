@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\OrganizationRoleService;
+use Illuminate\Support\Facades\Schema;
 
 class OrganizationProvisioningService
 {
@@ -27,11 +28,18 @@ class OrganizationProvisioningService
 
         $this->ensureLegacyRoles($organization);
 
-        $this->dashboardProvisioningService->provision($organization);
+        // Skip modules whose tables are not migrated yet (e.g. RBAC sync before dashboard/projects).
+        if (Schema::hasTable('dashboard_widgets')) {
+            $this->dashboardProvisioningService->provision($organization);
+        }
 
-        app(\App\Services\ProjectDefaultsService::class)->seedAll($organization);
+        if (Schema::hasTable('project_categories')) {
+            app(\App\Services\ProjectDefaultsService::class)->seedAll($organization);
+        }
 
-        app(\App\Services\TaskDefaultsService::class)->seedAll($organization);
+        if (Schema::hasTable('task_statuses')) {
+            app(\App\Services\TaskDefaultsService::class)->seedAll($organization);
+        }
 
         if ($owner) {
             $adminRole = Role::query()
