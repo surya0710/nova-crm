@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\StoreOrganizationRequest;
+use App\Http\Requests\Platform\UpdateOrganizationRequest;
 use App\Models\IndustryTemplate;
 use App\Models\Organization;
 use App\Services\Platform\OrganizationManagementService;
@@ -90,5 +91,48 @@ class OrganizationController extends Controller
         $service->archive($organization, auth('platform')->user());
 
         return back()->with('status', __('Organization archived.'));
+    }
+
+    public function edit(Organization $organization): View
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        return view('platform.organizations.edit', [
+            'organization' => $organization,
+            'plans' => config('platform.plans'),
+            'timezones' => timezone_identifiers_list(),
+            'currencies' => config('nova.currencies'),
+        ]);
+    }
+
+    public function update(UpdateOrganizationRequest $request, Organization $organization, OrganizationManagementService $service): RedirectResponse
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        $service->update($organization, $request->validated(), auth('platform')->user());
+
+        return redirect()
+            ->route('platform.organizations.show', $organization)
+            ->with('status', __('Organization updated.'));
+    }
+
+    public function restore(Organization $organization, OrganizationManagementService $service): RedirectResponse
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        $service->restore($organization, auth('platform')->user());
+
+        return back()->with('status', __('Organization restored.'));
+    }
+
+    public function destroy(Organization $organization, OrganizationManagementService $service): RedirectResponse
+    {
+        Gate::forUser(auth('platform')->user())->authorize('platform.organizations.manage');
+
+        $service->delete($organization, auth('platform')->user());
+
+        return redirect()
+            ->route('platform.organizations.index')
+            ->with('status', __('Organization deleted.'));
     }
 }

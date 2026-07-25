@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AuditLog;
 use App\Models\ImportSession;
 use App\Models\Lead;
 use App\Models\MetadataFieldDefinition;

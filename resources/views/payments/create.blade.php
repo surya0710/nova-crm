@@ -1,63 +1,58 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Record :label', ['label' => crm_term('payment')]) }}</h1>
-        </div>
-    </x-slot>
     <x-flash-messages />
-    <form method="POST" action="{{ route('payments.store') }}" class="max-w-2xl">
-        @csrf
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 space-y-5">
-                <div>
-                    <x-input-label for="invoice_id" :value="crm_term('invoice')" />
-                    <select id="invoice_id" name="invoice_id" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm" required>
-                        <option value="">{{ __('Select invoice') }}</option>
-                        @foreach ($openInvoices as $openInvoice)
-                            <option value="{{ $openInvoice->id }}" @selected((string) old('invoice_id', $payment->invoice_id) === (string) $openInvoice->id)>
-                                {{ $openInvoice->number }} · {{ $openInvoice->customer->display_name }} · {{ __('Balance') }} {{ number_format($openInvoice->balance_due, 2) }} {{ $openInvoice->currency }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <x-input-error :messages="$errors->get('invoice_id')" class="mt-2" />
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                        <x-input-label for="amount" :value="__('Amount')" />
-                        <x-text-input id="amount" name="amount" type="number" step="0.01" min="0.01" class="block mt-1 w-full" :value="old('amount', $payment->amount)" required />
-                        <x-input-error :messages="$errors->get('amount')" class="mt-2" />
+
+    <x-layouts.create
+        :title="__('Record :label', ['label' => crm_term('payment')])"
+        max-width="2xl"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('payments'), 'href' => route('payments.index')],
+                ['label' => __('Record :label', ['label' => crm_term('payment')]), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <form method="POST" action="{{ route('payments.store') }}">
+            @csrf
+            <div class="space-y-6">
+                <x-forms.section :title="__('Payment')">
+                    <div class="sm:col-span-2">
+                        <x-forms.field :label="crm_term('invoice')" name="invoice_id" required>
+                            <x-forms.select id="invoice_id" name="invoice_id" required>
+                                <option value="">{{ __('Select invoice') }}</option>
+                                @foreach ($openInvoices as $openInvoice)
+                                    <option value="{{ $openInvoice->id }}" @selected((string) old('invoice_id', $payment->invoice_id) === (string) $openInvoice->id)>
+                                        {{ $openInvoice->number }} · {{ $openInvoice->customer->display_name }} · {{ __('Balance') }} {{ number_format($openInvoice->balance_due, 2) }} {{ $openInvoice->currency }}
+                                    </option>
+                                @endforeach
+                            </x-forms.select>
+                        </x-forms.field>
                     </div>
-                    <div>
-                        <x-input-label for="payment_date" :value="__('Payment Date')" />
-                        <x-text-input id="payment_date" name="payment_date" type="date" class="block mt-1 w-full" :value="old('payment_date', $payment->payment_date?->format('Y-m-d'))" required />
-                        <x-input-error :messages="$errors->get('payment_date')" class="mt-2" />
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                        <x-input-label for="method" :value="__('Payment Method')" />
-                        <select id="method" name="method" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm" required>
+                    <x-forms.field :label="__('Amount')" name="amount" required>
+                        <x-forms.input id="amount" name="amount" type="number" step="0.01" min="0.01" :value="old('amount', $payment->amount)" required />
+                    </x-forms.field>
+                    <x-forms.field :label="__('Payment Date')" name="payment_date" required>
+                        <x-forms.input id="payment_date" name="payment_date" type="date" :value="old('payment_date', $payment->payment_date?->format('Y-m-d'))" required />
+                    </x-forms.field>
+                    <x-forms.field :label="__('Payment Method')" name="method" required>
+                        <x-forms.select id="method" name="method" required>
                             @foreach (config('payments.methods') as $value => $label)
                                 <option value="{{ $value }}" @selected(old('method', $payment->method) === $value)>{{ $label }}</option>
                             @endforeach
-                        </select>
-                        <x-input-error :messages="$errors->get('method')" class="mt-2" />
+                        </x-forms.select>
+                    </x-forms.field>
+                    <x-forms.field :label="__('Reference / Transaction ID')" name="reference">
+                        <x-forms.input id="reference" name="reference" :value="old('reference')" />
+                    </x-forms.field>
+                    <div class="sm:col-span-2">
+                        <x-forms.field :label="__('Notes')" name="notes">
+                            <x-forms.textarea id="notes" name="notes" rows="2">{{ old('notes') }}</x-forms.textarea>
+                        </x-forms.field>
                     </div>
-                    <div>
-                        <x-input-label for="reference" :value="__('Reference / Transaction ID')" />
-                        <x-text-input id="reference" name="reference" class="block mt-1 w-full" :value="old('reference')" />
-                        <x-input-error :messages="$errors->get('reference')" class="mt-2" />
-                    </div>
-                </div>
-                <div>
-                    <x-input-label for="notes" :value="__('Notes')" />
-                    <textarea id="notes" name="notes" rows="2" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">{{ old('notes') }}</textarea>
-                </div>
+                </x-forms.section>
             </div>
-            <div class="px-6 py-4 border-t bg-slate-50/50 flex justify-between">
-                <a href="{{ route('payments.index') }}" class="text-sm text-slate-600">{{ __('Cancel') }}</a>
-                <x-primary-button>{{ __('Record :label', ['label' => crm_term('payment')]) }}</x-primary-button>
-            </div>
-        </div>
-    </form>
+            <x-forms.footer :cancel-href="route('payments.index')" :submit-label="__('Record :label', ['label' => crm_term('payment')])" />
+        </form>
+    </x-layouts.create>
 </x-app-layout>

@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\User;
+use App\Notifications\CrmNotification;
 use App\Services\AuditLogger;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceService;
@@ -493,6 +494,6 @@ class InvoiceBusinessRulesTest extends TestCase
             'auditable_id' => $invoice->id,
         ]);
 
-        Notification::assertSentTo($creator, \App\Notifications\CrmNotification::class);
+        Notification::assertSentTo($creator, CrmNotification::class);
     }
 }

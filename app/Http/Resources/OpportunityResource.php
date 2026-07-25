@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Opportunity;
 use App\Services\MetadataApiPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Opportunity */
+/** @mixin Opportunity */
 class OpportunityResource extends JsonResource
 {
     /**

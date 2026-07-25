@@ -3,6 +3,7 @@
 namespace App\Services\Import;
 
 use App\Models\ImportSession;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -208,17 +209,17 @@ class ImportValidationReportService
             $errorsSheet->setCellValueExplicit(
                 [2, $line],
                 $reportRow['column'],
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                DataType::TYPE_STRING
             );
             $errorsSheet->setCellValueExplicit(
                 [3, $line],
                 $reportRow['value'],
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                DataType::TYPE_STRING
             );
             $errorsSheet->setCellValueExplicit(
                 [4, $line],
                 $reportRow['error'],
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                DataType::TYPE_STRING
             );
             $line++;
         }

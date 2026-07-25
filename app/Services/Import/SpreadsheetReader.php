@@ -213,6 +213,7 @@ class SpreadsheetReader
 
             if ($raw === null) {
                 $values[$header] = null;
+
                 continue;
             }
 

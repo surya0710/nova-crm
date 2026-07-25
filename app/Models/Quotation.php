@@ -6,6 +6,7 @@ use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
 use App\Services\QuotationCalculationService;
+use Database\Factories\QuotationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Quotation extends Model
 {
-    /** @use HasFactory<\Database\Factories\QuotationFactory> */
+    /** @use HasFactory<QuotationFactory> */
     use Auditable, BelongsToOrganization, HasAttachments, HasFactory;
 
     protected $fillable = [

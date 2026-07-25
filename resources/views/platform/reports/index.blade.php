@@ -1,57 +1,76 @@
 <x-platform-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <h1 class="text-lg font-semibold">{{ __('Platform Reports') }}</h1>
-            <a href="{{ route('platform.reports.export', $filters) }}" class="text-sm rounded-lg bg-violet-600 hover:bg-violet-500 px-3 py-1.5">{{ __('Export CSV') }}</a>
-        </div>
-    </x-slot>
+    <x-layouts.entity-listing
+        :title="__('Platform Reports')"
+        :subtitle="__('Cross-tenant analytics and growth metrics')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Platform'), 'href' => route('platform.dashboard')],
+                ['label' => __('Reports'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div class="rounded-xl bg-slate-900 border border-slate-800 p-5">
-            <div class="text-sm text-slate-400">{{ __('Revenue Managed') }}</div>
-            <div class="text-2xl font-bold mt-1">{{ number_format($report['revenue_managed']['total'], 2) }}</div>
-        </div>
-        <div class="rounded-xl bg-slate-900 border border-slate-800 p-5">
-            <div class="text-sm text-slate-400">{{ __('Invoices') }}</div>
-            <div class="text-2xl font-bold mt-1">{{ number_format($report['invoices']['total']) }}</div>
-        </div>
-        <div class="rounded-xl bg-slate-900 border border-slate-800 p-5">
-            <div class="text-sm text-slate-400">{{ __('Payments') }}</div>
-            <div class="text-2xl font-bold mt-1">{{ number_format($report['payments']['total'], 2) }}</div>
-        </div>
-    </div>
+        <x-slot:actions>
+            <x-ui.button :href="route('platform.reports.export', $filters)" variant="secondary" size="sm">{{ __('Export CSV') }}</x-ui.button>
+        </x-slot:actions>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        @foreach ([
-            'organizations_growth' => __('Organizations Growth'),
-            'users_growth' => __('Users Growth'),
-            'lead_volume' => __('Lead Volume'),
-            'customer_growth' => __('Customer Growth'),
-        ] as $key => $title)
-            <div class="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-                <div class="px-5 py-3 border-b border-slate-800 font-medium">{{ $title }}</div>
-                <div class="divide-y divide-slate-800 text-sm">
-                    @forelse ($report[$key] as $row)
-                        <div class="px-5 py-2 flex justify-between"><span class="text-slate-400">{{ $row->period }}</span><span class="text-white">{{ $row->count }}</span></div>
-                    @empty
-                        <div class="px-5 py-6 text-slate-500 text-center">{{ __('No data') }}</div>
-                    @endforelse
-                </div>
+        <x-slot:filters>
+            <form method="GET" class="flex flex-wrap items-end gap-3">
+                <x-forms.field :label="__('From')" name="from">
+                    <x-forms.input type="date" name="from" value="{{ $filters['from'] ?? '' }}" />
+                </x-forms.field>
+                <x-forms.field :label="__('To')" name="to">
+                    <x-forms.input type="date" name="to" value="{{ $filters['to'] ?? '' }}" />
+                </x-forms.field>
+                <x-ui.button type="submit" variant="secondary" size="sm">{{ __('Apply') }}</x-ui.button>
+            </form>
+        </x-slot:filters>
+
+        <div class="mb-6 grid gap-4 sm:grid-cols-3">
+            <x-ui.stat-card :label="__('Revenue Managed')" :value="number_format($report['revenue_managed']['total'], 2)" />
+            <x-ui.stat-card :label="__('Invoices')" :value="number_format($report['invoices']['total'])" />
+            <x-ui.stat-card :label="__('Payments')" :value="number_format($report['payments']['total'], 2)" />
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+            @foreach ([
+                'organizations_growth' => __('Organizations Growth'),
+                'users_growth' => __('Users Growth'),
+                'lead_volume' => __('Lead Volume'),
+                'customer_growth' => __('Customer Growth'),
+            ] as $key => $title)
+                <x-ui.card>
+                    <x-slot:header>
+                        <h2 class="text-sm font-semibold text-ink-heading">{{ $title }}</h2>
+                    </x-slot:header>
+                    <div class="divide-y divide-line text-sm">
+                        @forelse ($report[$key] as $row)
+                            <div class="flex justify-between py-2">
+                                <span class="text-ink-muted">{{ $row->period }}</span>
+                                <span class="font-medium text-ink-heading">{{ number_format($row->count) }}</span>
+                            </div>
+                        @empty
+                            <x-ui.empty-state-preset variant="reports" />
+                        @endforelse
+                    </div>
+                </x-ui.card>
+            @endforeach
+        </div>
+
+        <x-ui.card class="mt-6">
+            <x-slot:header>
+                <h2 class="text-sm font-semibold text-ink-heading">{{ __('Top Active Organizations (30 days)') }}</h2>
+            </x-slot:header>
+            <div class="divide-y divide-line text-sm">
+                @forelse ($report['top_active_organizations'] as $org)
+                    <div class="flex justify-between gap-4 py-2">
+                        <span class="font-medium text-ink-heading">{{ $org->name }}</span>
+                        <span class="text-ink-muted">{{ number_format($org->activity_count ?? 0) }} {{ __('events') }}</span>
+                    </div>
+                @empty
+                    <x-ui.empty-state-preset variant="reports" />
+                @endforelse
             </div>
-        @endforeach
-    </div>
-
-    <div class="mt-6 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-        <div class="px-5 py-3 border-b border-slate-800 font-medium">{{ __('Top Active Organizations (30 days)') }}</div>
-        <div class="divide-y divide-slate-800 text-sm">
-            @forelse ($report['top_active_organizations'] as $org)
-                <div class="px-5 py-2 flex justify-between">
-                    <span class="text-white">{{ $org->name }}</span>
-                    <span class="text-slate-400">{{ $org->activity_count ?? 0 }} {{ __('events') }}</span>
-                </div>
-            @empty
-                <div class="px-5 py-6 text-slate-500 text-center">{{ __('No data') }}</div>
-            @endforelse
-        </div>
-    </div>
+        </x-ui.card>
+    </x-layouts.entity-listing>
 </x-platform-layout>

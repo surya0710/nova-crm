@@ -1,20 +1,30 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Edit Deal') }}</h1>
-            <p class="text-sm text-slate-500">{{ $opportunity->title }}</p>
-        </div>
-    </x-slot>
     <x-flash-messages />
-    <form method="POST" action="{{ route('pipeline.update', $opportunity) }}" class="max-w-4xl">
-        @csrf
-        @method('PATCH')
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 sm:p-8">@include('pipeline._form')</div>
-            <div class="px-6 sm:px-8 py-4 border-t border-slate-200 bg-slate-50/50 flex justify-between">
-                <a href="{{ route('pipeline.show', $opportunity) }}" class="text-sm text-slate-600 hover:text-slate-900">{{ __('Cancel') }}</a>
-                <x-primary-button>{{ __('Save Changes') }}</x-primary-button>
-            </div>
-        </div>
-    </form>
+
+    <x-layouts.edit
+        :title="__('Edit Deal')"
+        :subtitle="$opportunity->title"
+        max-width="4xl"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('pipeline'), 'href' => route('pipeline.index')],
+                ['label' => $opportunity->title, 'href' => route('pipeline.show', $opportunity)],
+                ['label' => __('Edit'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <form method="POST" action="{{ route('pipeline.update', $opportunity) }}">
+            @csrf
+            @method('PATCH')
+            @include('pipeline._form', [
+                'opportunity' => $opportunity,
+                'customers' => $customers,
+                'leads' => $leads,
+                'assignees' => $assignees,
+            ])
+            <x-forms.footer :cancel-href="route('pipeline.show', $opportunity)" :submit-label="__('Save Changes')" />
+        </form>
+    </x-layouts.edit>
 </x-app-layout>

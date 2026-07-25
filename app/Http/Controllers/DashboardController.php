@@ -6,14 +6,18 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Product;
 use App\Models\Task;
+use App\Services\Dashboard\WorkspaceService;
 use App\Services\TenantContext;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(TenantContext $tenant): View
+    public function __invoke(TenantContext $tenant, WorkspaceService $workspace): View
     {
         $organization = $tenant->get();
+        $user = auth()->user();
+
+        $workspaceData = $workspace->build($user, $organization);
 
         $leadStats = [
             'total' => Lead::query()->count(),
@@ -61,6 +65,11 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'organization' => $organization,
+            'workspace' => $workspaceData,
+            'widgets' => $workspaceData['dashboard']['widgets'] ?? [],
+            'quickActions' => $workspaceData['quick_actions'] ?? [],
+            'notifications' => $workspaceData['notifications'] ?? [],
+            'recentActivities' => $workspaceData['recent_activities'] ?? [],
             'leadStats' => $leadStats,
             'customerStats' => $customerStats,
             'productStats' => $productStats,

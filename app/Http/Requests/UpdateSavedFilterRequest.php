@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\SavedFilter;
 use App\Services\SavedFilterService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,7 @@ class UpdateSavedFilterRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var \App\Models\SavedFilter $savedFilter */
+        /** @var SavedFilter $savedFilter */
         $savedFilter = $this->route('saved_filter');
 
         return [
@@ -49,7 +50,7 @@ class UpdateSavedFilterRequest extends FormRequest
             return null;
         }
 
-        /** @var \App\Models\SavedFilter $savedFilter */
+        /** @var SavedFilter $savedFilter */
         $savedFilter = $this->route('saved_filter');
 
         return app(SavedFilterService::class)->definitionFromIndexInput(

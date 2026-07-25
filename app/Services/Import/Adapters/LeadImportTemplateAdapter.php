@@ -3,6 +3,7 @@
 namespace App\Services\Import\Adapters;
 
 use App\Contracts\Import\ImportTemplateProviderInterface;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Import\ImportOwnerResolver;
@@ -63,7 +64,7 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         ];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
-            /** @var \App\Models\MetadataFieldDefinition $definition */
+            /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
             $samples[$definition->key] = $this->sampleForMetadataDefinition($definition);
         }
@@ -95,7 +96,7 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         ];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
-            /** @var \App\Models\MetadataFieldDefinition $definition */
+            /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
             $type = (string) $definition->type;
 
@@ -200,7 +201,7 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         $columns = [];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
-            /** @var \App\Models\MetadataFieldDefinition $definition */
+            /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
 
             $columns[] = new ImportTemplateColumn(
@@ -215,7 +216,7 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         return $columns;
     }
 
-    protected function sampleForMetadataDefinition(\App\Models\MetadataFieldDefinition $definition): string
+    protected function sampleForMetadataDefinition(MetadataFieldDefinition $definition): string
     {
         $type = (string) $definition->type;
 

@@ -338,6 +338,7 @@ class ImportPlatformService
                             'value' => null,
                         ];
                     }
+
                     continue;
                 }
 

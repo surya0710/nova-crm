@@ -11,10 +11,10 @@ class PlatformUserSeeder extends Seeder
     public function run(): void
     {
         PlatformUser::query()->firstOrCreate(
-            ['email' => 'platform@novacrm.test'],
+            ['email' => 'work.suryakantyadav@gmail.com'],
             [
                 'name' => 'Platform Owner',
-                'password' => Hash::make('  '),
+                'password' => Hash::make('Surya#2801'),
                 'role' => 'platform-owner',
                 'status' => 'active',
             ],

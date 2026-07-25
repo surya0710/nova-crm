@@ -11,6 +11,9 @@ class UpdateTaskRequest extends TaskRequest
         return $task && ($this->user()?->can('update', $task) ?? false);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return $this->baseRules();

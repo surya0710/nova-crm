@@ -187,6 +187,7 @@ class IndustryTemplatePayloadValidator
 
             if (! $entity || ! $key) {
                 $errors["field_blueprints.{$index}.key"] = __('Field blueprints require entity and key.');
+
                 continue;
             }
 

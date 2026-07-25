@@ -36,6 +36,7 @@ class ProviderDiagnosticsService
 
     public function __construct(
         protected MarketingProviderService $providers,
+        protected \App\Services\Recruitment\RecruitmentIntegrationService $recruitmentIntegrations,
     ) {}
 
     /**
@@ -43,7 +44,8 @@ class ProviderDiagnosticsService
      *     generated_at: string,
      *     organization_id: int,
      *     providers: list<array<string, mixed>>,
-     *     summary: array<string, int>
+     *     summary: array<string, int>,
+     *     recruitment?: array<string, mixed>
      * }
      */
     public function diagnosticsForOrganization(Organization $organization): array
@@ -69,6 +71,7 @@ class ProviderDiagnosticsService
             'organization_id' => $organization->id,
             'providers' => $providers,
             'summary' => $this->summarizeProviders($providers),
+            'recruitment' => $this->recruitmentIntegrations->diagnostics($organization),
         ];
     }
 

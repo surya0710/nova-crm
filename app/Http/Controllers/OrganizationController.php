@@ -48,6 +48,12 @@ class OrganizationController extends Controller
             'mailEncryptions' => config('organization_mail.encryptions'),
             'metadataFields' => $this->metadataForms->fieldsFor($organization, 'organization', 'edit'),
             'metadataPresenter' => $this->metadataForms->presenter(),
+            'regional' => array_merge([
+                'locale' => 'en',
+                'fiscal_year_start_month' => 4,
+                'date_format' => 'Y-m-d',
+                'time_format' => 'H:i',
+            ], is_array($organization->settings['regional'] ?? null) ? $organization->settings['regional'] : []),
         ]);
     }
 
@@ -62,6 +68,7 @@ class OrganizationController extends Controller
             'logo', 'remove_logo',
             'mail_enabled', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption',
             'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name',
+            'locale', 'fiscal_year_start_month', 'date_format', 'time_format',
         ]);
 
         if ($request->boolean('remove_logo')) {
@@ -90,6 +97,14 @@ class OrganizationController extends Controller
             $request->all()
         );
 
+        $settings['regional'] = array_merge($settings['regional'] ?? [], [
+            'locale' => $request->validated('locale') ?: ($settings['regional']['locale'] ?? 'en'),
+            'fiscal_year_start_month' => (int) ($request->validated('fiscal_year_start_month') ?: ($settings['regional']['fiscal_year_start_month'] ?? 4)),
+            'date_format' => $request->validated('date_format') ?: ($settings['regional']['date_format'] ?? 'Y-m-d'),
+            'time_format' => $request->validated('time_format') ?: ($settings['regional']['time_format'] ?? 'H:i'),
+        ]);
+
+        $data = collect($data)->except(['locale', 'fiscal_year_start_month', 'date_format', 'time_format'])->all();
         $data['settings'] = $settings;
 
         $organization->update($data);
@@ -127,5 +142,4 @@ class OrganizationController extends Controller
             ->route('organization.edit')
             ->with('status', 'organization-mail-test-sent');
     }
-
 }

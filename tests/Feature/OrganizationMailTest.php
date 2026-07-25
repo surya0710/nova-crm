@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\TestOrganizationMail;
+use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,7 +74,7 @@ class OrganizationMailTest extends TestCase
 
         [$user, $organization] = $this->setupOwner();
 
-        $customer = \App\Models\Customer::factory()->create([
+        $customer = Customer::factory()->create([
             'organization_id' => $organization->id,
             'email' => 'client@example.com',
             'created_by' => $user->id,

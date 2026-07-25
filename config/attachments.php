@@ -1,5 +1,11 @@
 <?php
 
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\Lead;
+use App\Models\Opportunity;
+use App\Models\Quotation;
+
 return [
     'max_files' => 10,
     'max_size_kb' => 10240,
@@ -9,10 +15,10 @@ return [
     ],
 
     'attachable' => [
-        'lead' => \App\Models\Lead::class,
-        'customer' => \App\Models\Customer::class,
-        'invoice' => \App\Models\Invoice::class,
-        'quotation' => \App\Models\Quotation::class,
-        'opportunity' => \App\Models\Opportunity::class,
+        'lead' => Lead::class,
+        'customer' => Customer::class,
+        'invoice' => Invoice::class,
+        'quotation' => Quotation::class,
+        'opportunity' => Opportunity::class,
     ],
 ];

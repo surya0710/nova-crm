@@ -1,5 +1,11 @@
 <?php
 
+use App\Models\Lead;
+use App\Services\Assignment\Strategies\LeastLoadedStrategy;
+use App\Services\Assignment\Strategies\ManualQueueStrategy;
+use App\Services\Assignment\Strategies\RoundRobinStrategy;
+use App\Services\Assignment\Strategies\WeightedRoundRobinStrategy;
+
 return [
 
     /*
@@ -13,10 +19,10 @@ return [
     */
 
     'strategies' => [
-        'round_robin' => App\Services\Assignment\Strategies\RoundRobinStrategy::class,
-        'weighted_round_robin' => App\Services\Assignment\Strategies\WeightedRoundRobinStrategy::class,
-        'least_loaded' => App\Services\Assignment\Strategies\LeastLoadedStrategy::class,
-        'manual_queue' => App\Services\Assignment\Strategies\ManualQueueStrategy::class,
+        'round_robin' => RoundRobinStrategy::class,
+        'weighted_round_robin' => WeightedRoundRobinStrategy::class,
+        'least_loaded' => LeastLoadedStrategy::class,
+        'manual_queue' => ManualQueueStrategy::class,
     ],
 
     'strategy_labels' => [
@@ -69,7 +75,7 @@ return [
 
     'least_loaded' => [
         'lead' => [
-            'model' => App\Models\Lead::class,
+            'model' => Lead::class,
             'owner_column' => 'assigned_to',
             'open_statuses_excluded' => ['converted', 'won', 'lost'],
         ],

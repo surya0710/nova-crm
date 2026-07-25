@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
+use App\Models\Lead;
+use App\Services\LeadFollowUpService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +12,7 @@ class StoreLeadRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Lead::class) ?? false;
+        return $this->user()?->can('create', Lead::class) ?? false;
     }
 
     public function rules(): array
@@ -33,7 +34,7 @@ class StoreLeadRequest extends FormRequest
                 Rule::exists('organization_user', 'user_id')->where('organization_id', $organization?->id),
             ],
             'status' => ['required', 'string', Rule::in(array_keys(config('leads.statuses')))],
-            ...app(\App\Services\LeadFollowUpService::class)->validationRules(),
+            ...app(LeadFollowUpService::class)->validationRules(),
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:50'],
         ];

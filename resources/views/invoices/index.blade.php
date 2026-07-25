@@ -1,108 +1,107 @@
 @php
-    $statusColors = [
-        'draft' => 'bg-slate-100 text-slate-700',
-        'issued' => 'bg-blue-100 text-blue-800',
-        'partially_paid' => 'bg-amber-100 text-amber-800',
-        'paid' => 'bg-emerald-100 text-emerald-800',
-        'cancelled' => 'bg-slate-100 text-slate-500',
+    $statusVariant = [
+        'draft' => 'neutral',
+        'issued' => 'info',
+        'partially_paid' => 'warning',
+        'paid' => 'success',
+        'cancelled' => 'neutral',
+    ];
+    $density = $shellNav['density'] ?? 'comfortable';
+    $columns = [
+        crm_term('invoice'),
+        crm_term('customer'),
+        ['label' => __('Due Date'), 'class' => 'hidden md:table-cell'],
+        ['label' => __('Total'), 'align' => 'right'],
+        ['label' => __('Balance'), 'align' => 'right', 'class' => 'hidden sm:table-cell'],
+        __('Status'),
     ];
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <h1 class="text-lg font-semibold text-slate-900">{{ crm_term('invoices') }}</h1>
-                <p class="text-sm text-slate-500">{{ __('Create and manage billing documents') }}</p>
-            </div>
-            @can('create', App\Models\Invoice::class)
-                <a href="{{ route('invoices.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition shrink-0">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    {{ __('New :label', ['label' => crm_term('invoice')]) }}
-                </a>
-            @endcan
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 mb-6">
-        <form method="GET" action="{{ route('invoices.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div class="lg:col-span-2">
-                <x-text-input name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search number, title, customer…') }}" class="w-full" />
-            </div>
-            <select name="status" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
-                <option value="">{{ __('All statuses') }}</option>
-                @foreach (config('invoices.statuses') as $value => $label)
-                    <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-            <div class="flex gap-2">
-                <select name="customer_id" class="flex-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
-                    <option value="">{{ __('All :label', ['label' => strtolower(crm_term('customers'))]) }}</option>
-                    @foreach ($customers as $customer)
-                        <option value="{{ $customer->id }}" @selected((string) ($filters['customer_id'] ?? '') === (string) $customer->id)>{{ $customer->display_name }}</option>
-                    @endforeach
-                </select>
-                <x-primary-button type="submit">{{ __('Filter') }}</x-primary-button>
-            </div>
-        </form>
-    </div>
+    <x-layouts.entity-listing
+        :title="crm_term('invoices')"
+        :subtitle="__('Create and manage billing documents')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('invoices'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
 
-    <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        @if ($invoices->isEmpty())
-            <div class="p-12 text-center">
-                <div class="mx-auto h-12 w-12 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-4">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+        <x-slot:actions>
+            @can('create', App\Models\Invoice::class)
+                <x-ui.button :href="route('invoices.create')" variant="primary" size="sm">{{ __('New :label', ['label' => crm_term('invoice')]) }}</x-ui.button>
+            @endcan
+        </x-slot:actions>
+
+        <x-slot:filters>
+            <form method="GET" action="{{ route('invoices.index') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="lg:col-span-2">
+                    <label for="invoices-search" class="sr-only">{{ __('Search invoices') }}</label>
+                    <x-forms.input id="invoices-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search number, title, customer…') }}" />
                 </div>
-                <h3 class="text-sm font-semibold text-slate-900">{{ __('No invoices yet') }}</h3>
-                @can('create', App\Models\Invoice::class)
-                    <a href="{{ route('invoices.create') }}" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
-                        {{ __('New :label', ['label' => crm_term('invoice')]) }} →
-                    </a>
-                @endcan
-            </div>
-        @else
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ crm_term('invoice') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ crm_term('customer') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Due Date') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Total') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Balance') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Status') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($invoices as $invoice)
-                            <tr class="hover:bg-slate-50/80 transition">
-                                <td class="px-6 py-4">
-                                    <a href="{{ route('invoices.show', $invoice) }}" class="group">
-                                        <p class="text-sm font-semibold text-slate-900 group-hover:text-indigo-600">{{ $invoice->number }}</p>
-                                        @if ($invoice->title)
-                                            <p class="text-xs text-slate-500 mt-0.5">{{ $invoice->title }}</p>
-                                        @endif
-                                    </a>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $invoice->customer->display_name }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $invoice->due_date?->format('M j, Y') ?? '—' }}</td>
-                                <td class="px-6 py-4 text-sm font-medium text-slate-900">{{ $invoice->formatted_total }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $invoice->formatted_balance_due }}</td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex text-xs font-medium px-2 py-0.5 rounded-full {{ $statusColors[$invoice->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ $invoice->status_label }}
-                                    </span>
-                                </td>
-                            </tr>
+                <x-forms.select name="status" aria-label="{{ __('Status') }}">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (config('invoices.statuses') as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-forms.select>
+                <div class="flex gap-2">
+                    <x-forms.select name="customer_id" class="flex-1" aria-label="{{ crm_term('customer') }}">
+                        <option value="">{{ __('All :label', ['label' => strtolower(crm_term('customers'))]) }}</option>
+                        @foreach ($customers as $customer)
+                            <option value="{{ $customer->id }}" @selected((string) ($filters['customer_id'] ?? '') === (string) $customer->id)>{{ $customer->display_name }}</option>
                         @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if ($invoices->hasPages())
-                <div class="px-6 py-4 border-t border-slate-100">{{ $invoices->links() }}</div>
-            @endif
+                    </x-forms.select>
+                    <x-ui.button type="submit" variant="primary" size="sm">{{ __('Filter') }}</x-ui.button>
+                </div>
+            </form>
+        </x-slot:filters>
+
+        @if ($invoices->isEmpty())
+            <x-ui.card>
+                @if (! empty($filters['search']) || ! empty($filters['status']) || ! empty($filters['customer_id']))
+                    <x-ui.empty-state-preset variant="search" />
+                @else
+                    <x-ui.empty-state-preset
+                        variant="generic"
+                        :title="__('No invoices yet')"
+                        :action-href="auth()->user()->can('create', App\Models\Invoice::class) ? route('invoices.create') : null"
+                        :action-label="__('New :label', ['label' => crm_term('invoice')])"
+                    />
+                @endif
+            </x-ui.card>
+        @else
+            <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
+                @foreach ($invoices as $invoice)
+                    <tr class="hover:bg-surface-muted/60 transition">
+                        <td class="px-4 py-3">
+                            <a href="{{ route('invoices.show', $invoice) }}" class="group block">
+                                <p class="text-sm font-semibold text-ink-heading group-hover:text-primary-700">{{ $invoice->number }}</p>
+                                @if ($invoice->title)
+                                    <p class="mt-0.5 text-xs text-ink-muted">{{ $invoice->title }}</p>
+                                @endif
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-ink-muted">{{ $invoice->customer->display_name }}</td>
+                        <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $invoice->due_date?->format('M j, Y') ?? '—' }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-ink-heading">{{ $invoice->formatted_total }}</td>
+                        <td class="px-4 py-3 hidden sm:table-cell text-right text-sm text-ink-muted">{{ $invoice->formatted_balance_due }}</td>
+                        <td class="px-4 py-3">
+                            <x-ui.badge :variant="$statusVariant[$invoice->status] ?? 'neutral'">{{ $invoice->status_label }}</x-ui.badge>
+                        </td>
+                    </tr>
+                @endforeach
+            </x-tables.table>
         @endif
-    </div>
+
+        @if ($invoices->hasPages())
+            <x-slot:pagination>
+                {{ $invoices->links() }}
+            </x-slot:pagination>
+        @endif
+    </x-layouts.entity-listing>
 </x-app-layout>

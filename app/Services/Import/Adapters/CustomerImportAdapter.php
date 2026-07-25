@@ -5,6 +5,7 @@ namespace App\Services\Import\Adapters;
 use App\Contracts\Import\ImportableEntityInterface;
 use App\Models\CustomerNote;
 use App\Models\ImportSession;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\CustomerService;
@@ -318,7 +319,7 @@ class CustomerImportAdapter implements ImportableEntityInterface
         $fields = [];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'customer', 'create') as $item) {
-            /** @var \App\Models\MetadataFieldDefinition $definition */
+            /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
 
             $fields[] = new ImportFieldDefinition(

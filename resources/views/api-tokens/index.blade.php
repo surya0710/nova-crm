@@ -1,10 +1,15 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('API Tokens') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Manage personal access tokens for the REST API') }}</p>
-        </div>
-    </x-slot>
+    <x-ui.page-header
+        :title="__('API Tokens')"
+        :subtitle="__('Manage personal access tokens for the REST API')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Administration'), 'href' => \Illuminate\Support\Facades\Route::has('administration.home') ? route('administration.home') : null],
+                ['label' => __('API Tokens'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+    </x-ui.page-header>
 
     <x-flash-messages />
 

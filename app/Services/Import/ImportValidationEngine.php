@@ -13,7 +13,6 @@ use Throwable;
 class ImportValidationEngine
 {
     /**
-     * @param  ParsedSpreadsheet  $spreadsheet
      * @param  list<ImportFieldDefinition>  $fields
      * @param  array<string, string|null>  $mapping  field key => original header
      * @param  list<string>  $unknownColumns

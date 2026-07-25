@@ -74,9 +74,35 @@ class OpportunityController extends Controller
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'opportunity');
         $filters = collect($filterInput)->only(['search', 'stage', 'customer_id', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $viewMode = $request->query('view', 'board') === 'list' ? 'list' : 'board';
+
+        $boardOpportunities = collect();
+        if ($viewMode === 'board') {
+            $boardQuery = Opportunity::query()
+                ->with(['customer', 'assignee'])
+                ->when(trim((string) ($filterInput['search'] ?? '')) !== '', function ($q) use ($filterInput) {
+                    $search = trim((string) $filterInput['search']);
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('title', 'like', "%{$search}%")
+                            ->orWhereHas('customer', fn ($c) => $c->where('company', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
+                    });
+                })
+                ->when((int) ($filterInput['customer_id'] ?? 0), fn ($q, $id) => $q->where('customer_id', $id))
+                ->when((int) ($filterInput['assigned_to'] ?? 0), fn ($q, $id) => $q->where('assigned_to', $id));
+
+            $this->metadataQueries->applyForWebIndex($boardQuery, $metadataRequest, $organization->id);
+
+            $boardOpportunities = $boardQuery
+                ->orderByDesc('updated_at')
+                ->limit(200)
+                ->get()
+                ->groupBy('stage');
+        }
 
         return view('pipeline.index', [
             'opportunities' => $query->paginate(15)->withQueryString(),
+            'boardOpportunities' => $boardOpportunities,
+            'viewMode' => $viewMode,
             'organization' => $organization,
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($organization),
@@ -176,7 +202,7 @@ class OpportunityController extends Controller
         };
 
         return redirect()
-            ->route('pipeline.show', $opportunity)
+            ->back()
             ->with('status', $flashStatus);
     }
 

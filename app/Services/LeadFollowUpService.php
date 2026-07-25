@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Rules\FutureOrganizationDateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -41,7 +42,7 @@ class LeadFollowUpService
     public function validationRules(): array
     {
         return [
-            'next_follow_up_at' => ['nullable', 'date', new \App\Rules\FutureOrganizationDateTime],
+            'next_follow_up_at' => ['nullable', 'date', new FutureOrganizationDateTime],
             'next_follow_up_note' => ['nullable', 'string', 'max:2000'],
         ];
     }

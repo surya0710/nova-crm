@@ -1,12 +1,14 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Add Task') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Create a follow-up or to-do') }}</p>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
+
+    <x-layouts.create :title="__('Create Tasks')" max-width="4xl">
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Projects'), 'href' => route('projects.home')],
+                ['label' => __('Create Tasks'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
 
     <form method="POST" action="{{ route('tasks.store') }}" class="max-w-4xl">
         @csrf
@@ -26,4 +28,5 @@
             </div>
         </div>
     </form>
+    </x-layouts.create>
 </x-app-layout>

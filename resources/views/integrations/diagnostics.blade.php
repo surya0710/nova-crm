@@ -258,5 +258,51 @@
                 </article>
             @endforeach
         </div>
+
+        @if (! empty($diagnostics['recruitment']))
+            @php $recruitment = $diagnostics['recruitment']; @endphp
+            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-900">{{ __('Recruitment Providers') }}</h2>
+                        <p class="text-sm text-slate-500">{{ __('Connected recruitment integrations, last sync, errors, and retry queues.') }}</p>
+                    </div>
+                    <a href="{{ route('hrms.recruitment.integrations.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        {{ __('Open Recruitment Integrations') }}
+                    </a>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-sm">
+                    <div class="rounded-lg bg-slate-50 p-3">{{ __('Connected') }}: <strong>{{ $recruitment['summary']['connected'] ?? 0 }}</strong> / {{ $recruitment['summary']['total'] ?? 0 }}</div>
+                    <div class="rounded-lg bg-slate-50 p-3">{{ __('Job board retries') }}: <strong>{{ $recruitment['retry_queue']['job_board_failures'] ?? 0 }}</strong></div>
+                    <div class="rounded-lg bg-slate-50 p-3">{{ __('Webhook retries') }}: <strong>{{ $recruitment['retry_queue']['webhook_failures'] ?? 0 }}</strong></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="p-2 text-left">{{ __('Provider') }}</th>
+                                <th class="p-2 text-left">{{ __('Category') }}</th>
+                                <th class="p-2 text-left">{{ __('Status') }}</th>
+                                <th class="p-2 text-left">{{ __('Last Sync') }}</th>
+                                <th class="p-2 text-left">{{ __('Last Error') }}</th>
+                                <th class="p-2 text-left">{{ __('Credential Expiry') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (($recruitment['providers'] ?? []) as $card)
+                                <tr class="border-t">
+                                    <td class="p-2">{{ $card['name'] ?? $card['slug'] }}</td>
+                                    <td class="p-2">{{ $card['category'] ?? '—' }}</td>
+                                    <td class="p-2">{{ $card['status'] ?? 'disconnected' }}</td>
+                                    <td class="p-2">{{ $card['last_synced_at'] ? \Illuminate\Support\Carbon::parse($card['last_synced_at'])->toDayDateTimeString() : '—' }}</td>
+                                    <td class="p-2">{{ $card['last_error'] ?: '—' }}</td>
+                                    <td class="p-2">{{ $card['credential_expires_at'] ? \Illuminate\Support\Carbon::parse($card['credential_expires_at'])->toDayDateTimeString() : '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
     </div>
 </x-app-layout>

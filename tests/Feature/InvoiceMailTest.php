@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\OrganizationMailConfig;
 use App\Services\OrganizationMailer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -126,7 +127,7 @@ class InvoiceMailTest extends TestCase
 
         Mail::fake();
 
-        $config = app(\App\Services\OrganizationMailConfig::class)->for($organization);
+        $config = app(OrganizationMailConfig::class)->for($organization);
         $mailerName = $config->registerMailer();
 
         Mail::mailer($mailerName)

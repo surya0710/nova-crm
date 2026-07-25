@@ -227,7 +227,7 @@
                             <x-input-error :messages="$errors->get('timezone')" class="mt-2" />
                         </div>
 
-                        <div>
+                                                <div>
                             <x-input-label for="currency" :value="__('Currency')" />
                             <select id="currency" name="currency" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 @foreach ($currencies as $code => $label)
@@ -238,7 +238,50 @@
                             </select>
                             <x-input-error :messages="$errors->get('currency')" class="mt-2" />
                         </div>
+
+                        <div>
+                            <x-input-label for="locale" :value="__('Locale')" />
+                            <x-text-input id="locale" class="block mt-1 w-full" type="text" name="locale" :value="old('locale', $regional['locale'] ?? 'en')" placeholder="en" />
+                            <p class="mt-1 text-xs text-slate-500">{{ __('BCP 47 language tag, e.g. en, en-IN, hi.') }}</p>
+                            <x-input-error :messages="$errors->get('locale')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="fiscal_year_start_month" :value="__('Fiscal year starts')" />
+                            <select id="fiscal_year_start_month" name="fiscal_year_start_month" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                @foreach (range(1, 12) as $month)
+                                    <option value="{{ $month }}" @selected((int) old('fiscal_year_start_month', $regional['fiscal_year_start_month'] ?? 4) === $month)>
+                                        {{ \Carbon\Carbon::create()->month($month)->format('F') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('fiscal_year_start_month')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="date_format" :value="__('Date format')" />
+                            <select id="date_format" name="date_format" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                @foreach (['Y-m-d' => 'YYYY-MM-DD', 'd/m/Y' => 'DD/MM/YYYY', 'm/d/Y' => 'MM/DD/YYYY', 'd-M-Y' => 'DD-Mon-YYYY'] as $fmt => $label)
+                                    <option value="{{ $fmt }}" @selected(old('date_format', $regional['date_format'] ?? 'Y-m-d') === $fmt)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('date_format')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="time_format" :value="__('Time format')" />
+                            <select id="time_format" name="time_format" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                @foreach (['H:i' => '24-hour', 'h:i A' => '12-hour', 'g:i A' => '12-hour compact'] as $fmt => $label)
+                                    <option value="{{ $fmt }}" @selected(old('time_format', $regional['time_format'] ?? 'H:i') === $fmt)>{{ __($label) }} ({{ $fmt }})</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('time_format')" class="mt-2" />
+                        </div>
                     </div>
+                    <p class="text-sm text-slate-500">
+                        <a href="{{ route('organization.settings.working-days.edit') }}" class="text-indigo-600 hover:underline">{{ __('Configure working days') }}</a>
+                        {{ __('and business hours in Organization Settings.') }}
+                    </p>
                 </div>
 
                 {{-- Terminology --}}
@@ -315,7 +358,7 @@
                 <div x-show="tab === 'email'" x-cloak class="space-y-5">
                     <div>
                         <h3 class="text-base font-semibold text-slate-900">{{ __('Outgoing Email (SMTP)') }}</h3>
-                        <p class="mt-1 text-sm text-slate-500">{{ __('Client emails (quotations, invoices, receipts) are sent from this organization\'s own mail account — not from global .env settings.') }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ __('Client emails (quotations, invoices, receipts) are sent from this organization\'s own mail account â€” not from global .env settings.') }}</p>
                     </div>
 
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -374,7 +417,7 @@
 
                         <div>
                             <x-input-label for="mail_password" :value="__('SMTP Password')" />
-                            <x-text-input id="mail_password" class="block mt-1 w-full" type="password" name="mail_password" autocomplete="new-password" placeholder="{{ $mailSettings['has_password'] ? '••••••••' : '' }}" />
+                            <x-text-input id="mail_password" class="block mt-1 w-full" type="password" name="mail_password" autocomplete="new-password" placeholder="{{ $mailSettings['has_password'] ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : '' }}" />
                             @if ($mailSettings['has_password'])
                                 <p class="mt-1 text-xs text-slate-500">{{ __('Leave blank to keep the current password.') }}</p>
                             @endif
@@ -422,7 +465,12 @@
             <div x-show="tab === 'roles'" x-cloak class="p-6 sm:p-8">
                 <div class="mb-6">
                     <h3 class="text-base font-semibold text-slate-900">{{ __('Roles & Permissions') }}</h3>
-                    <p class="mt-1 text-sm text-slate-500">{{ __('System roles available in your organization. Custom roles can be added in a future release.') }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('System roles available in your organization.') }}</p>
+                    @if (auth()->user()?->hasPermission('rbac.view', $organization))
+                        <a href="{{ route('rbac.roles.index') }}" class="mt-3 inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                            {{ __('Manage Access Control') }} â†’
+                        </a>
+                    @endif
                 </div>
 
                 <div class="space-y-4">
@@ -450,7 +498,7 @@
                                         @foreach ($grouped as $module => $permissions)
                                             <span class="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md">
                                                 <span class="font-medium capitalize">{{ $module }}</span>
-                                                <span class="text-slate-400">·</span>
+                                                <span class="text-slate-400">Â·</span>
                                                 <span>{{ $permissions->pluck('name')->join(', ') }}</span>
                                             </span>
                                         @endforeach

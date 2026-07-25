@@ -1,213 +1,199 @@
-<x-app-layout>
-    @php
-        $currency = $data['currency'];
-        $formatMoney = fn (float $amount) => number_format($amount, 2).' '.$currency;
-        $maxMonthly = max(1, $data['monthly_revenue']->max('total') ?: 1);
-        $maxLeadCount = max(1, $data['lead_counts']->max() ?: 1);
-    @endphp
+@php
+    $currency = $data['currency'];
+    $formatMoney = fn (float $amount) => number_format($amount, 2).' '.$currency;
+    $maxMonthly = max(1, $data['monthly_revenue']->max('total') ?: 1);
+    $maxLeadCount = max(1, $data['lead_counts']->max() ?: 1);
+@endphp
 
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <h1 class="text-lg font-semibold text-slate-900">{{ __('Reports & Analytics') }}</h1>
-                <p class="text-sm text-slate-500">{{ $organization->name }}</p>
-            </div>
-            <form method="GET" class="flex items-center gap-2">
-                <select name="period" onchange="this.form.submit()" class="border-gray-300 rounded-md shadow-sm text-sm">
+<x-app-layout>
+    <x-layouts.analytics
+        :title="__('Reports & Analytics')"
+        :subtitle="$organization->name"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => __('Reports'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <x-slot:actions>
+            <form method="GET" class="flex flex-wrap items-center gap-2">
+                <x-forms.select name="period" onchange="this.form.submit()" class="!w-auto min-w-[10rem]">
                     <option value="30" @selected($period === '30')>{{ __('Last 30 days') }}</option>
                     <option value="90" @selected($period === '90')>{{ __('Last 90 days') }}</option>
                     <option value="365" @selected($period === '365')>{{ __('Last 12 months') }}</option>
                     <option value="all" @selected($period === 'all')>{{ __('All time') }}</option>
-                </select>
+                </x-forms.select>
                 @if (auth()->user()->hasPermission('reports.view') || auth()->user()->hasPermission('finance.view'))
-                    <a href="{{ route('reports.finance') }}" class="text-sm text-indigo-600 hover:text-indigo-800 whitespace-nowrap">{{ __('Finance reports') }}</a>
+                    <x-ui.button :href="route('reports.finance')" variant="secondary" size="sm">{{ __('Finance reports') }}</x-ui.button>
                 @endif
             </form>
-        </div>
-    </x-slot>
+        </x-slot:actions>
 
-    {{-- Revenue overview --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        @foreach ([
-            ['label' => __('Revenue collected'), 'value' => $formatMoney($data['revenue_collected']), 'sub' => __('From recorded :label', ['label' => strtolower(crm_term('payments'))]), 'bg' => 'bg-emerald-50', 'text' => 'text-emerald-600'],
-            ['label' => __('Outstanding'), 'value' => $formatMoney($data['outstanding_amount']), 'sub' => __(':count unpaid :label', ['count' => $data['outstanding_count'], 'label' => strtolower(crm_term('invoices'))]), 'bg' => 'bg-amber-50', 'text' => 'text-amber-600'],
-            ['label' => __('Pipeline value'), 'value' => $formatMoney($data['open_pipeline_value']), 'sub' => __('Open :label', ['label' => strtolower(crm_term('deals'))]), 'bg' => 'bg-indigo-50', 'text' => 'text-indigo-600'],
-            ['label' => __('Win rate'), 'value' => $data['conversion_rate'] !== null ? $data['conversion_rate'].'%' : '—', 'sub' => __(':label closed won vs lost', ['label' => crm_term('leads')]), 'bg' => 'bg-violet-50', 'text' => 'text-violet-600'],
-        ] as $stat)
-            <div class="rounded-xl bg-white border border-slate-200 p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $stat['label'] }}</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900">{{ $stat['value'] }}</p>
-                <p class="mt-2 text-xs text-slate-400">{{ $stat['sub'] }}</p>
-            </div>
-        @endforeach
-    </div>
+        <x-slot:kpis>
+            <x-ui.stat-card
+                :label="__('Revenue collected')"
+                :value="$formatMoney($data['revenue_collected'])"
+                :hint="__('From recorded :label', ['label' => strtolower(crm_term('payments'))])"
+            />
+            <x-ui.stat-card
+                :label="__('Outstanding')"
+                :value="$formatMoney($data['outstanding_amount'])"
+                :hint="__(':count unpaid :label', ['count' => $data['outstanding_count'], 'label' => strtolower(crm_term('invoices'))])"
+            />
+            <x-ui.stat-card
+                :label="__('Pipeline value')"
+                :value="$formatMoney($data['open_pipeline_value'])"
+                :hint="__('Open :label', ['label' => strtolower(crm_term('deals'))])"
+            />
+            <x-ui.stat-card
+                :label="__('Win rate')"
+                :value="$data['conversion_rate'] !== null ? $data['conversion_rate'].'%' : '—'"
+                :hint="__(':label closed won vs lost', ['label' => crm_term('leads')])"
+            />
+        </x-slot:kpis>
 
-    <div class="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {{-- Monthly revenue --}}
-        <div class="xl:col-span-2 rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ __('Monthly revenue') }}</h3>
-                <p class="text-sm text-slate-500 mt-0.5">{{ __('Collected :label over the last 6 months', ['label' => strtolower(crm_term('payments'))]) }}</p>
-            </div>
-            <div class="p-6">
-                @if ($data['monthly_revenue']->every(fn ($m) => $m['total'] == 0))
-                    <p class="text-sm text-slate-500 text-center py-8">{{ __('No revenue recorded yet.') }}</p>
-                @else
-                    <div class="flex items-end justify-between gap-3 h-48">
-                        @foreach ($data['monthly_revenue'] as $month)
-                            <div class="flex-1 flex flex-col items-center gap-2 min-w-0">
-                                <span class="text-xs font-medium text-slate-600 truncate w-full text-center">{{ number_format($month['total'], 0) }}</span>
-                                <div class="w-full flex items-end justify-center h-32">
-                                    <div
-                                        class="w-full max-w-12 rounded-t-lg bg-indigo-500 transition-all"
-                                        style="height: {{ max(4, ($month['total'] / $maxMonthly) * 100) }}%"
-                                        title="{{ $formatMoney($month['total']) }}"
-                                    ></div>
+        <div class="lg:col-span-2 space-y-6">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <x-entity.section
+                    class="xl:col-span-2"
+                    :title="__('Monthly revenue')"
+                    :subtitle="__('Collected :label over the last 6 months', ['label' => strtolower(crm_term('payments'))])"
+                >
+                    @if ($data['monthly_revenue']->every(fn ($m) => $m['total'] == 0))
+                        <p class="text-sm text-ink-muted text-center py-8">{{ __('No revenue recorded yet.') }}</p>
+                    @else
+                        <div class="flex items-end justify-between gap-3 h-48">
+                            @foreach ($data['monthly_revenue'] as $month)
+                                <div class="flex-1 flex flex-col items-center gap-2 min-w-0">
+                                    <span class="text-xs font-medium text-ink truncate w-full text-center">{{ number_format($month['total'], 0) }}</span>
+                                    <div class="w-full flex items-end justify-center h-32">
+                                        <div
+                                            class="w-full max-w-12 rounded-t-lg bg-primary-500 transition-all"
+                                            style="height: {{ max(4, ($month['total'] / $maxMonthly) * 100) }}%"
+                                            title="{{ $formatMoney($month['total']) }}"
+                                        ></div>
+                                    </div>
+                                    <span class="text-[10px] text-ink-muted truncate w-full text-center">{{ $month['label'] }}</span>
                                 </div>
-                                <span class="text-[10px] text-slate-500 truncate w-full text-center">{{ $month['label'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        {{-- Payment methods --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ __('Payment methods') }}</h3>
-                <p class="text-sm text-slate-500 mt-0.5">{{ __('Breakdown for selected period') }}</p>
-            </div>
-            <div class="p-6">
-                @if ($data['payments_by_method']->isEmpty())
-                    <p class="text-sm text-slate-500 text-center py-8">{{ __('No payments in this period.') }}</p>
-                @else
-                    <div class="space-y-4">
-                        @foreach ($data['payments_by_method'] as $row)
-                            <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span class="font-medium text-slate-700">{{ config('payments.methods.'.$row->method, ucfirst(str_replace('_', ' ', $row->method))) }}</span>
-                                    <span class="text-slate-600">{{ $formatMoney((float) $row->total) }}</span>
-                                </div>
-                                <p class="text-xs text-slate-400">{{ trans_choice(':count payment|:count payments', $row->count, ['count' => $row->count]) }}</p>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {{-- Lead funnel --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ __(':label funnel', ['label' => crm_term('leads')]) }}</h3>
-                <p class="text-sm text-slate-500 mt-0.5">{{ __(':count total', ['count' => $data['lead_total']]) }}</p>
-            </div>
-            <div class="p-6 space-y-3">
-                @forelse (config('leads.statuses') as $status => $label)
-                    @php $count = (int) ($data['lead_counts'][$status] ?? 0); @endphp
-                    @if ($count > 0 || in_array($status, ['new', 'won', 'lost']))
-                        <div>
-                            <div class="flex justify-between text-sm mb-1">
-                                <span class="text-slate-700">{{ $label }}</span>
-                                <span class="font-medium text-slate-900">{{ $count }}</span>
-                            </div>
-                            <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                <div class="h-full rounded-full bg-indigo-500" style="width: {{ ($count / $maxLeadCount) * 100 }}%"></div>
-                            </div>
+                            @endforeach
                         </div>
                     @endif
-                @empty
-                    <p class="text-sm text-slate-500">{{ __('No leads yet.') }}</p>
-                @endforelse
-            </div>
-        </div>
+                </x-entity.section>
 
-        {{-- Pipeline stages --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ crm_term('pipeline') }}</h3>
-                <p class="text-sm text-slate-500 mt-0.5">{{ __('Opportunities by stage') }}</p>
-            </div>
-            <div class="p-6 space-y-3">
-                @php $hasOpportunities = $data['opportunity_by_stage']->isNotEmpty(); @endphp
-                @if ($hasOpportunities)
-                    @foreach (config('pipeline.stages') as $stage => $label)
-                        @php
-                            $row = $data['opportunity_by_stage'][$stage] ?? null;
-                            $count = $row ? (int) $row->count : 0;
-                            $value = $row ? (float) $row->value : 0;
-                        @endphp
-                        <div class="flex items-center justify-between gap-4 py-2 border-b border-slate-50 last:border-0">
-                            <div>
-                                <p class="text-sm font-medium text-slate-700">{{ $label }}</p>
-                                <p class="text-xs text-slate-400">{{ trans_choice(':count deal|:count deals', $count, ['count' => $count]) }}</p>
-                            </div>
-                            <p class="text-sm font-semibold text-slate-900 shrink-0">{{ $formatMoney($value) }}</p>
+                <x-entity.section :title="__('Payment methods')" :subtitle="__('Breakdown for selected period')">
+                    @if ($data['payments_by_method']->isEmpty())
+                        <p class="text-sm text-ink-muted text-center py-8">{{ __('No payments in this period.') }}</p>
+                    @else
+                        <div class="space-y-4">
+                            @foreach ($data['payments_by_method'] as $row)
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-ink">{{ config('payments.methods.'.$row->method, ucfirst(str_replace('_', ' ', $row->method))) }}</span>
+                                        <span class="text-ink-muted">{{ $formatMoney((float) $row->total) }}</span>
+                                    </div>
+                                    <p class="text-xs text-ink-muted">{{ trans_choice(':count payment|:count payments', $row->count, ['count' => $row->count]) }}</p>
+                                </div>
+                            @endforeach
                         </div>
-                    @endforeach
-                @else
-                    <p class="text-sm text-slate-500">{{ __('No pipeline data yet.') }}</p>
-                @endif
+                    @endif
+                </x-entity.section>
             </div>
-        </div>
-    </div>
 
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {{-- Invoices --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ crm_term('invoices') }}</h3>
-            </div>
-            <div class="p-6 space-y-2">
-                @foreach (config('invoices.statuses') as $status => $label)
-                    @php $count = (int) ($data['invoice_counts'][$status] ?? 0); @endphp
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-600">{{ $label }}</span>
-                        <span class="font-medium text-slate-900">{{ $count }}</span>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Quotations --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ crm_term('quotations') }}</h3>
-            </div>
-            <div class="p-6 space-y-2">
-                @foreach (config('quotations.statuses') as $status => $label)
-                    @php $count = (int) ($data['quotation_counts'][$status] ?? 0); @endphp
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-600">{{ $label }}</span>
-                        <span class="font-medium text-slate-900">{{ $count }}</span>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Top performers --}}
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h3 class="font-semibold text-slate-900">{{ __('Top performers') }}</h3>
-                <p class="text-sm text-slate-500 mt-0.5">{{ __('Won :label by assignee', ['label' => strtolower(crm_term('leads'))]) }}</p>
-            </div>
-            <div class="p-6">
-                @if ($data['top_performers']->isEmpty())
-                    <p class="text-sm text-slate-500">{{ __('No closed wins yet.') }}</p>
-                @else
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <x-entity.section
+                    :title="__(':label funnel', ['label' => crm_term('leads')])"
+                    :subtitle="__(':count total', ['count' => $data['lead_total']])"
+                >
                     <div class="space-y-3">
-                        @foreach ($data['top_performers'] as $performer)
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm text-slate-700">{{ $performer['name'] }}</span>
-                                <span class="text-sm font-semibold text-indigo-600">{{ $performer['count'] }}</span>
+                        @forelse (config('leads.statuses') as $status => $label)
+                            @php $count = (int) ($data['lead_counts'][$status] ?? 0); @endphp
+                            @if ($count > 0 || in_array($status, ['new', 'won', 'lost']))
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-ink">{{ $label }}</span>
+                                        <span class="font-medium text-ink-heading">{{ $count }}</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-surface-muted overflow-hidden">
+                                        <div class="h-full rounded-full bg-primary-500" style="width: {{ ($count / $maxLeadCount) * 100 }}%"></div>
+                                    </div>
+                                </div>
+                            @endif
+                        @empty
+                            <p class="text-sm text-ink-muted">{{ __('No leads yet.') }}</p>
+                        @endforelse
+                    </div>
+                </x-entity.section>
+
+                <x-entity.section :title="crm_term('pipeline')" :subtitle="__('Opportunities by stage')">
+                    @php $hasOpportunities = $data['opportunity_by_stage']->isNotEmpty(); @endphp
+                    @if ($hasOpportunities)
+                        <div class="space-y-3">
+                            @foreach (config('pipeline.stages') as $stage => $label)
+                                @php
+                                    $row = $data['opportunity_by_stage'][$stage] ?? null;
+                                    $count = $row ? (int) $row->count : 0;
+                                    $value = $row ? (float) $row->value : 0;
+                                @endphp
+                                <div class="flex items-center justify-between gap-4 py-2 border-b border-line last:border-0">
+                                    <div>
+                                        <p class="text-sm font-medium text-ink">{{ $label }}</p>
+                                        <p class="text-xs text-ink-muted">{{ trans_choice(':count deal|:count deals', $count, ['count' => $count]) }}</p>
+                                    </div>
+                                    <p class="text-sm font-semibold text-ink-heading shrink-0">{{ $formatMoney($value) }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-sm text-ink-muted">{{ __('No pipeline data yet.') }}</p>
+                    @endif
+                </x-entity.section>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <x-entity.section :title="crm_term('invoices')">
+                    <div class="space-y-2">
+                        @foreach (config('invoices.statuses') as $status => $label)
+                            @php $count = (int) ($data['invoice_counts'][$status] ?? 0); @endphp
+                            <div class="flex justify-between text-sm">
+                                <span class="text-ink-muted">{{ $label }}</span>
+                                <span class="font-medium text-ink-heading">{{ $count }}</span>
                             </div>
                         @endforeach
                     </div>
-                @endif
+                </x-entity.section>
+
+                <x-entity.section :title="crm_term('quotations')">
+                    <div class="space-y-2">
+                        @foreach (config('quotations.statuses') as $status => $label)
+                            @php $count = (int) ($data['quotation_counts'][$status] ?? 0); @endphp
+                            <div class="flex justify-between text-sm">
+                                <span class="text-ink-muted">{{ $label }}</span>
+                                <span class="font-medium text-ink-heading">{{ $count }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-entity.section>
+
+                <x-entity.section
+                    :title="__('Top performers')"
+                    :subtitle="__('Won :label by assignee', ['label' => strtolower(crm_term('leads'))])"
+                >
+                    @if ($data['top_performers']->isEmpty())
+                        <p class="text-sm text-ink-muted">{{ __('No closed wins yet.') }}</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach ($data['top_performers'] as $performer)
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-ink">{{ $performer['name'] }}</span>
+                                    <span class="text-sm font-semibold text-primary-600">{{ $performer['count'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-entity.section>
             </div>
         </div>
-    </div>
+    </x-layouts.analytics>
 </x-app-layout>

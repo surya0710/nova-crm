@@ -3,11 +3,12 @@
 namespace App\Services\Import\Adapters;
 
 use App\Contracts\Import\ImportableEntityInterface;
+use App\Models\AssignmentHistory;
 use App\Models\ImportSession;
 use App\Models\LeadNote;
+use App\Models\MetadataFieldDefinition;
 use App\Models\Organization;
 use App\Models\User;
-use App\Models\AssignmentHistory;
 use App\Services\Import\ImportFieldDefinition;
 use App\Services\Import\ImportOwnerResolver;
 use App\Services\LeadNormalizationService;
@@ -333,7 +334,7 @@ class LeadImportAdapter implements ImportableEntityInterface
         $fields = [];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
-            /** @var \App\Models\MetadataFieldDefinition $definition */
+            /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
 
             $fields[] = new ImportFieldDefinition(

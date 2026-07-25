@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Lead;
 use App\Services\MetadataApiPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Lead */
+/** @mixin Lead */
 class LeadResource extends JsonResource
 {
     /**

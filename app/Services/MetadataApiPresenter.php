@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\MetadataFieldDefinition;
-use Illuminate\Support\Collection;
 
 class MetadataApiPresenter
 {

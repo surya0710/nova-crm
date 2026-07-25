@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Validation\Rule;
-
 class UpdateOpportunityRequest extends StoreOpportunityRequest
 {
     public function authorize(): bool

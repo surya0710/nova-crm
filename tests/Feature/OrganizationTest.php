@@ -6,6 +6,8 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class OrganizationTest extends TestCase
@@ -158,13 +160,13 @@ class OrganizationTest extends TestCase
 
     public function test_organization_owner_can_upload_logo(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
 
         $user = User::factory()->create();
         $organization = Organization::factory()->create(['name' => 'Logo Corp']);
         $organization->addMember($user, 'organization-owner');
 
-        $file = \Illuminate\Http\UploadedFile::fake()->create('logo.png', 100, 'image/png');
+        $file = UploadedFile::fake()->create('logo.png', 100, 'image/png');
 
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
@@ -180,7 +182,7 @@ class OrganizationTest extends TestCase
         $organization->refresh();
 
         $this->assertNotNull($organization->logo);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($organization->logo);
+        Storage::disk('public')->assertExists($organization->logo);
     }
 
     public function test_registration_redirects_to_organization_setup(): void

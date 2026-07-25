@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\Rbac\AuthorizationService;
 use App\Services\TenantContext;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,7 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
@@ -108,40 +110,30 @@ class User extends Authenticatable
         return $this->getRoleInOrganization($organization)?->name;
     }
 
+    public function userRoles(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserRole::class);
+    }
+
     public function hasPermission(string $permission, Organization|int|null $organization = null): bool
     {
-        if ($this->is_super_admin) {
-            return true;
-        }
-
-        $organization = $this->resolveOrganization($organization);
-
-        if (! $organization) {
-            return false;
-        }
-
-        if (! $this->belongsToOrganization($organization)) {
-            return false;
-        }
-
-        $role = $this->getRoleInOrganization($organization);
-
-        if (! $role) {
-            return false;
-        }
-
-        return $role->hasPermission($permission);
+        return app(AuthorizationService::class)->can($this, $permission, $organization);
     }
 
     public function hasAnyPermission(array $permissions, Organization|int|null $organization = null): bool
     {
-        foreach ($permissions as $permission) {
-            if ($this->hasPermission($permission, $organization)) {
-                return true;
-            }
+        return app(AuthorizationService::class)->canAny($this, $permissions, $organization);
+    }
+
+    public function effectivePermissions(Organization|int|null $organization = null): \Illuminate\Support\Collection
+    {
+        $organization = $this->resolveOrganization($organization);
+
+        if (! $organization) {
+            return collect();
         }
 
-        return false;
+        return app(AuthorizationService::class)->effectivePermissions($this, $organization);
     }
 
     protected function resolveOrganization(Organization|int|null $organization): ?Organization

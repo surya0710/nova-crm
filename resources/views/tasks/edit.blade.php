@@ -1,12 +1,14 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Edit Task') }}</h1>
-            <p class="text-sm text-slate-500">{{ $task->title }}</p>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
+
+    <x-layouts.edit :title="__('Edit Tasks')" max-width="4xl">
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Projects'), 'href' => route('projects.home')],
+                ['label' => __('Edit Tasks'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
 
     <form method="POST" action="{{ route('tasks.update', $task) }}" class="max-w-4xl">
         @csrf @method('PUT')
@@ -25,4 +27,5 @@
             </div>
         </div>
     </form>
+    </x-layouts.edit>
 </x-app-layout>

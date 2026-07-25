@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\SavedFilter;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,7 +12,7 @@ class StoreSavedFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\SavedFilter::class) ?? false;
+        return $this->user()?->can('create', SavedFilter::class) ?? false;
     }
 
     /**

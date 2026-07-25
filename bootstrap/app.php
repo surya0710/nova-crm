@@ -34,6 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('platform')
                 ->name('platform.')
                 ->group(base_path('routes/platform.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/careers.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -63,6 +66,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'organization.lifecycle' => EnsureOrganizationLifecycle::class,
             'organization.api' => EnsureOrganizationApiAccess::class,
             'marketing.tracking' => MarketingTrackingMiddleware::class,
+            'careers.organization' => \App\Http\Middleware\ResolveCareerOrganization::class,
+            'careers.candidate' => \App\Http\Middleware\EnsureCandidateBelongsToOrganization::class,
         ]);
 
         // Beacon-style endpoint hit by anonymous browsers that hold no CSRF
