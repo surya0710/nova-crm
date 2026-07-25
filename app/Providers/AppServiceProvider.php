@@ -379,8 +379,20 @@ use App\Services\CommandPalette\MarketingCommandProvider;
 use App\Services\CommandPalette\NavigationCommandProvider;
 use App\Services\CommandPalette\ProjectsCommandProvider;
 use App\Services\CommandPalette\ThemeCommandProvider;
+use App\Services\Import\Adapters\BranchImportAdapter;
 use App\Services\Import\Adapters\CustomerImportAdapter;
+use App\Services\Import\Adapters\DepartmentImportAdapter;
+use App\Services\Import\Adapters\DesignationImportAdapter;
+use App\Services\Import\Adapters\EmployeeImportAdapter;
+use App\Services\Import\Adapters\HolidayImportAdapter;
 use App\Services\Import\Adapters\LeadImportAdapter;
+use App\Services\Import\Adapters\LeaveTypeImportAdapter;
+use App\Services\Import\Adapters\MilestoneImportAdapter;
+use App\Services\Import\Adapters\OpportunityImportAdapter;
+use App\Services\Import\Adapters\ProjectImportAdapter;
+use App\Services\Import\Adapters\ShiftImportAdapter;
+use App\Services\Import\Adapters\TaskImportAdapter;
+use App\Services\Import\Adapters\UserImportAdapter;
 use App\Services\Import\ImportEntityRegistry;
 use App\Services\Marketing\Providers\MarketingProviderRegistry;
 use App\Services\Search\AdminBranchSearchProvider;
@@ -781,10 +793,25 @@ class AppServiceProvider extends ServiceProvider
             \App\Listeners\DispatchRecruitmentOutboundIntegrations::class,
         );
 
-        $this->app->make(ImportEntityRegistry::class)
-            ->register($this->app->make(LeadImportAdapter::class));
-        $this->app->make(ImportEntityRegistry::class)
-            ->register($this->app->make(CustomerImportAdapter::class));
+        $registry = $this->app->make(ImportEntityRegistry::class);
+        foreach ([
+            LeadImportAdapter::class,
+            CustomerImportAdapter::class,
+            OpportunityImportAdapter::class,
+            EmployeeImportAdapter::class,
+            DepartmentImportAdapter::class,
+            DesignationImportAdapter::class,
+            BranchImportAdapter::class,
+            ShiftImportAdapter::class,
+            LeaveTypeImportAdapter::class,
+            HolidayImportAdapter::class,
+            ProjectImportAdapter::class,
+            MilestoneImportAdapter::class,
+            TaskImportAdapter::class,
+            UserImportAdapter::class,
+        ] as $adapterClass) {
+            $registry->register($this->app->make($adapterClass));
+        }
 
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);

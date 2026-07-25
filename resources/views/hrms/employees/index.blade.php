@@ -9,7 +9,8 @@
         __('Status'),
         ['label' => __('Account'), 'class' => 'hidden sm:table-cell'],
     ];
-    $canManage = auth()->user()->hasPermission('hrms.manage');
+    $canBulkProvision = auth()->user()->hasPermission('hrms.manage')
+        && \Illuminate\Support\Facades\Route::has('hrms.employees.bulk-provision');
 @endphp
 
 <x-app-layout>
@@ -40,33 +41,33 @@
                 />
             </x-ui.card>
         @else
+            @if ($canBulkProvision)
             <form method="POST" action="{{ route('hrms.employees.bulk-provision') }}" x-data="{ selected: [] }">
                 @csrf
-                @if ($canManage)
-                    <div class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-muted/40 px-3 py-2">
-                        <span class="text-sm text-ink-muted" x-text="selected.length + ' {{ __('selected') }}'"></span>
-                        <x-forms.select name="role" class="!w-auto max-w-xs">
-                            @foreach (collect(config('rbac.roles', []))->except('organization-owner') as $slug => $role)
-                                <option value="{{ $slug }}" @selected($slug === config('identity.default_employee_role', 'employee'))>
-                                    {{ $role['name'] ?? $slug }}
-                                </option>
-                            @endforeach
-                        </x-forms.select>
-                        <label class="inline-flex items-center gap-1 text-xs text-ink-muted">
-                            <input type="checkbox" name="send_invitation" value="1" checked class="rounded border-line text-primary-600">
-                            {{ __('Send invitations') }}
-                        </label>
-                        <x-ui.button type="submit" variant="secondary" size="sm" x-bind:disabled="selected.length === 0">
-                            {{ __('Generate Login Accounts') }}
-                        </x-ui.button>
-                    </div>
-                @endif
+                <div class="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-muted/40 px-3 py-2">
+                    <span class="text-sm text-ink-muted" x-text="selected.length + ' {{ __('selected') }}'"></span>
+                    <x-forms.select name="role" class="!w-auto max-w-xs">
+                        @foreach (collect(config('rbac.roles', []))->except('organization-owner') as $slug => $role)
+                            <option value="{{ $slug }}" @selected($slug === config('identity.default_employee_role', 'employee'))>
+                                {{ $role['name'] ?? $slug }}
+                            </option>
+                        @endforeach
+                    </x-forms.select>
+                    <label class="inline-flex items-center gap-1 text-xs text-ink-muted">
+                        <input type="checkbox" name="send_invitation" value="1" checked class="rounded border-line text-primary-600">
+                        {{ __('Send invitations') }}
+                    </label>
+                    <x-ui.button type="submit" variant="secondary" size="sm" x-bind:disabled="selected.length === 0">
+                        {{ __('Generate Login Accounts') }}
+                    </x-ui.button>
+                </div>
+            @endif
 
                 <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
                     @foreach ($employees as $employee)
                         <tr class="hover:bg-surface-muted/60 transition">
                             <td class="px-4 py-3">
-                                @if ($canManage && ! $employee->user_id)
+                                @if ($canBulkProvision && ! $employee->user_id)
                                     <input
                                         type="checkbox"
                                         name="employee_ids[]"
@@ -104,7 +105,9 @@
                         </tr>
                     @endforeach
                 </x-tables.table>
+            @if ($canBulkProvision)
             </form>
+            @endif
             <div class="mt-4">{{ $employees->links() }}</div>
         @endif
     </x-layouts.entity-listing>

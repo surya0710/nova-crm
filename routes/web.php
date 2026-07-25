@@ -3,6 +3,7 @@
 use App\Http\Controllers\Administration\AdministrationHomeController;
 use App\Http\Controllers\Administration\BrandingController as AdministrationBrandingController;
 use App\Http\Controllers\Administration\DeveloperController as AdministrationDeveloperController;
+use App\Http\Controllers\Administration\ImportCenterController;
 use App\Http\Controllers\Administration\ModulesController as AdministrationModulesController;
 use App\Http\Controllers\Administration\SecurityController as AdministrationSecurityController;
 use App\Http\Controllers\Analytics\AnalyticsHomeController;
@@ -1547,6 +1548,21 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::get('branding', [AdministrationBrandingController::class, 'edit'])->name('branding.edit');
             Route::put('branding', [AdministrationBrandingController::class, 'update'])->name('branding.update');
             Route::get('developer', [AdministrationDeveloperController::class, 'index'])->name('developer.index');
+
+            Route::prefix('imports')->name('imports.')->group(function () {
+                Route::get('/', [ImportCenterController::class, 'index'])->name('index');
+                Route::get('history', [ImportCenterController::class, 'history'])->name('history');
+                Route::get('sessions/{session}', [ImportCenterController::class, 'show'])->name('show');
+                Route::get('sessions/{session}/preview', [ImportCenterController::class, 'preview'])->name('preview');
+                Route::post('sessions/{session}/map', [ImportCenterController::class, 'map'])->name('map');
+                Route::post('sessions/{session}/execute', [ImportCenterController::class, 'execute'])->name('execute');
+                Route::get('sessions/{session}/errors', [ImportCenterController::class, 'errors'])->name('errors');
+                Route::get('{entity}/create', [ImportCenterController::class, 'create'])->name('create');
+                Route::get('{entity}/template/{format}', [ImportCenterController::class, 'downloadTemplate'])
+                    ->whereIn('format', ['csv', 'xlsx'])
+                    ->name('template');
+                Route::post('{entity}', [ImportCenterController::class, 'store'])->name('store');
+            });
         });
 
         Route::get('marketing', MarketingHomeController::class)->name('marketing.home');

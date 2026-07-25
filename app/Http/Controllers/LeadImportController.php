@@ -93,11 +93,11 @@ class LeadImportController extends Controller
         abort_unless($session->entity_type === 'lead', 404);
         abort_unless(auth()->user()?->hasPermission('imports.create', $this->tenant->get()), 403);
 
-        $session = $this->imports->executeImport($session, auth()->user());
+        $session = $this->imports->startImport($session, auth()->user());
 
         return redirect()
             ->route('leads.import.summary', $session)
-            ->with('status', 'import-completed');
+            ->with('status', 'import-started');
     }
 
     public function summary(ImportSession $session): View

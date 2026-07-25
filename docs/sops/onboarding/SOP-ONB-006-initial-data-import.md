@@ -4,7 +4,7 @@
 |-------|-------|
 | **SOP ID** | SOP-ONB-006 |
 | **Title** | Initial Data Import |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Effective Date** | 2026-07-25 |
 | **Department** | Onboarding |
 | **Owner** | Implementation Lead |
@@ -21,23 +21,23 @@ Import agreed historical or seed data with validation so go-live starts with tru
 ## Scope
 
 - **In scope:** Agreed initial data load with validation logs and customer acceptance of imported counts.
-- **Import Platform (spreadsheet) as of Release 1.0:** Leads and Customers only (CSV/XLSX).
-- **HRMS / Projects initial load:** Use UI entry, agreed scripts/seeders (e.g. pilot datasets), or custom migration — not the Import Platform adapters. Permissions such as `projects.import` may exist without a shipped CSV adapter.
+- **Import Center (Release 1.1.2):** Centralized CSV/XLSX imports for CRM (leads, customers, opportunities), HRMS (employees + masters), Projects (projects, milestones, tasks), and Administration (users via invitation).
 - **Out of scope:** Ongoing integrations and post-go-live migrations (Migrations folder SOPs when published).
 
-See also: `docs/launch/data-migration-validation.md` (Program 15.8).
+See also: `docs/imports/README.md`, `docs/launch/data-migration-validation.md` (Program 15.8).
 
 ## Preconditions
 
 - [ ] Pre-import backup completed (SOP-MNT-002)
-- [ ] Import templates populated and validated offline
+- [ ] Import templates downloaded from **Administration → Import Center** and validated offline
 - [ ] Customer written approval to import
+- [ ] Queue worker available for large files (`php artisan queue:work`)
 
 ## Required Access
 
 | System / Console | Permission / Role | Notes |
 |------------------|-------------------|-------|
-| Import tools / documented commands | Implementation | Run import in maintenance window if required |
+| Import Center | `imports.create` + module scope (`imports.crm` / `imports.hrms` / `imports.projects` / `imports.administration`) | Manager / HR / Owner as applicable |
 | Backup storage | Implementation / DevOps | Pre-import backup |
 
 ## Step-by-step Procedure
@@ -46,13 +46,16 @@ See also: `docs/launch/data-migration-validation.md` (Program 15.8).
 
 1. Confirm import scope against Order Form / kickoff.
 2. Take backup (SOP-MNT-002).
-3. Dry-run or validate CSV/templates for required fields.
+3. Download current templates from Import Center; dry-run validate offline.
+4. Import masters before transactional data (see `docs/imports/import-guides.md`).
 
 ### 2. Execute
 
-1. Import in agreed order (typically reference data → masters → transactions).
-2. Capture import logs and row counts.
-3. Spot-check samples with Customer Admin.
+1. Open **Administration → Import Center**.
+2. For each entity: upload → map → preview → confirm → wait for completion.
+3. Capture Import History counts and attach error reports if any.
+4. For employees with login: verify invitations via Identity Platform (SOP-ONB-005).
+5. Spot-check samples with Customer Admin.
 
 ### 3. Accept
 

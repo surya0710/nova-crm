@@ -3,6 +3,7 @@
 namespace App\Services\Import;
 
 use App\Contracts\Import\ImportableEntityInterface;
+use App\Jobs\ProcessImportSessionJob;
 use App\Models\ImportSession;
 use App\Models\Organization;
 use App\Models\User;
@@ -269,6 +270,73 @@ class ImportPlatformService
     }
 
     /**
+     * Apply a user-supplied column mapping and re-validate.
+     *
+     * @param  array<string, string|null>  $mapping  field_key => header
+     */
+    public function applyMapping(ImportSession $session, array $mapping, ?User $user = null): ImportSession
+    {
+        $this->assertOrganizationOwned($session);
+
+        if (! in_array($session->status, [ImportSession::STATUS_READY, ImportSession::STATUS_UPLOADED, ImportSession::STATUS_FAILED], true)) {
+            throw new InvalidArgumentException(
+                "Cannot remap import session in status [{$session->status}]."
+            );
+        }
+
+        $session->forceFill([
+            'column_mapping' => $mapping,
+            'status' => ImportSession::STATUS_UPLOADED,
+            'last_error' => null,
+            'completed_at' => null,
+        ])->save();
+
+        $this->auditLogger->log($session, 'mapping_updated', [
+            'entity_type' => $session->entity_type,
+            'mapped_fields' => array_keys(array_filter($mapping)),
+        ], $user);
+
+        return $this->validate($session->fresh(), $user);
+    }
+
+    /**
+     * Queue large imports; execute small ones synchronously.
+     *
+     * @param  array{duplicate_strategy?: string}  $options
+     */
+    public function startImport(ImportSession $session, ?User $user = null, array $options = []): ImportSession
+    {
+        $this->assertOrganizationOwned($session);
+
+        if ($session->status !== ImportSession::STATUS_READY) {
+            throw new InvalidArgumentException(
+                "Import session must be in ready status to start, got [{$session->status}]."
+            );
+        }
+
+        if (! empty($options['duplicate_strategy'])) {
+            $metadata = $session->metadata ?? [];
+            $metadata['duplicate_strategy'] = $options['duplicate_strategy'];
+            $session->forceFill(['metadata' => $metadata])->save();
+        }
+
+        $threshold = (int) config('import.queue_threshold_rows', 100);
+
+        if (($session->total_rows ?? 0) > $threshold) {
+            ProcessImportSessionJob::dispatch($session->id, $user?->id);
+
+            $this->auditLogger->log($session, 'import_queued', [
+                'entity_type' => $session->entity_type,
+                'total_rows' => $session->total_rows,
+            ], $user);
+
+            return $session->fresh();
+        }
+
+        return $this->executeImport($session, $user);
+    }
+
+    /**
      * Execute import for a ready session by invoking the entity adapter persistRow callback.
      */
     public function executeImport(ImportSession $session, ?User $user = null): ImportSession
@@ -360,6 +428,16 @@ class ImportPlatformService
                         'error' => $e->getMessage(),
                         'value' => null,
                     ];
+                }
+
+                if ($processed % max(1, (int) config('import.chunk_size', 100)) === 0) {
+                    $session->forceFill([
+                        'processed_rows' => $processed,
+                        'created_count' => $created,
+                        'updated_count' => $updated,
+                        'skipped_count' => $skipped,
+                        'failed_count' => $failed,
+                    ])->save();
                 }
             }
 

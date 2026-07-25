@@ -881,6 +881,13 @@ return [
                 'permission' => 'settings.manage',
             ],
             [
+                'label' => 'Import Center',
+                'route' => 'administration.imports.index',
+                'match' => ['administration.imports.*'],
+                'icon' => 'fields',
+                'any_permissions' => ['imports.view', 'imports.create', 'imports.manage'],
+            ],
+            [
                 'label' => 'Integrations',
                 'route' => 'integrations.index',
                 'match' => ['integrations.*'],

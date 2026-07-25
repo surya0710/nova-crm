@@ -250,6 +250,10 @@ class ImportPlatformSessionTest extends TestCase
         $this->assertTrue($manager->hasPermission('imports.view', $organization));
         $this->assertTrue($manager->hasPermission('imports.create', $organization));
         $this->assertTrue($manager->hasPermission('imports.manage', $organization));
+        $this->assertTrue($manager->hasPermission('imports.crm', $organization));
+        $this->assertTrue($manager->hasPermission('imports.hrms', $organization));
+        $this->assertTrue($manager->hasPermission('imports.projects', $organization));
+        $this->assertTrue($manager->hasPermission('imports.administration', $organization));
     }
 
     public function test_unknown_entity_type_is_rejected(): void
