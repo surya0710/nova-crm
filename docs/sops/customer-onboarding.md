@@ -1,14 +1,17 @@
 # SOP — Customer Onboarding
 
+> **Superseded for execution by Phase 15.1.1 numbered SOPs.**  
+> Use [INDEX.md](INDEX.md) → Onboarding (`SOP-ONB-001` … `SOP-ONB-008`). This family document is retained for deep-link compatibility.
+
 ---
 **Document control**
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Owner | Operations |
 | Review cadence | Quarterly |
 | Last reviewed | 2026-07-25 |
-| Status | Approved for launch use |
+| Status | Legacy reference (see INDEX) |
 
 ## Purpose
 Deliver a repeatable onboarding lifecycle from organization provisioning through go-live validation.

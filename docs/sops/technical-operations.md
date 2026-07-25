@@ -1,14 +1,17 @@
 # SOP — Technical Operations
 
+> **Superseded for execution by Phase 15.1.1 numbered SOPs.**  
+> Use [INDEX.md](INDEX.md) → Deployment, Maintenance, Monitoring, Release Management, and Disaster Recovery. This family document is retained for deep-link compatibility.
+
 ---
 **Document control**
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Owner | Operations |
 | Review cadence | Quarterly |
 | Last reviewed | 2026-07-25 |
-| Status | Approved for launch use |
+| Status | Legacy reference (see INDEX) |
 
 ## Purpose
 Operate NovaCRM platforms safely: deploy, configure, migrate, monitor, back up, upgrade, and roll back.

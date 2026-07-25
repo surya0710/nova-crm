@@ -1,14 +1,17 @@
 # SOP — Sales Operations
 
+> **Superseded for execution by Phase 15.1.1 numbered SOPs.**  
+> Use [INDEX.md](INDEX.md) → Sales (`SOP-SAL-001` … `SOP-SAL-007`). This family document is retained for deep-link compatibility.
+
 ---
 **Document control**
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Owner | Operations |
 | Review cadence | Quarterly |
 | Last reviewed | 2026-07-25 |
-| Status | Approved for launch use |
+| Status | Legacy reference (see INDEX) |
 
 ## Purpose
 Standardize the full sales lifecycle from lead intake through contract execution and customer handoff.

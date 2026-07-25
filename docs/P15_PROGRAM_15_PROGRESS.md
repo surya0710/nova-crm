@@ -7,7 +7,7 @@
 
 | ID | Workstream | Status | Notes |
 |----|------------|--------|-------|
-| 15.1 | SOPs | Done | `docs/sops/` — six SOP families |
+| 15.1 | SOPs | Done | `docs/sops/` — Phase 15.1.1 library (86 numbered SOPs + template + INDEX); legacy family docs retained as references |
 | 15.2 | Demo Environment | Done | `PresentationDemoSeeder` + marketing demo data; `docs/demos/` |
 | 15.3 | Product Demonstration | Done | Master script + 5 industry scenarios |
 | 15.4 | Documentation | Done | Customer entry points under `docs/onboarding/` + existing module manuals |

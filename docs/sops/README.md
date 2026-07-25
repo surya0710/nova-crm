@@ -1,28 +1,91 @@
-# Standard Operating Procedures (SOPs)
+# Standard Operating Procedures (SOP) Library
 
-Version-controlled operational procedures for selling, deploying, supporting, and succeeding with NovaCRM customers.
+**Phase:** 15.1.1 — SOP Library Foundation  
+**Version:** 1.0  
+**Effective Date:** 2026-07-25  
+**Status:** Active  
 
-## SOP index
+Centralized, version-controlled operational procedures for selling, provisioning, deploying, onboarding, supporting, upgrading, and offboarding NovaCRM customers.
 
-| Family | Document |
-|--------|----------|
-| Sales Operations | [sales-operations.md](sales-operations.md) |
-| Customer Onboarding | [customer-onboarding.md](customer-onboarding.md) |
-| Technical Operations | [technical-operations.md](technical-operations.md) |
-| Support | [support.md](support.md) |
-| Customer Success | [customer-success.md](customer-success.md) |
-| Internal Operations | [internal-operations.md](internal-operations.md) |
+This library is the **single source of truth** for internal operations. Every SOP is written so a trained employee can execute it without tribal knowledge.
 
-## Conventions
+## Start here
 
-1. Every SOP includes **Purpose**, **Roles**, **Prerequisites**, **Procedure**, **Exit criteria**, and **Document control**.
-2. Checklists use `- [ ]` so they can be copied into tickets or runbooks.
-3. Link to product screens by route name where helpful (e.g. `platform.organizations.*`).
-4. Never rely on undocumented tribal knowledge — if a step requires a secret or credential, name the vault / owner field.
+| Resource | Purpose |
+|----------|---------|
+| [INDEX.md](INDEX.md) | Full catalog by department with stable SOP IDs |
+| [templates/SOP_TEMPLATE.md](templates/SOP_TEMPLATE.md) | Reusable document standard for new SOPs |
+
+## Directory structure
+
+```
+docs/sops/
+├── README.md                 ← this file
+├── INDEX.md                  ← master catalog
+├── templates/                ← SOP template
+├── sales/
+├── onboarding/
+├── implementation/           ← reserved (see folder README)
+├── administration/
+├── deployment/
+├── support/
+├── maintenance/
+├── customer-success/
+├── security/
+├── billing/
+├── migrations/               ← reserved (see folder README)
+├── monitoring/
+├── disaster-recovery/
+├── release-management/
+└── offboarding/
+```
+
+## Naming convention
+
+IDs follow `SOP-<DEPT>-<NNN>` and **never change** once assigned.
+
+Examples: `SOP-SAL-001`, `SOP-ONB-001`, `SOP-ADM-001`, `SOP-DEP-001`, `SOP-SUP-001`, `SOP-SEC-001`, `SOP-BIL-001`, `SOP-MON-001`, `SOP-MNT-001`, `SOP-REL-001`.
+
+File names: `SOP-<DEPT>-<NNN>-<kebab-slug>.md`.
+
+## Document standard
+
+Every SOP includes:
+
+- SOP ID, Title, Version, Effective Date  
+- Department, Owner, Reviewer, Approval  
+- Purpose, Scope, Preconditions, Required Access  
+- Step-by-step Procedure, Validation Checklist, Rollback Procedure  
+- Exceptions, Audit Trail  
+- Cross references: Previous SOP, Next SOP, Related SOPs, Related Documents, Required Forms, Required Checklists  
+- Version History (Version, Author, Date, Summary, Approval)
+
+## Lifecycle map (high level)
+
+```text
+Lead → Discovery → Demo → Proposal → Pricing → Contract → Sales Handover
+  → Onboarding → Go-Live → CS Welcome / Training / Health / QBR / Renewal
+  → (Expansion | Churn save | Cancellation → Offboarding)
+```
+
+Platform path (parallel): Administration · Deployment · Monitoring · Maintenance · Release · Security · DR · Billing.
 
 ## Change process
 
 1. Propose change via PR to `docs/sops/`.
-2. Owner reviews within 5 business days.
-3. Bump **Version** and **Last reviewed** in the document control block.
-4. Announce material changes in release communication if customer-facing SLAs change.
+2. Clone [SOP_TEMPLATE.md](templates/SOP_TEMPLATE.md) for net-new SOPs; register the ID in [INDEX.md](INDEX.md).
+3. Owner reviews within 5 business days.
+4. Bump **Version** and **Effective Date**; append **Version History**.
+5. Announce material changes if customer-facing SLAs change.
+
+## Engineering rules
+
+- Documentation only (no application feature work in this library).
+- Markdown only for SOP content.
+- No duplicate SOP IDs or overlapping “sources of truth.”
+- Clear operational language; executable checklists (`- [ ]`).
+- Never rely on undocumented tribal knowledge — name vaults, owners, and systems.
+
+## Legacy family documents
+
+Consolidated family SOPs from earlier Program 15 work remain in this folder for deep-link compatibility. Prefer numbered SOPs in department folders for day-to-day execution. See [INDEX.md](INDEX.md) § Legacy family documents.

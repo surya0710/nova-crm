@@ -1,14 +1,17 @@
 # SOP — Support
 
+> **Superseded for execution by Phase 15.1.1 numbered SOPs.**  
+> Use [INDEX.md](INDEX.md) → Support (`SOP-SUP-001` … `SOP-SUP-006`). This family document is retained for deep-link compatibility.
+
 ---
 **Document control**
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Owner | Operations |
 | Review cadence | Quarterly |
 | Last reviewed | 2026-07-25 |
-| Status | Approved for launch use |
+| Status | Legacy reference (see INDEX) |
 
 ## Purpose
 Handle customer support consistently across tickets, priority, escalation, incidents, bugs, feature requests, SLAs, and release communication.

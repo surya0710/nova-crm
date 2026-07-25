@@ -1,14 +1,17 @@
 # SOP — Customer Success
 
+> **Superseded for execution by Phase 15.1.1 numbered SOPs.**  
+> Use [INDEX.md](INDEX.md) → Customer Success (`SOP-CS-001` … `SOP-CS-007`). This family document is retained for deep-link compatibility.
+
 ---
 **Document control**
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
+| Version | 1.1 |
 | Owner | Operations |
 | Review cadence | Quarterly |
 | Last reviewed | 2026-07-25 |
-| Status | Approved for launch use |
+| Status | Legacy reference (see INDEX) |
 
 ## Purpose
 Drive long-term value: welcome, train, measure health, renew, expand, and prevent churn.

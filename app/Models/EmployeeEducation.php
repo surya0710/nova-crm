@@ -11,6 +11,8 @@ class EmployeeEducation extends Model
 {
     use Auditable, BelongsToOrganization;
 
+    protected $table = 'employee_educations';
+
     protected $fillable = [
         'organization_id',
         'employee_id',
