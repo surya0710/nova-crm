@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Navigation\FavoritePagesService;
 use App\Services\Navigation\NavigationContextManager;
 use App\Services\Navigation\RecentPagesService;
+use App\Services\Navigation\WorkspaceResolver;
 use App\Services\TenantContext;
 use App\Services\Theme\ThemeService;
 use Illuminate\Http\JsonResponse;
@@ -40,7 +41,7 @@ class ShellPreferenceController extends Controller
         ]);
     }
 
-    public function switchWorkspace(Request $request, TenantContext $tenant, NavigationContextManager $nav): JsonResponse
+    public function switchWorkspace(Request $request, TenantContext $tenant, NavigationContextManager $nav, WorkspaceResolver $workspaces): JsonResponse
     {
         $organization = $tenant->get();
         abort_unless($organization, 404);
@@ -49,9 +50,19 @@ class ShellPreferenceController extends Controller
             'workspace' => ['required', 'string', 'max:50'],
         ]);
 
+        $available = $workspaces->availableWorkspaces($request->user(), $organization)->pluck('id');
+        abort_unless($available->contains($data['workspace']), 403, __('Module not licensed.'));
+
         $nav->rememberWorkspace($request->user(), $organization, $data['workspace']);
 
-        return response()->json(['ok' => true, 'workspace' => $data['workspace']]);
+        $meta = $workspaces->availableWorkspaces($request->user(), $organization)
+            ->firstWhere('id', $data['workspace']);
+
+        return response()->json([
+            'ok' => true,
+            'workspace' => $data['workspace'],
+            'href' => $meta['href'] ?? null,
+        ]);
     }
 
     public function toggleFavorite(Request $request, TenantContext $tenant, FavoritePagesService $favorites): JsonResponse

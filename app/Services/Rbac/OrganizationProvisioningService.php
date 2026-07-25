@@ -15,7 +15,6 @@ class OrganizationProvisioningService
         protected PermissionService $permissionService,
         protected PermissionTemplateService $permissionTemplateService,
         protected UserRoleService $userRoleService,
-        protected \App\Services\Dashboard\DashboardProvisioningService $dashboardProvisioningService,
     ) {}
 
     public function provision(Organization $organization, ?User $owner = null): void
@@ -28,10 +27,9 @@ class OrganizationProvisioningService
 
         $this->ensureLegacyRoles($organization);
 
-        // Skip modules whose tables are not migrated yet (e.g. RBAC sync before dashboard/projects).
-        if (Schema::hasTable('dashboard_widgets')) {
-            $this->dashboardProvisioningService->provision($organization);
-        }
+        // Module assignments, org/user preferences, and dashboard defaults — single upgrade path.
+        // (Replaces a direct DashboardProvisioningService call so provisioning stays idempotent.)
+        app(\App\Services\Platform\OrganizationUpgradeService::class)->upgrade($organization);
 
         if (Schema::hasTable('project_categories')) {
             app(\App\Services\ProjectDefaultsService::class)->seedAll($organization);

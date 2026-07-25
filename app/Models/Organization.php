@@ -92,6 +92,11 @@ class Organization extends Model
             ->withTimestamps();
     }
 
+    public function modules(): HasMany
+    {
+        return $this->hasMany(OrganizationModule::class);
+    }
+
     public function roles(): HasMany
     {
         return $this->hasMany(Role::class);

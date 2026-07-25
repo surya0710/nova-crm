@@ -113,13 +113,8 @@ class OrganizationManagementService
                 'status' => $organization->isActive() ? 'active' : (string) $organization->status->value,
                 'plan' => $organization->plan,
             ],
-            'modules' => [
-                'plan' => $organization->plan,
-                'enabled_modules' => $organization->settings['enabled_modules'] ?? null,
-                'quotas' => $organization->settings['quotas'] ?? null,
-                'available_modules' => app(\App\Services\Dashboard\ModuleSubscriptionService::class)
-                    ->availableModules($organization),
-            ],
+            'modules' => app(\App\Services\Platform\PlatformLicensingService::class)
+                ->organizationLicensing($organization),
             'usage' => [
                 'users' => $organization->users_count,
                 'storage_bytes' => $organization->storage_used_bytes,

@@ -43,6 +43,8 @@ Route::middleware('platform.auth')->group(function () {
     Route::get('organizations/{organization}', [OrganizationController::class, 'show'])->name('organizations.show');
     Route::get('organizations/{organization}/edit', [OrganizationController::class, 'edit'])->name('organizations.edit');
     Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update');
+    Route::put('organizations/{organization}/modules', [OrganizationController::class, 'updateModules'])->name('organizations.modules.update');
+    Route::put('organizations/{organization}/limits', [OrganizationController::class, 'updateLimits'])->name('organizations.limits.update');
     Route::post('organizations/{organization}/suspend', [OrganizationController::class, 'suspend'])->name('organizations.suspend');
     Route::post('organizations/{organization}/activate', [OrganizationController::class, 'activate'])->name('organizations.activate');
     Route::post('organizations/{organization}/archive', [OrganizationController::class, 'archive'])->name('organizations.archive');

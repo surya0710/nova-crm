@@ -164,10 +164,31 @@
         </x-entity.section>
 
         <x-entity.section :title="__('Modules')">
-            <p class="mb-3 text-sm text-ink-muted">
-                {{ __('Plan') }}: <span class="font-medium text-ink">{{ config('platform.plans.' . ($modules['plan'] ?? $organization->plan), $modules['plan'] ?? $organization->plan) }}</span>
-            </p>
-            @if (! empty($modules['enabled_modules']))
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-ink-muted">
+                    {{ __('Plan') }}: <span class="font-medium text-ink">{{ config('platform.plans.' . ($modules['plan'] ?? $organization->plan), $modules['plan'] ?? $organization->plan) }}</span>
+                </p>
+                @if ($canManage)
+                    <a href="{{ route('platform.organizations.edit', ['organization' => $organization, 'tab' => 'modules']) }}" class="text-sm font-medium text-primary-700 hover:underline">
+                        {{ __('Manage modules') }}
+                    </a>
+                @endif
+            </div>
+            @if (! empty($modules['module_catalog']))
+                <div class="grid gap-2 sm:grid-cols-2">
+                    @foreach ($modules['module_catalog'] as $module)
+                        <div class="flex items-start justify-between gap-3 rounded-lg border border-line px-3 py-2">
+                            <div>
+                                <p class="text-sm font-medium text-ink">{{ $module['name'] }}</p>
+                                <p class="text-xs text-ink-muted">{{ $module['description'] }}</p>
+                            </div>
+                            <x-ui.badge :variant="($module['enabled'] ?? false) ? 'success' : 'neutral'" size="sm">
+                                {{ ($module['enabled'] ?? false) ? __('Enabled') : __('Disabled') }}
+                            </x-ui.badge>
+                        </div>
+                    @endforeach
+                </div>
+            @elseif (! empty($modules['enabled_modules']))
                 <div class="flex flex-wrap gap-2">
                     @foreach ($modules['enabled_modules'] as $moduleKey)
                         <x-ui.badge variant="neutral">{{ $moduleKey }}</x-ui.badge>

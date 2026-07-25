@@ -17,34 +17,53 @@
             <p class="mt-1 text-lg font-semibold text-ink-heading">{{ ucfirst($overview['plan']) }}</p>
         </x-ui.card>
 
-        <x-entity.section :title="__('Modules')" :subtitle="__('Read-only — managed by plan and subscription')">
+        <x-entity.section :title="__('Modules')" :subtitle="__('Read-only — managed by plan and platform licensing')">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-line text-sm">
                     <thead>
                         <tr class="text-left text-xs uppercase tracking-wide text-ink-muted">
                             <th class="py-2 pr-4">{{ __('Module') }}</th>
                             <th class="py-2 pr-4">{{ __('Plan allows') }}</th>
-                            <th class="py-2">{{ __('Enabled') }}</th>
+                            <th class="py-2 pr-4">{{ __('Enabled') }}</th>
+                            <th class="py-2">{{ __('Source') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line">
                         @forelse ($overview['modules'] as $module)
                             <tr>
-                                <td class="py-2.5 pr-4 font-medium text-ink-heading">{{ $module['label'] }}</td>
+                                <td class="py-2.5 pr-4">
+                                    <p class="font-medium text-ink-heading">{{ $module['label'] }}</p>
+                                    @if (! empty($module['description']))
+                                        <p class="mt-0.5 text-xs text-ink-muted">{{ $module['description'] }}</p>
+                                    @endif
+                                </td>
                                 <td class="py-2.5 pr-4">
                                     <x-ui.badge :variant="$module['plan_allows'] ? 'success' : 'neutral'">
                                         {{ $module['plan_allows'] ? __('Yes') : __('No') }}
                                     </x-ui.badge>
                                 </td>
-                                <td class="py-2.5">
+                                <td class="py-2.5 pr-4">
                                     <x-ui.badge :variant="$module['enabled'] ? 'primary' : 'neutral'">
                                         {{ $module['enabled'] ? __('On') : __('Off') }}
                                     </x-ui.badge>
                                 </td>
+                                <td class="py-2.5">
+                                    <div class="flex flex-wrap gap-1">
+                                        @if ($module['included_in_subscription'] ?? false)
+                                            <x-ui.badge variant="success" size="sm">{{ __('Subscription') }}</x-ui.badge>
+                                        @endif
+                                        @if ($module['is_trial'] ?? false)
+                                            <x-ui.badge variant="warning" size="sm">{{ __('Trial') }}</x-ui.badge>
+                                        @endif
+                                        @if ($module['is_addon'] ?? false)
+                                            <x-ui.badge variant="primary" size="sm">{{ __('Add-on') }}</x-ui.badge>
+                                        @endif
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="py-8">
+                                <td colspan="4" class="py-8">
                                     <x-ui.empty-state-preset variant="modules" />
                                 </td>
                             </tr>

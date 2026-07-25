@@ -217,64 +217,72 @@ return [
         'enterprise' => 'Enterprise',
     ],
 
-    'plan_definitions' => [
-        'starter' => [
-            'name' => 'Starter',
-            'description' => 'Core CRM for growing teams',
-            'modules' => ['common', 'crm', 'tasks', 'notifications', 'calendar'],
-            'limits' => [
-                'users' => 10,
-                'storage_mb' => 1024,
-                'api_requests_per_day' => 5000,
+    'plan_definitions' => (static function () {
+        $registry = require __DIR__.'/modules.php';
+        $planModules = $registry['plan_modules'] ?? [];
+
+        return [
+            'starter' => [
+                'name' => 'Starter',
+                'description' => 'Core CRM for growing teams',
+                'modules' => $planModules['starter'] ?? ['common', 'crm', 'tasks', 'notifications', 'calendar'],
+                'limits' => [
+                    'users' => 10,
+                    'storage_mb' => 1024,
+                    'api_requests_per_day' => 5000,
+                ],
+                'features' => [
+                    'crm' => true,
+                    'projects' => false,
+                    'hrms' => false,
+                    'recruitment' => false,
+                    'marketing' => false,
+                    'analytics' => false,
+                    'advanced_reporting' => false,
+                ],
             ],
-            'features' => [
-                'crm' => true,
-                'projects' => false,
-                'hrms' => false,
-                'recruitment' => false,
-                'advanced_reporting' => false,
+            'professional' => [
+                'name' => 'Professional',
+                'description' => 'CRM, HR, Projects, Marketing, Analytics, and finance for mid-market',
+                'modules' => $planModules['professional'] ?? [],
+                'limits' => [
+                    'users' => 100,
+                    'storage_mb' => 10240,
+                    'api_requests_per_day' => 50000,
+                ],
+                'features' => [
+                    'crm' => true,
+                    'projects' => true,
+                    'hrms' => true,
+                    'recruitment' => true,
+                    'marketing' => true,
+                    'analytics' => true,
+                    'advanced_reporting' => true,
+                ],
             ],
-        ],
-        'professional' => [
-            'name' => 'Professional',
-            'description' => 'CRM, HR, Projects, and finance for mid-market',
-            'modules' => [
-                'common', 'crm', 'hrms', 'recruitment', 'projects', 'finance',
-                'support', 'workflow', 'notifications', 'calendar', 'tasks',
+            'enterprise' => [
+                'name' => 'Enterprise',
+                'description' => 'Full platform with unlimited module access',
+                'modules' => $planModules['enterprise'] ?? '*',
+                'limits' => [
+                    'users' => null,
+                    'storage_mb' => null,
+                    'api_requests_per_day' => null,
+                ],
+                'features' => [
+                    'crm' => true,
+                    'projects' => true,
+                    'hrms' => true,
+                    'recruitment' => true,
+                    'marketing' => true,
+                    'analytics' => true,
+                    'advanced_reporting' => true,
+                    'sso' => true,
+                    'dedicated_support' => true,
+                ],
             ],
-            'limits' => [
-                'users' => 100,
-                'storage_mb' => 10240,
-                'api_requests_per_day' => 50000,
-            ],
-            'features' => [
-                'crm' => true,
-                'projects' => true,
-                'hrms' => true,
-                'recruitment' => true,
-                'advanced_reporting' => true,
-            ],
-        ],
-        'enterprise' => [
-            'name' => 'Enterprise',
-            'description' => 'Full platform with unlimited module access',
-            'modules' => '*',
-            'limits' => [
-                'users' => null,
-                'storage_mb' => null,
-                'api_requests_per_day' => null,
-            ],
-            'features' => [
-                'crm' => true,
-                'projects' => true,
-                'hrms' => true,
-                'recruitment' => true,
-                'advanced_reporting' => true,
-                'sso' => true,
-                'dedicated_support' => true,
-            ],
-        ],
-    ],
+        ];
+    })(),
 
     'providers' => [
         'google' => [

@@ -5,11 +5,13 @@ namespace App\Services\Administration;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Dashboard\ModuleSubscriptionService;
+use App\Services\Modules\ModuleRegistry;
 
 class OrganizationModulesService
 {
     public function __construct(
         protected ModuleSubscriptionService $modules,
+        protected ModuleRegistry $registry,
     ) {}
 
     /**
@@ -17,28 +19,29 @@ class OrganizationModulesService
      */
     public function overview(Organization $organization): array
     {
-        $all = config('dashboard.modules', []);
-        $available = $this->modules->availableModules($organization);
-        $plan = $organization->plan ?? 'starter';
+        $catalog = $this->modules->moduleCatalogForOrganization($organization);
         $settings = is_array($organization->settings) ? $organization->settings : [];
         $featureToggles = is_array($settings['feature_toggles'] ?? null) ? $settings['feature_toggles'] : [];
         $workspaceVisibility = is_array($settings['workspace_visibility'] ?? null) ? $settings['workspace_visibility'] : [];
         $landingPages = is_array($settings['default_landing_pages'] ?? null) ? $settings['default_landing_pages'] : [];
 
-        $moduleRows = collect($all)->map(function (string $module) use ($organization, $available) {
-            $planAllows = $this->modules->planAllowsModule($organization, $module);
-            $enabled = in_array($module, $available, true);
-
+        $moduleRows = collect($catalog)->map(function (array $module) {
             return [
-                'key' => $module,
-                'label' => __(ucfirst(str_replace('_', ' ', $module))),
-                'plan_allows' => $planAllows,
-                'enabled' => $enabled && $planAllows,
+                'key' => $module['key'],
+                'label' => __($module['name']),
+                'description' => __($module['description']),
+                'icon' => $module['icon'],
+                'plan_allows' => $module['plan_allows'],
+                'enabled' => $module['enabled'],
+                'included_in_subscription' => $module['included_in_subscription'],
+                'is_trial' => $module['is_trial'],
+                'is_addon' => $module['is_addon'],
+                'expires_at' => $module['expires_at'],
             ];
         })->values()->all();
 
         return [
-            'plan' => $plan,
+            'plan' => $organization->plan ?? 'starter',
             'modules' => $moduleRows,
             'feature_toggles' => array_merge($this->defaultFeatureToggles(), $featureToggles),
             'workspace_visibility' => array_merge($this->defaultWorkspaceVisibility(), $workspaceVisibility),
@@ -89,14 +92,7 @@ class OrganizationModulesService
      */
     public function defaultFeatureToggles(): array
     {
-        return [
-            'command_palette' => true,
-            'global_search' => true,
-            'ai_assist' => false,
-            'advanced_workflows' => true,
-            'public_api' => true,
-            'email_digests' => true,
-        ];
+        return $this->registry->defaultFeatureToggles();
     }
 
     /**
@@ -104,15 +100,7 @@ class OrganizationModulesService
      */
     public function defaultWorkspaceVisibility(): array
     {
-        return [
-            'crm' => true,
-            'projects' => true,
-            'hr' => true,
-            'marketing' => true,
-            'operations' => true,
-            'analytics' => true,
-            'administration' => true,
-        ];
+        return $this->registry->defaultWorkspaceVisibility();
     }
 
     /**
@@ -120,12 +108,6 @@ class OrganizationModulesService
      */
     public function defaultLandingPages(): array
     {
-        return [
-            'default' => 'dashboard',
-            'sales' => 'crm.home',
-            'project_manager' => 'projects.home',
-            'hr' => 'hrms.home',
-            'admin' => 'administration.home',
-        ];
+        return $this->registry->defaultLandingPages();
     }
 }

@@ -65,6 +65,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'prevent.platform.tenant' => PreventPlatformSessionOnTenant::class,
             'organization.lifecycle' => EnsureOrganizationLifecycle::class,
             'organization.api' => EnsureOrganizationApiAccess::class,
+            'module' => \App\Http\Middleware\EnsureOrganizationHasModule::class,
             'marketing.tracking' => MarketingTrackingMiddleware::class,
             'careers.organization' => \App\Http\Middleware\ResolveCareerOrganization::class,
             'careers.candidate' => \App\Http\Middleware\EnsureCandidateBelongsToOrganization::class,

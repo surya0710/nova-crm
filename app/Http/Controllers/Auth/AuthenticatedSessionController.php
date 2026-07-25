@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Navigation\WorkspaceResolver;
 use App\Services\Platform\OrganizationLifecycleService;
+use App\Services\Theme\ThemeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +19,12 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
-    public function store(LoginRequest $request, OrganizationLifecycleService $lifecycle): RedirectResponse
-    {
+    public function store(
+        LoginRequest $request,
+        OrganizationLifecycleService $lifecycle,
+        ThemeService $theme,
+        WorkspaceResolver $workspaces,
+    ): RedirectResponse {
         $request->authenticate();
 
         $request->session()->regenerate();
@@ -29,6 +35,11 @@ class AuthenticatedSessionController extends Controller
         if ($organization) {
             $lifecycle->assertCanLogin($organization);
             $request->session()->put('current_organization_id', $organization->id);
+
+            $prefs = $theme->preferencesFor($user, $organization);
+            $landing = $workspaces->landingUrlFor($user, $organization, $prefs->last_workspace);
+
+            return redirect()->intended($landing);
         }
 
         return redirect()->intended(route('dashboard'));

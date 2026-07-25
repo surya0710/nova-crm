@@ -204,6 +204,18 @@ Route::get('/', function () {
     }
 
     if (Auth::check()) {
+        $user = Auth::user();
+        $organization = $user->organizations()->find(session('current_organization_id'))
+            ?? $user->organizations()->first();
+
+        if ($organization) {
+            $prefs = app(\App\Services\Theme\ThemeService::class)->preferencesFor($user, $organization);
+            $landing = app(\App\Services\Navigation\WorkspaceResolver::class)
+                ->landingUrlFor($user, $organization, $prefs->last_workspace);
+
+            return redirect()->to($landing);
+        }
+
         return redirect()->route('dashboard');
     }
 
@@ -225,7 +237,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
     Route::get('organization/setup', [OrganizationSetupController::class, 'create'])->name('organization.setup');
     Route::post('organization/setup', [OrganizationSetupController::class, 'store'])->name('organization.setup.store');
 
-    Route::middleware(['ensure.organization', 'organization.lifecycle'])->group(function () {
+    Route::middleware(['ensure.organization', 'organization.lifecycle', 'module'])->group(function () {
         Route::get('/dashboard', DashboardController::class)->middleware('verified')->name('dashboard');
         Route::redirect('/app', '/dashboard')->middleware('verified')->name('app');
 

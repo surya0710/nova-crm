@@ -4,7 +4,9 @@ namespace App\Services\Platform;
 
 use App\Models\Organization;
 use App\Models\PlatformUser;
+use App\Services\Dashboard\DashboardProvisioningService;
 use App\Services\Dashboard\ModuleSubscriptionService;
+use App\Services\Modules\ModuleRegistry;
 use Illuminate\Support\Arr;
 
 class PlatformLicensingService
@@ -14,25 +16,22 @@ class PlatformLicensingService
         protected ModuleSubscriptionService $modules,
         protected PlatformAuditService $audit,
         protected PlatformConfigurationService $configuration,
+        protected ModuleRegistry $registry,
+        protected OrganizationUpgradeService $upgrade,
+        protected DashboardProvisioningService $dashboardProvisioning,
     ) {}
 
     public function index(): array
     {
-        $moduleList = config('dashboard.modules');
-
-        if (! is_array($moduleList) || $moduleList === []) {
-            $moduleList = collect(config('dashboard.plan_modules', []))
-                ->flatMap(fn ($modules) => $modules === '*' ? [] : (array) $modules)
-                ->unique()
-                ->values()
-                ->all();
-        }
+        $moduleList = collect($this->registry->all())
+            ->mapWithKeys(fn (array $module, string $key) => [$key => $module['name']])
+            ->all();
 
         return [
             'plans' => $this->subscriptions->planCatalog(),
             'modules' => $moduleList,
-            'plan_modules' => config('dashboard.plan_modules', []),
-            'organizations' => \App\Models\Organization::query()
+            'plan_modules' => config('modules.plan_modules', []),
+            'organizations' => Organization::query()
                 ->orderBy('name')
                 ->limit(100)
                 ->get(['id', 'name', 'plan']),
@@ -58,12 +57,16 @@ class PlatformLicensingService
 
     public function assignModules(Organization $organization, array $modules, PlatformUser $actor): Organization
     {
-        $settings = $organization->settings ?? [];
-        $settings['enabled_modules'] = array_values(array_unique($modules));
-        $organization->update(['settings' => $settings]);
+        $allowed = array_values(array_filter(
+            $modules,
+            fn (string $key) => $this->registry->exists($key)
+        ));
+
+        $this->upgrade->syncModuleAssignments($organization, $allowed, $actor, 'manual');
+        $this->dashboardProvisioning->provision($organization->fresh());
 
         $this->audit->log('organization.modules_assigned', $actor, $organization, [
-            'modules' => $settings['enabled_modules'],
+            'modules' => $allowed,
         ]);
 
         return $organization->fresh();
@@ -95,6 +98,7 @@ class PlatformLicensingService
             'definition' => $definition,
             'available_modules' => $this->modules->availableModules($organization),
             'enabled_modules' => $this->modules->enabledModules($organization),
+            'module_catalog' => $this->modules->moduleCatalogForOrganization($organization),
             'quotas' => $organization->settings['quotas'] ?? ($definition['limits'] ?? []),
             'usage' => [
                 'users' => $organization->users()->count(),

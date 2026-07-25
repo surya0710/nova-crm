@@ -1,32 +1,15 @@
 <?php
 
+$moduleRegistry = require __DIR__.'/modules.php';
+
 return [
 
     'cache_ttl' => (int) env('DASHBOARD_CACHE_TTL', 300),
 
-    'modules' => [
-        'common',
-        'crm',
-        'hrms',
-        'recruitment',
-        'projects',
-        'finance',
-        'support',
-        'workflow',
-        'notifications',
-        'calendar',
-    ],
+    // Delegated to config/modules.php — keep in sync via require, do not duplicate lists.
+    'modules' => array_keys($moduleRegistry['modules'] ?? []),
 
-    'plan_modules' => [
-        'starter' => [
-            'common', 'crm', 'tasks', 'notifications', 'calendar',
-        ],
-        'professional' => [
-            'common', 'crm', 'hrms', 'recruitment', 'projects', 'finance',
-            'support', 'workflow', 'notifications', 'calendar', 'tasks',
-        ],
-        'enterprise' => '*',
-    ],
+    'plan_modules' => $moduleRegistry['plan_modules'] ?? [],
 
     'sections' => [
         [
