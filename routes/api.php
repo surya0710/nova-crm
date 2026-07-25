@@ -62,6 +62,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     require __DIR__.'/api_identity.php';
     require __DIR__.'/api_imports.php';
+    require __DIR__.'/api_bulk.php';
 });
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organization', 'ensure.organization', 'organization.api'])->group(function () {

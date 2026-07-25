@@ -230,6 +230,14 @@ return [
         'imports.projects' => ['Imports', 'Import project entities (projects, milestones, tasks)'],
         'imports.administration' => ['Imports', 'Import administration entities (users)'],
 
+        'bulk.crm' => ['Bulk Operations', 'Run bulk actions on CRM records'],
+        'bulk.hrms' => ['Bulk Operations', 'Run bulk actions on HRMS records'],
+        'bulk.projects' => ['Bulk Operations', 'Run bulk actions on project records'],
+        'bulk.administration' => ['Bulk Operations', 'Run bulk actions on administration records'],
+        'bulk.marketing' => ['Bulk Operations', 'Run bulk actions on marketing records'],
+        'bulk.view' => ['Bulk Operations', 'View bulk operation history and progress'],
+        'bulk.manage' => ['Bulk Operations', 'Full bulk operations management'],
+
         'assignments.view' => ['Assignments', 'View assignment pools and rules'],
         'assignments.manage' => ['Assignments', 'Manage assignment pools and rules'],
 
@@ -403,6 +411,7 @@ return [
                 'marketing.view', 'marketing.manage',
                 'imports.view', 'imports.create', 'imports.manage',
                 'imports.crm', 'imports.hrms', 'imports.projects', 'imports.administration',
+                'bulk.view', 'bulk.manage', 'bulk.crm', 'bulk.hrms', 'bulk.projects', 'bulk.administration', 'bulk.marketing',
                 'assignments.view', 'assignments.manage',
                 'workflows.view', 'workflows.create', 'workflows.update', 'workflows.delete', 'workflows.manage',
                 'dashboard.view', 'dashboard.customize', 'dashboard.manage',
@@ -516,6 +525,7 @@ return [
                 'recruitment.api.manage',
                 'recruitment.webhook.view',
                 'imports.view', 'imports.create', 'imports.manage', 'imports.hrms',
+                'bulk.view', 'bulk.manage', 'bulk.hrms',
                 'dashboard.view', 'dashboard.customize', 'dashboard.manage',
             ],
         ],

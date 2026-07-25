@@ -394,6 +394,18 @@ use App\Services\Import\Adapters\ShiftImportAdapter;
 use App\Services\Import\Adapters\TaskImportAdapter;
 use App\Services\Import\Adapters\UserImportAdapter;
 use App\Services\Import\ImportEntityRegistry;
+use App\Services\Bulk\BulkActionRegistry;
+use App\Services\Bulk\Providers\CrmDeleteBulkAction;
+use App\Services\Bulk\Providers\EmployeeAssignOrgUnitBulkAction;
+use App\Services\Bulk\Providers\EmployeeGenerateLoginBulkAction;
+use App\Services\Bulk\Providers\EmployeePortalBulkAction;
+use App\Services\Bulk\Providers\LeadAssignOwnerBulkAction;
+use App\Services\Bulk\Providers\LeadChangeStatusBulkAction;
+use App\Services\Bulk\Providers\ProjectChangeStatusBulkAction;
+use App\Services\Bulk\Providers\TaskChangePriorityBulkAction;
+use App\Services\Bulk\Providers\UserAccountBulkAction;
+use App\Services\Identity\UserAccountService;
+use App\Services\Identity\UserInvitationService;
 use App\Services\Marketing\Providers\MarketingProviderRegistry;
 use App\Services\Search\AdminBranchSearchProvider;
 use App\Services\Search\AdminDepartmentSearchProvider;
@@ -542,6 +554,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(WorkflowRuntimeContext::class);
 
         $this->app->singleton(ImportEntityRegistry::class);
+        $this->app->singleton(BulkActionRegistry::class);
 
         $this->app->singleton(MarketingProviderRegistry::class, function ($app) {
             $registry = new MarketingProviderRegistry;
@@ -813,6 +826,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($this->app->make($adapterClass));
         }
 
+        $this->registerBulkActions();
+
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(MetadataFieldDefinition::class, MetadataFieldDefinitionPolicy::class);
@@ -982,5 +997,39 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by('careers-apply|'.$orgKey.'|'.$request->ip());
         });
+    }
+
+    protected function registerBulkActions(): void
+    {
+        $registry = $this->app->make(BulkActionRegistry::class);
+        $accounts = $this->app->make(UserAccountService::class);
+        $invitations = $this->app->make(UserInvitationService::class);
+
+        foreach ([
+            LeadAssignOwnerBulkAction::class,
+            LeadChangeStatusBulkAction::class,
+            EmployeeGenerateLoginBulkAction::class,
+            ProjectChangeStatusBulkAction::class,
+            TaskChangePriorityBulkAction::class,
+        ] as $actionClass) {
+            $registry->register($this->app->make($actionClass));
+        }
+
+        $registry->register(CrmDeleteBulkAction::leads());
+        $registry->register(CrmDeleteBulkAction::customers());
+        $registry->register(CrmDeleteBulkAction::opportunities());
+
+        $registry->register(EmployeeAssignOrgUnitBulkAction::department());
+        $registry->register(EmployeeAssignOrgUnitBulkAction::designation());
+        $registry->register(EmployeeAssignOrgUnitBulkAction::branch());
+
+        $registry->register(EmployeePortalBulkAction::enablePortal($accounts));
+        $registry->register(EmployeePortalBulkAction::disablePortal($accounts));
+        $registry->register(EmployeePortalBulkAction::lock($accounts));
+        $registry->register(EmployeePortalBulkAction::unlock($accounts));
+
+        foreach (['activate', 'disable', 'lock', 'unlock', 'resend_invitation'] as $mode) {
+            $registry->register(new UserAccountBulkAction($accounts, $invitations, $mode));
+        }
     }
 }

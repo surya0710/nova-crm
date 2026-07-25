@@ -13,6 +13,7 @@ use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\Bulk\BulkOperationsService;
 use App\Services\Hrms\EmployeeProvisioningService;
 use App\Services\Hrms\EmployeeService;
 use App\Services\Identity\BulkEmployeeUserProvisioningService;
@@ -31,17 +32,26 @@ class EmployeeController extends Controller
         protected UserInvitationService $invitations,
         protected UserAccountService $accounts,
         protected BulkEmployeeUserProvisioningService $bulkProvisioning,
+        protected BulkOperationsService $bulkOperations,
     ) {
         $this->authorizeResource(Employee::class, 'employee');
     }
 
     public function index(): View
     {
+        $organization = $this->requireOrganization();
+        $employees = Employee::query()
+            ->with(['branch', 'department', 'designation', 'reportingManager', 'user.latestInvitation'])
+            ->latest()
+            ->paginate(15);
+
         return view('hrms.employees.index', [
-            'employees' => Employee::query()
-                ->with(['branch', 'department', 'designation', 'reportingManager', 'user.latestInvitation'])
-                ->latest()
-                ->paginate(15),
+            'employees' => $employees,
+            'bulkActions' => $this->bulkOperations->availableActionsFor(
+                request()->user(),
+                $organization,
+                'employee'
+            ),
         ]);
     }
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\Administration\AdministrationHomeController;
 use App\Http\Controllers\Administration\BrandingController as AdministrationBrandingController;
 use App\Http\Controllers\Administration\DeveloperController as AdministrationDeveloperController;
 use App\Http\Controllers\Administration\ImportCenterController;
+use App\Http\Controllers\Administration\BulkOperationsController;
 use App\Http\Controllers\Administration\ModulesController as AdministrationModulesController;
 use App\Http\Controllers\Administration\SecurityController as AdministrationSecurityController;
 use App\Http\Controllers\Analytics\AnalyticsHomeController;
@@ -1562,6 +1563,14 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
                     ->whereIn('format', ['csv', 'xlsx'])
                     ->name('template');
                 Route::post('{entity}', [ImportCenterController::class, 'store'])->name('store');
+            });
+
+            Route::prefix('bulk')->name('bulk.')->group(function () {
+                Route::get('/', [BulkOperationsController::class, 'index'])->name('index');
+                Route::get('history', [BulkOperationsController::class, 'history'])->name('history');
+                Route::post('/', [BulkOperationsController::class, 'store'])->name('store');
+                Route::get('operations/{operation}', [BulkOperationsController::class, 'show'])->name('show');
+                Route::get('operations/{operation}/errors', [BulkOperationsController::class, 'errors'])->name('errors');
             });
         });
 

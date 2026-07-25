@@ -16,6 +16,7 @@
     ];
     $density = $shellNav['density'] ?? 'comfortable';
     $columns = [
+        ['label' => '', 'class' => 'w-10'],
         __('Lead'),
         __('Status'),
         ['label' => __('Source'), 'class' => 'hidden md:table-cell'],
@@ -24,6 +25,7 @@
         ['label' => __('Next Follow-up'), 'class' => 'hidden lg:table-cell'],
         ['label' => __('Budget'), 'align' => 'right'],
     ];
+    $pageIds = $leads->getCollection()->pluck('id')->all();
 @endphp
 
 <x-app-layout>
@@ -113,40 +115,57 @@
                 @endif
             </x-ui.card>
         @else
-            <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
-                @foreach ($leads as $lead)
-                    <tr class="hover:bg-surface-muted/60 transition">
-                        <td class="px-4 py-3">
-                            <a href="{{ route('leads.show', $lead) }}" class="group block">
-                                <p class="text-sm font-semibold text-ink-heading group-hover:text-primary-700">{{ $lead->name }}</p>
-                                @if ($lead->company)
-                                    <p class="mt-0.5 text-xs text-ink-muted">{{ $lead->company }}</p>
+            <x-bulk.toolbar
+                entity-type="lead"
+                :actions="$bulkActions ?? []"
+                :page-ids="$pageIds"
+                :redirect-to="route('leads.index')"
+            >
+                <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
+                    @foreach ($leads as $lead)
+                        <tr class="hover:bg-surface-muted/60 transition">
+                            <td class="px-4 py-3">
+                                @if (! empty($bulkActions))
+                                    <input
+                                        type="checkbox"
+                                        class="rounded border-line text-primary-600"
+                                        @change="toggleId({{ $lead->id }}, $event.target.checked)"
+                                        :checked="selected.includes({{ $lead->id }})"
+                                    >
                                 @endif
-                            </a>
-                        </td>
-                        <td class="px-4 py-3">
-                            <x-ui.badge :variant="$statusVariant[$lead->status] ?? 'neutral'">{{ $lead->status_label }}</x-ui.badge>
-                        </td>
-                        <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $lead->source_label }}</td>
-                        <td class="px-4 py-3 hidden lg:table-cell">
-                            <x-ui.badge :variant="$priorityVariant[$lead->priority] ?? 'neutral'">{{ $lead->priority_label }}</x-ui.badge>
-                        </td>
-                        <td class="px-4 py-3 hidden lg:table-cell text-sm text-ink-muted">{{ $lead->assignee?->name ?? '—' }}</td>
-                        <td class="px-4 py-3 hidden lg:table-cell text-sm">
-                            @if ($lead->next_follow_up_at)
-                                <span @class(['font-medium text-warning' => $lead->isFollowUpDue(), 'text-ink-muted' => ! $lead->isFollowUpDue()])>
-                                    {{ $lead->next_follow_up_at->timezone(app(\App\Services\LeadFollowUpService::class)->organizationTimezone())->format('M j, g:i A') }}
-                                </span>
-                            @else
-                                <span class="text-ink-muted">—</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3 text-right text-sm text-ink-heading">
-                            {{ $lead->budget ? number_format($lead->budget, 0) : '—' }}
-                        </td>
-                    </tr>
-                @endforeach
-            </x-tables.table>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a href="{{ route('leads.show', $lead) }}" class="group block">
+                                    <p class="text-sm font-semibold text-ink-heading group-hover:text-primary-700">{{ $lead->name }}</p>
+                                    @if ($lead->company)
+                                        <p class="mt-0.5 text-xs text-ink-muted">{{ $lead->company }}</p>
+                                    @endif
+                                </a>
+                            </td>
+                            <td class="px-4 py-3">
+                                <x-ui.badge :variant="$statusVariant[$lead->status] ?? 'neutral'">{{ $lead->status_label }}</x-ui.badge>
+                            </td>
+                            <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $lead->source_label }}</td>
+                            <td class="px-4 py-3 hidden lg:table-cell">
+                                <x-ui.badge :variant="$priorityVariant[$lead->priority] ?? 'neutral'">{{ $lead->priority_label }}</x-ui.badge>
+                            </td>
+                            <td class="px-4 py-3 hidden lg:table-cell text-sm text-ink-muted">{{ $lead->assignee?->name ?? '—' }}</td>
+                            <td class="px-4 py-3 hidden lg:table-cell text-sm">
+                                @if ($lead->next_follow_up_at)
+                                    <span @class(['font-medium text-warning' => $lead->isFollowUpDue(), 'text-ink-muted' => ! $lead->isFollowUpDue()])>
+                                        {{ $lead->next_follow_up_at->timezone(app(\App\Services\LeadFollowUpService::class)->organizationTimezone())->format('M j, g:i A') }}
+                                    </span>
+                                @else
+                                    <span class="text-ink-muted">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right text-sm text-ink-heading">
+                                {{ $lead->budget ? number_format($lead->budget, 0) : '—' }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </x-tables.table>
+            </x-bulk.toolbar>
         @endif
 
         @if ($leads->hasPages())

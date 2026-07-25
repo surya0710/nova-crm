@@ -102,11 +102,15 @@ class ImportPlatformService
             $absolutePath = $this->absolutePath($session);
             $parsed = $this->reader->read($absolutePath, $session->worksheet_name);
             $detection = $this->columnDetector->detect($parsed->headers, $entity->fieldDefinitions());
+            $mapping = $this->resolveColumnMapping($session->column_mapping, $detection['mapping']);
+            $unknownColumns = $this->unknownColumnsForMapping($parsed->headers, $mapping);
+            $unmappedRequired = $this->unmappedRequiredFields($entity->fieldDefinitions(), $mapping);
+
             $result = $this->validator->validate(
                 $parsed,
                 $entity->fieldDefinitions(),
-                $detection['mapping'],
-                $detection['unknown_columns'],
+                $mapping,
+                $unknownColumns,
                 $detection['duplicate_columns'],
             );
             $result = $this->validator->mergeEntityErrors(
@@ -123,7 +127,7 @@ class ImportPlatformService
             $this->transition($session, ImportSession::STATUS_READY, [
                 'worksheet_name' => $parsed->activeWorksheet,
                 'detected_headers' => $parsed->headers,
-                'column_mapping' => $detection['mapping'],
+                'column_mapping' => $mapping,
                 'total_rows' => $result['total_rows'],
                 'failed_count' => $result['invalid_rows'],
                 'validation_summary' => [
@@ -132,7 +136,7 @@ class ImportPlatformService
                     'duplicate_rows' => $duplicateRows,
                     'unknown_columns' => $result['unknown_columns'],
                     'duplicate_columns' => $result['duplicate_columns'],
-                    'unmapped_required' => $detection['unmapped_required'],
+                    'unmapped_required' => $unmappedRequired,
                     'errors' => $result['errors'],
                 ],
                 'last_error' => null,
@@ -570,5 +574,66 @@ class ImportPlatformService
         }
 
         return $path;
+    }
+
+    /**
+     * Prefer an explicit session mapping when any field is mapped; otherwise use detection.
+     *
+     * @param  array<string, string|null>|null  $sessionMapping
+     * @param  array<string, string|null>  $detectedMapping
+     * @return array<string, string|null>
+     */
+    protected function resolveColumnMapping(?array $sessionMapping, array $detectedMapping): array
+    {
+        if (! is_array($sessionMapping) || $sessionMapping === []) {
+            return $detectedMapping;
+        }
+
+        $hasMappedField = collect($sessionMapping)->contains(
+            static fn ($header) => is_string($header) && trim($header) !== ''
+        );
+
+        return $hasMappedField ? $sessionMapping : $detectedMapping;
+    }
+
+    /**
+     * @param  list<string>  $headers
+     * @param  array<string, string|null>  $mapping
+     * @return list<string>
+     */
+    protected function unknownColumnsForMapping(array $headers, array $mapping): array
+    {
+        $mappedHeaders = collect($mapping)
+            ->filter(static fn ($header) => is_string($header) && trim($header) !== '')
+            ->values()
+            ->all();
+
+        return array_values(array_filter(
+            $headers,
+            static fn (string $header): bool => ! in_array($header, $mappedHeaders, true)
+        ));
+    }
+
+    /**
+     * @param  list<ImportFieldDefinition>  $fields
+     * @param  array<string, string|null>  $mapping
+     * @return list<string>
+     */
+    protected function unmappedRequiredFields(array $fields, array $mapping): array
+    {
+        $unmapped = [];
+
+        foreach ($fields as $field) {
+            if (! $field->required) {
+                continue;
+            }
+
+            $header = $mapping[$field->key] ?? null;
+            if (! is_string($header) || trim($header) === '') {
+                $unmapped[] = $field->key;
+            }
+        }
+
+        return $unmapped;
     }
 }

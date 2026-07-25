@@ -197,9 +197,9 @@ class UserInvitationService
 
     protected function sendInvitationEmail(User $user, Organization $organization, UserInvitation $invitation, string $plainToken): void
     {
-        $acceptUrl = route('invitations.accept', ['token' => $plainToken]);
-
         try {
+            $acceptUrl = $this->invitationAcceptUrl($plainToken);
+
             if ($this->mailer->isConfigured($organization)) {
                 $this->mailer->send(
                     $organization,
@@ -215,6 +215,15 @@ class UserInvitationService
         } catch (\Throwable) {
             // Email failures must not roll back invitation creation.
         }
+    }
+
+    protected function invitationAcceptUrl(string $plainToken): string
+    {
+        if (\Illuminate\Support\Facades\Route::has('invitations.accept')) {
+            return route('invitations.accept', ['token' => $plainToken]);
+        }
+
+        return url('/invitations/'.$plainToken);
     }
 
     protected function sendWelcome(User $user, Organization $organization): void

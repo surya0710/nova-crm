@@ -13,6 +13,7 @@ use App\Http\Requests\UpdateLeadStatusRequest;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Bulk\BulkOperationsService;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
 use App\Services\LeadService;
@@ -44,6 +45,7 @@ class LeadController extends Controller
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
         protected NoteService $noteService,
+        protected BulkOperationsService $bulkOperations,
     ) {
         $this->authorizeResource(Lead::class, 'lead');
     }
@@ -91,9 +93,10 @@ class LeadController extends Controller
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'lead');
         $filters = collect($filterInput)->only(['search', 'status', 'source', 'priority', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $leads = $query->paginate(15)->withQueryString();
 
         return view('leads.index', [
-            'leads' => $query->paginate(15)->withQueryString(),
+            'leads' => $leads,
             'organization' => $organization,
             'assignees' => $this->organizationMembers($organization),
             'filters' => $filters,
@@ -103,6 +106,11 @@ class LeadController extends Controller
             'activeSavedFilter' => $saved['activeSavedFilter'],
             'savedFilterRoute' => 'leads.index',
             'savedFilterEntityType' => 'lead',
+            'bulkActions' => $this->bulkOperations->availableActionsFor(
+                $request->user(),
+                $organization,
+                'lead'
+            ),
         ]);
     }
 

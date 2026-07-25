@@ -888,6 +888,13 @@ return [
                 'any_permissions' => ['imports.view', 'imports.create', 'imports.manage'],
             ],
             [
+                'label' => 'Bulk Operations',
+                'route' => 'administration.bulk.index',
+                'match' => ['administration.bulk.*'],
+                'icon' => 'fields',
+                'any_permissions' => ['bulk.view', 'bulk.manage'],
+            ],
+            [
                 'label' => 'Integrations',
                 'route' => 'integrations.index',
                 'match' => ['integrations.*'],
