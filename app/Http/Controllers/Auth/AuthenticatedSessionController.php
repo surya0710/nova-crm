@@ -33,16 +33,19 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+        $organization = $user instanceof User ? $user->organizations()->first() : null;
+
+        // Tenant context before login audit — User has no organization_id column.
+        if ($organization) {
+            $lifecycle->assertCanLogin($organization);
+            $request->session()->put('current_organization_id', $organization->id);
+        }
+
         if ($user instanceof User) {
             $accounts->recordSuccessfulLogin($user);
         }
 
-        $organization = $user->organizations()->first();
-
         if ($organization) {
-            $lifecycle->assertCanLogin($organization);
-            $request->session()->put('current_organization_id', $organization->id);
-
             $prefs = $theme->preferencesFor($user, $organization);
             $landing = $workspaces->landingUrlFor($user, $organization, $prefs->last_workspace);
 

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\NotificationService;
 use App\Services\OrganizationMailer;
+use App\Services\TenantContext;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -147,9 +148,9 @@ class UserAccountService
             'failed_login_attempts' => 0,
         ])->save();
 
-        $this->auditLogger->log($user, 'user_login', [
+        $this->auditAuthEvent($user, 'user_login', [
             'login_count' => $user->login_count,
-        ], $user);
+        ]);
     }
 
     public function recordFailedLogin(?User $user): void
@@ -170,17 +171,50 @@ class UserAccountService
 
         $user->forceFill($attributes)->save();
 
-        $this->auditLogger->log($user, 'user_login_failed', [
+        $this->auditAuthEvent($user, 'user_login_failed', [
             'failed_login_attempts' => $attempts,
             'locked' => isset($attributes['locked_at']),
-        ], $user);
+        ]);
     }
 
     public function recordLogout(User $user): void
     {
         $user->forceFill(['last_logout_at' => now()])->save();
 
-        $this->auditLogger->log($user, 'user_logout', [], $user);
+        $this->auditAuthEvent($user, 'user_logout');
+    }
+
+    /**
+     * Auth events often run before tenant middleware. Resolve an org for the
+     * audit row; skip auditing rather than blocking login/logout when none.
+     */
+    protected function auditAuthEvent(User $user, string $event, array $properties = []): void
+    {
+        $organizationId = $this->organizationIdForUserAudit($user);
+        if (! $organizationId) {
+            return;
+        }
+
+        $this->auditLogger->log($user, $event, array_merge($properties, [
+            'organization_id' => $organizationId,
+        ]), $user);
+    }
+
+    protected function organizationIdForUserAudit(User $user): ?int
+    {
+        $tenantId = app(TenantContext::class)->id();
+        if ($tenantId) {
+            return (int) $tenantId;
+        }
+
+        $sessionOrg = session('current_organization_id');
+        if ($sessionOrg) {
+            return (int) $sessionOrg;
+        }
+
+        $organizationId = $user->organizations()->value('organizations.id');
+
+        return $organizationId ? (int) $organizationId : null;
     }
 
     public function sendPasswordReset(User $user, Organization $organization, User $actor): string
