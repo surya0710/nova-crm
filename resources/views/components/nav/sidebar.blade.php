@@ -21,19 +21,23 @@
     $currentOrganization = $currentOrganization ?? app(\App\Services\TenantContext::class)->get();
     $user = Auth::user();
     $collapsed = (bool) ($nav['sidebarCollapsed'] ?? false);
+    // Workspace-scoped primary nav only — never merge menus from other workspaces.
     $menu = collect($nav['menu'] ?? []);
     $favorites = collect($nav['favorites'] ?? []);
     $pinned = collect($nav['pinned'] ?? []);
     $recents = collect($nav['recents'] ?? []);
     $workspaces = collect($nav['workspaces'] ?? []);
     $currentWorkspace = $nav['currentWorkspace'] ?? 'home';
-    $adminWorkspaces = $workspaces->where('footer', true);
+    $workspaceLabel = $nav['currentWorkspaceMeta']['label'] ?? __('Navigation');
+    $adminWorkspaces = $workspaces->where('footer', true)->values();
+    $primaryWorkspaces = $workspaces->reject(fn ($w) => ($w['footer'] ?? false))->values();
 @endphp
 
 <aside
     class="flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-text transition-[width] duration-normal"
     :class="$store.shell.sidebarCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar'"
     aria-label="{{ __('Primary') }}"
+    data-workspace="{{ $currentWorkspace }}"
 >
     @if ($currentOrganization)
         <div class="shrink-0 border-b border-sidebar-border px-3 py-4">
@@ -63,9 +67,9 @@
                     </form>
                 @endif
 
-                @if (config('features.workspace_nav') && $workspaces->isNotEmpty() && ! config('features.header_workspace_switcher', true))
+                @if (config('features.workspace_nav') && $primaryWorkspaces->isNotEmpty() && ! config('features.header_workspace_switcher', true))
                     <div class="relative mt-3">
-                        <x-nav.workspace-switcher :workspaces="$workspaces" :current="$currentWorkspace" />
+                        <x-nav.workspace-switcher :workspaces="$primaryWorkspaces" :current="$currentWorkspace" />
                     </div>
                 @endif
             @endunless
@@ -97,14 +101,14 @@
             @endif
         @endunless
 
-        <div>
+        <div data-workspace-nav="{{ $currentWorkspace }}">
             @unless ($collapsed)
                 <p class="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                    {{ $nav['currentWorkspaceMeta']['label'] ?? __('Navigation') }}
+                    {{ $workspaceLabel }}
                 </p>
             @endunless
             <div class="space-y-0.5" x-data="{ openGroup: null }">
-                @foreach ($menu as $item)
+                @forelse ($menu as $item)
                     @if (! empty($item['children']))
                         <div x-data="{ open: {{ ($item['open'] ?? false) ? 'true' : 'false' }} }">
                             <button
@@ -141,7 +145,11 @@
                             :icon="! empty($item['icon']) ? ($icons[$item['icon']] ?? null) : null"
                         >{{ $item['label'] }}</x-nav.sidebar-link>
                     @endif
-                @endforeach
+                @empty
+                    @unless ($collapsed)
+                        <p class="px-3 py-2 text-xs text-sidebar-muted">{{ __('No navigation items in this workspace.') }}</p>
+                    @endunless
+                @endforelse
             </div>
         </div>
 

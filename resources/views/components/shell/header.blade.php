@@ -13,9 +13,10 @@
     $favoriteWorkspaces = collect($nav['favoriteWorkspaces'] ?? []);
     $recentWorkspaces = collect($nav['recentWorkspaces'] ?? []);
     $quickActions = $nav['quickActions'] ?? [];
+    $primaryWorkspaces = $workspaces->reject(fn ($w) => ($w['footer'] ?? false));
     $useHeaderSwitcher = config('features.header_workspace_switcher', true)
         && config('features.workspace_nav')
-        && $workspaces->isNotEmpty();
+        && $primaryWorkspaces->isNotEmpty();
 @endphp
 
 <header class="sticky top-0 z-sticky border-b border-line bg-surface-card">
@@ -41,7 +42,7 @@
 
             @if ($useHeaderSwitcher)
                 <x-nav.header-workspace-switcher
-                    :workspaces="$workspaces"
+                    :workspaces="$primaryWorkspaces"
                     :current="$currentWorkspace"
                     :favorite-workspaces="$favoriteWorkspaces"
                     :recent-workspaces="$recentWorkspaces"

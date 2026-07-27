@@ -17,7 +17,7 @@ class WorkspaceResolver
     ) {}
 
     /**
-     * @return Collection<int, array{id: string, label: string, icon: string, order: int, active: bool, href: string|null}>
+     * @return Collection<int, array{id: string, label: string, icon: string, order: int, active: bool, href: string|null, footer?: bool, module?: string|null}>
      */
     public function availableWorkspaces(User $user, ?Organization $organization): Collection
     {
@@ -27,15 +27,22 @@ class WorkspaceResolver
 
         $visibility = $this->workspaceVisibility($organization);
 
-        return collect(config('navigation.workspaces', []))
+        $workspaces = collect(config('navigation.workspaces', []))
             ->map(function (array $workspace) use ($user, $organization, $visibility) {
-                $workspaceId = $workspace['id'];
+                $workspaceId = (string) ($workspace['id'] ?? '');
+                if ($workspaceId === '') {
+                    return null;
+                }
 
                 if (isset($visibility[$workspaceId]) && $visibility[$workspaceId] === false) {
                     return null;
                 }
 
                 if (! $this->workspaceLicensed($organization, $workspaceId)) {
+                    return null;
+                }
+
+                if (isset($workspace['any_permissions']) && ! $this->menuBuilder->userHasAny($user, $organization, $workspace['any_permissions'])) {
                     return null;
                 }
 
@@ -46,27 +53,15 @@ class WorkspaceResolver
                     return null;
                 }
 
-                if (isset($workspace['any_permissions']) && ! $this->menuBuilder->userHasAny($user, $organization, $workspace['any_permissions'])) {
-                    return null;
-                }
-
-                if (! $hasItems && empty($workspace['route'])) {
-                    return null;
-                }
-
-                $href = null;
-                $routeName = $workspace['route']
-                    ?? $this->registry->routeForWorkspace($workspaceId);
-
-                if (! empty($routeName) && $this->menuBuilder->routeExists($routeName)) {
-                    $href = route($routeName);
-                } elseif ($items->isNotEmpty()) {
-                    $href = $this->firstHref($items);
-                }
-
+                $href = $this->resolveHref($workspace, $workspaceId, $items);
                 if (! $href) {
+                    // Authenticated users with module access must still see the workspace
+                    // when a configured landing route exists, even if menu items are sparse.
                     return null;
                 }
+
+                $moduleKey = $workspace['module']
+                    ?? $this->registry->moduleForWorkspace($workspaceId);
 
                 return [
                     'id' => $workspaceId,
@@ -75,25 +70,48 @@ class WorkspaceResolver
                     'order' => $workspace['order'] ?? 100,
                     'footer' => (bool) ($workspace['footer'] ?? false),
                     'href' => $href,
+                    'module' => $moduleKey,
+                    'search_scope' => config('navigation.workspace_search_scopes.'.$workspaceId, 'all'),
                     'active' => false,
                 ];
             })
             ->filter()
             ->sortBy('order')
             ->values();
+
+        // Never return an empty list for a member with an organization context when Home is reachable.
+        if ($workspaces->isEmpty()) {
+            $home = config('navigation.workspaces.home');
+            if (is_array($home) && $this->menuBuilder->routeExists($home['route'] ?? 'dashboard')) {
+                return collect([[
+                    'id' => 'home',
+                    'label' => __($home['label'] ?? 'Home'),
+                    'icon' => $home['icon'] ?? 'home',
+                    'order' => $home['order'] ?? 10,
+                    'footer' => false,
+                    'href' => route($home['route'] ?? 'dashboard'),
+                    'module' => null,
+                    'search_scope' => config('navigation.workspace_search_scopes.home', 'all'),
+                    'active' => false,
+                ]]);
+            }
+        }
+
+        return $workspaces;
     }
 
     public function resolveCurrent(?string $preferred, User $user, ?Organization $organization): string
     {
         $available = $this->availableWorkspaces($user, $organization)->pluck('id');
 
-        if ($preferred && $available->contains($preferred)) {
-            return $preferred;
-        }
-
+        // Route wins so the sidebar always mirrors the page the user is on.
         $fromRoute = $this->workspaceFromRoute();
         if ($fromRoute && $available->contains($fromRoute)) {
             return $fromRoute;
+        }
+
+        if ($preferred && $available->contains($preferred)) {
+            return $preferred;
         }
 
         $default = $this->registry->defaultWorkspace();
@@ -144,6 +162,25 @@ class WorkspaceResolver
         }
 
         return route('dashboard');
+    }
+
+    /**
+     * @param  Collection<int, array>  $items
+     */
+    protected function resolveHref(array $workspace, string $workspaceId, Collection $items): ?string
+    {
+        $routeName = $workspace['route']
+            ?? $this->registry->routeForWorkspace($workspaceId);
+
+        if (! empty($routeName) && $this->menuBuilder->routeExists($routeName)) {
+            try {
+                return route($routeName);
+            } catch (\Throwable) {
+                // fall through to first menu href
+            }
+        }
+
+        return $this->firstHref($items);
     }
 
     protected function workspaceLicensed(Organization $organization, string $workspaceId): bool

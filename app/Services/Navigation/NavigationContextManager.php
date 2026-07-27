@@ -10,14 +10,12 @@ use App\Services\Theme\ThemeService;
 class NavigationContextManager
 {
     public function __construct(
-        protected WorkspaceResolver $workspaces,
-        protected MenuBuilder $menus,
+        protected NavigationService $navigation,
         protected BreadcrumbBuilder $breadcrumbs,
         protected FavoritePagesService $favorites,
         protected FavoriteWorkspacesService $favoriteWorkspaces,
         protected RecentPagesService $recents,
         protected PinnedPagesService $pinned,
-        protected NavigationService $navigation,
         protected ShellQuickActionService $quickActions,
         protected ThemeService $theme,
     ) {}
@@ -32,9 +30,9 @@ class NavigationContextManager
             : null;
 
         $preferredWorkspace = $prefs?->last_workspace;
-        $currentWorkspace = $this->workspaces->resolveCurrent($preferredWorkspace, $user, $organization);
+        $currentWorkspace = $this->navigation->currentWorkspace($user, $organization, $preferredWorkspace);
 
-        $available = $this->workspaces->availableWorkspaces($user, $organization)
+        $available = $this->navigation->availableWorkspaces($user, $organization)
             ->map(function (array $ws) use ($currentWorkspace) {
                 $ws['active'] = $ws['id'] === $currentWorkspace;
 
@@ -42,7 +40,7 @@ class NavigationContextManager
             });
 
         $menu = $organization
-            ? $this->menus->buildForWorkspace($currentWorkspace, $user, $organization)
+            ? $this->navigation->menuForWorkspace($currentWorkspace, $user, $organization)
             : collect();
 
         $currentMeta = $available->firstWhere('id', $currentWorkspace);
@@ -77,6 +75,7 @@ class NavigationContextManager
                 ? $this->quickActions->forWorkspace($user, $organization, $currentWorkspace)
                 : [],
             'searchDefaultScope' => $this->navigation->defaultSearchScopeForWorkspace($currentWorkspace),
+            'breadcrumbs' => $this->breadcrumbsFor($currentMeta),
             'preferences' => $prefs,
             'sidebarCollapsed' => (bool) ($prefs?->sidebar_collapsed ?? false),
             'theme' => $prefs?->theme ?? 'light',
@@ -91,6 +90,24 @@ class NavigationContextManager
 
         return $this->theme->updatePreferences($user, $organization, [
             'last_workspace' => $workspace,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $currentMeta
+     * @return \Illuminate\Support\Collection<int, array{label: string, href: string|null, current: bool}>
+     */
+    protected function breadcrumbsFor(?array $currentMeta)
+    {
+        if (! $currentMeta) {
+            return collect();
+        }
+
+        return $this->breadcrumbs->build([
+            [
+                'label' => $currentMeta['label'] ?? __('Workspace'),
+                'href' => $currentMeta['href'] ?? null,
+            ],
         ]);
     }
 }

@@ -89,6 +89,16 @@ class ModuleRegistry
 
     public function moduleForWorkspace(string $workspaceId): ?string
     {
+        $fromNavigation = config("navigation.workspaces.{$workspaceId}.module");
+        if (is_string($fromNavigation) && $fromNavigation !== '') {
+            return $fromNavigation;
+        }
+
+        // Explicit null in navigation means the workspace is not module-licensed.
+        if (array_key_exists('module', (array) config("navigation.workspaces.{$workspaceId}", []))) {
+            return null;
+        }
+
         $map = config('modules.workspace_module_map', []);
 
         return $map[$workspaceId] ?? null;

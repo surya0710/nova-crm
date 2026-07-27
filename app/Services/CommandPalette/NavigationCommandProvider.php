@@ -4,15 +4,13 @@ namespace App\Services\CommandPalette;
 
 use App\Models\Organization;
 use App\Models\User;
-use App\Services\Navigation\MenuBuilder;
-use App\Services\Navigation\WorkspaceResolver;
+use App\Services\Navigation\NavigationService;
 use Illuminate\Support\Collection;
 
 class NavigationCommandProvider implements CommandProviderInterface
 {
     public function __construct(
-        protected WorkspaceResolver $workspaces,
-        protected MenuBuilder $menus,
+        protected NavigationService $navigation,
     ) {}
 
     public function commands(User $user, ?Organization $organization): Collection
@@ -23,7 +21,7 @@ class NavigationCommandProvider implements CommandProviderInterface
 
         $commands = collect();
 
-        foreach ($this->workspaces->availableWorkspaces($user, $organization) as $workspace) {
+        foreach ($this->navigation->availableWorkspaces($user, $organization) as $workspace) {
             $commands->push([
                 'id' => 'workspace.'.$workspace['id'],
                 'label' => __('Go to :name', ['name' => $workspace['label']]),
@@ -32,7 +30,7 @@ class NavigationCommandProvider implements CommandProviderInterface
                 'keywords' => [$workspace['id'], 'workspace'],
             ]);
 
-            foreach ($this->menus->buildForWorkspace($workspace['id'], $user, $organization) as $item) {
+            foreach ($this->navigation->menuForWorkspace($workspace['id'], $user, $organization) as $item) {
                 $this->collectItem($commands, $item, $workspace['label']);
             }
         }

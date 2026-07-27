@@ -14,6 +14,7 @@ return [
             'icon' => 'home',
             'order' => 10,
             'route' => 'dashboard',
+            'module' => null,
             'match' => ['dashboard', 'dashboard.*'],
         ],
         'crm' => [
@@ -22,6 +23,7 @@ return [
             'icon' => 'users',
             'order' => 20,
             'route' => 'crm.home',
+            'module' => 'crm',
             'match' => ['crm.*', 'leads.*', 'customers.*', 'pipeline.*', 'products.*', 'quotations.*', 'invoices.*', 'payments.*'],
             'any_permissions' => [
                 'leads.view', 'customers.view', 'opportunities.view', 'products.view',
@@ -34,9 +36,10 @@ return [
             'icon' => 'task',
             'order' => 30,
             'route' => 'projects.home',
+            'module' => 'projects',
             'match' => [
                 'projects.*', 'project-*', 'portfolios.*', 'programs.*', 'resources.*',
-                'risks.*', 'issues.*', 'portfolio-reports.*', 'tasks.*',
+                'risks.*', 'issues.*', 'portfolio-reports.*',
             ],
             'any_permissions' => ['projects.view', 'resources.view', 'projects.portfolios.view', 'projects.programs.view', 'tasks.view'],
         ],
@@ -46,6 +49,7 @@ return [
             'icon' => 'hr',
             'order' => 40,
             'route' => 'hrms.home',
+            'module' => 'hrms',
             'match' => ['hrms.*', 'ess.*'],
             'any_permissions' => [
                 'hrms.view', 'ess.access', 'hr.dashboard', 'manager.dashboard',
@@ -59,6 +63,7 @@ return [
             'icon' => 'chart',
             'order' => 50,
             'route' => 'marketing.home',
+            'module' => 'marketing',
             'any_permissions' => ['marketing.view', 'marketing.manage', 'integrations.view', 'integrations.manage'],
             'hide_when_empty' => true,
             'match' => ['marketing.*'],
@@ -69,6 +74,7 @@ return [
             'icon' => 'task',
             'order' => 60,
             'route' => 'operations.home',
+            'module' => 'tasks',
             'any_permissions' => ['tasks.view'],
             'match' => ['operations.*', 'tasks.*'],
         ],
@@ -78,6 +84,7 @@ return [
             'icon' => 'chart',
             'order' => 70,
             'route' => 'analytics.home',
+            'module' => 'analytics',
             'any_permissions' => ['reports.view', 'finance.view', 'audit.view', 'projects.reports.view', 'recruitment.reports.view'],
             'match' => ['analytics.*', 'reports.*'],
         ],
@@ -87,6 +94,7 @@ return [
             'icon' => 'cog',
             'order' => 80,
             'route' => 'administration.home',
+            'module' => null,
             'match' => [
                 'administration.*',
                 'organization.settings.*',
@@ -1057,6 +1065,9 @@ return [
     ],
 
     'quick_actions' => [
+        'home' => [
+            ['label' => 'Dashboard', 'route' => 'dashboard', 'permission' => null, 'variant' => 'primary'],
+        ],
         'crm' => [
             ['label' => 'Create Lead', 'route' => 'leads.create', 'permission' => 'leads.create', 'variant' => 'primary'],
             ['label' => 'Create Customer', 'route' => 'customers.create', 'permission' => 'customers.create'],
@@ -1076,6 +1087,14 @@ return [
             ['label' => 'Create Task', 'route' => 'tasks.create', 'permission' => 'tasks.create', 'variant' => 'primary'],
             ['label' => 'Task Board', 'route' => 'tasks.board', 'permission' => 'tasks.view'],
             ['label' => 'Task List', 'route' => 'tasks.list', 'permission' => 'tasks.view'],
+        ],
+        'marketing' => [
+            ['label' => 'Marketing Home', 'route' => 'marketing.home', 'any_permissions' => ['marketing.view', 'marketing.manage'], 'variant' => 'primary'],
+            ['label' => 'Campaigns', 'route' => 'marketing.campaigns.index', 'any_permissions' => ['marketing.view', 'marketing.manage']],
+        ],
+        'analytics' => [
+            ['label' => 'Analytics Home', 'route' => 'analytics.home', 'any_permissions' => ['reports.view', 'finance.view'], 'variant' => 'primary'],
+            ['label' => 'Reports Center', 'route' => 'analytics.reports.index', 'permission' => 'reports.view'],
         ],
         'administration' => [
             ['label' => 'Invite User', 'route' => 'team.index', 'permission' => 'users.create', 'variant' => 'primary'],

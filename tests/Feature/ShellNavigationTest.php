@@ -113,7 +113,46 @@ class ShellNavigationTest extends TestCase
             ->withSession($session)
             ->get(route('crm.home'))
             ->assertOk()
-            ->assertSee('headerWorkspaceSwitcher', false);
+            ->assertSee('headerWorkspaceSwitcher', false)
+            ->assertSee('data-testid="header-workspace-switcher"', false)
+            ->assertSee('x-show="open"', false)
+            ->assertSee('x-cloak', false);
+    }
+
+    public function test_navigation_service_returns_role_scoped_workspaces(): void
+    {
+        ['user' => $owner, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+        $ownerWorkspaces = app(NavigationService::class)
+            ->availableWorkspaces($owner, $organization)
+            ->pluck('id');
+
+        $this->assertTrue($ownerWorkspaces->contains('crm'));
+        $this->assertTrue($ownerWorkspaces->isNotEmpty());
+
+        $employee = User::factory()->create();
+        $organization->addMember($employee, 'employee');
+        $employeeWorkspaces = app(NavigationService::class)
+            ->availableWorkspaces($employee, $organization)
+            ->pluck('id');
+
+        $this->assertTrue($employeeWorkspaces->contains('hr') || $employeeWorkspaces->contains('home'));
+        $this->assertFalse($employeeWorkspaces->contains('administration'));
+    }
+
+    public function test_sidebar_is_scoped_to_current_workspace(): void
+    {
+        if (! Route::has('crm.home') || ! Route::has('hrms.home')) {
+            $this->markTestSkipped('Workspace homes are not registered.');
+        }
+
+        ['user' => $user, 'session' => $session] = $this->tenantWithRole('organization-owner');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('crm.home'))
+            ->assertOk()
+            ->assertSee('data-workspace="crm"', false)
+            ->assertSee('data-workspace-nav="crm"', false);
     }
 
     public function test_operations_home_responds_for_task_viewer(): void

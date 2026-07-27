@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Shell;
 
 use App\Http\Controllers\Controller;
 use App\Services\Navigation\NavigationService;
-use App\Services\Navigation\WorkspaceResolver;
 use App\Services\Search\SearchProviderRegistry;
 use App\Services\TenantContext;
 use App\Services\Theme\ThemeService;
@@ -19,7 +18,6 @@ class GlobalSearchController extends Controller
         SearchProviderRegistry $registry,
         ThemeService $theme,
         NavigationService $navigation,
-        WorkspaceResolver $workspaces,
     ): JsonResponse {
         $organization = $tenant->get();
         abort_unless($organization, 404);
@@ -29,8 +27,8 @@ class GlobalSearchController extends Controller
             'scope' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $workspace = $workspaces->workspaceFromRoute();
-        $defaultScope = $navigation->defaultSearchScopeForWorkspace($workspace ?? 'home');
+        $workspace = $navigation->currentWorkspace($request->user(), $organization);
+        $defaultScope = $navigation->defaultSearchScopeForWorkspace($workspace);
         $scope = $data['scope'] ?? $defaultScope;
 
         $query = trim((string) ($data['q'] ?? ''));

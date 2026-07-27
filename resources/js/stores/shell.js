@@ -133,6 +133,12 @@ export function registerShellStore() {
                 body: JSON.stringify({ workspace }),
             })
                 .then((data) => {
+                    if (data?.workspace) {
+                        store.currentWorkspace = data.workspace;
+                    }
+                    if (data?.search_scope) {
+                        store.searchDefaultScope = data.search_scope;
+                    }
                     const target = data?.href || href;
                     if (target) window.location.href = target;
                 })
@@ -173,14 +179,27 @@ function headerWorkspaceSwitcher(initial = {}) {
         ? initial.favorites.map((item) => (typeof item === 'string' ? item : item?.id)).filter(Boolean)
         : [];
 
+    const recent = Array.isArray(initial.recent)
+        ? initial.recent.map((item) => (typeof item === 'string' ? item : item?.id)).filter(Boolean)
+        : [];
+
     return {
         open: false,
         query: '',
         workspaces: Array.isArray(initial.workspaces) ? initial.workspaces : [],
         current: initial.current ?? null,
         favorites,
-        recent: Array.isArray(initial.recent) ? initial.recent : [],
+        recent,
         focusedIndex: 0,
+
+        init() {
+            this.$watch('open', (isOpen) => {
+                if (isOpen) {
+                    this.focusedIndex = 0;
+                    this.$nextTick(() => this.$refs.search?.focus());
+                }
+            });
+        },
 
         get currentLabel() {
             const match = this.workspaces.find((w) => w.id === this.current);
@@ -200,8 +219,12 @@ function headerWorkspaceSwitcher(initial = {}) {
 
         get filteredRecent() {
             const favoriteIds = new Set(this.favorites);
-            const recentIds = new Set(this.recent.map((w) => w.id));
+            const recentIds = new Set(this.recent);
             return this.filteredAll.filter((w) => recentIds.has(w.id) && !favoriteIds.has(w.id));
+        },
+
+        isVisible(id) {
+            return this.filteredAll.some((w) => w.id === id);
         },
 
         isFavorite(id) {

@@ -25,6 +25,7 @@ class ShellQuickActionService
                     return false;
                 }
 
+                // permission => null means visible to any authenticated org member
                 $routeName = $action['route'] ?? null;
 
                 return $routeName && Route::has($routeName);

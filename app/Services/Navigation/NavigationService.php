@@ -6,14 +6,56 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Models\UserUiPreference;
 use App\Services\Theme\ThemeService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Single source of truth for workspace-aware navigation.
+ *
+ * Workspace discovery and current-workspace resolution delegate to
+ * WorkspaceResolver; menu/quick-action/search scope helpers live here so
+ * consumers do not reach into config or resolver internals directly.
+ */
 class NavigationService
 {
     public function __construct(
         protected WorkspaceResolver $workspaces,
+        protected MenuBuilder $menus,
         protected ThemeService $theme,
     ) {}
+
+    /**
+     * Every workspace the current user can access for the organization
+     * (licensed + RBAC + reachable landing href).
+     *
+     * @return Collection<int, array{id: string, label: string, icon: string, order: int, active: bool, href: string|null, footer?: bool, module?: string|null}>
+     */
+    public function availableWorkspaces(User $user, ?Organization $organization): Collection
+    {
+        return $this->workspaces->availableWorkspaces($user, $organization);
+    }
+
+    /**
+     * Resolve the active workspace for the current request.
+     *
+     * Preference order: route map → preferred/last_workspace → org default → first available.
+     */
+    public function currentWorkspace(User $user, ?Organization $organization, ?string $preferred = null): string
+    {
+        return $this->workspaces->resolveCurrent($preferred, $user, $organization);
+    }
+
+    /**
+     * @return Collection<int, array>
+     */
+    public function menuForWorkspace(string $workspaceId, User $user, ?Organization $organization): Collection
+    {
+        if (! $organization) {
+            return collect();
+        }
+
+        return $this->menus->buildForWorkspace($workspaceId, $user, $organization);
+    }
 
     public function resolveLandingUrl(User $user, Organization $organization, ?UserUiPreference $prefs = null): string
     {
