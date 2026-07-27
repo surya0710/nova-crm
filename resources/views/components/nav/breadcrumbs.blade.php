@@ -6,7 +6,7 @@
                 <li class="inline-flex items-center gap-1.5">
                     @if (! ($item['current'] ?? false) && ! empty($item['href']))
                         <a href="{{ $item['href'] }}" class="hover:text-ink truncate max-w-[12rem]">{{ $item['label'] }}</a>
-                        <span aria-hidden="true" class="text-ink-muted/60">/</span>
+                        <span aria-hidden="true" class="text-ink-muted/60">&gt;</span>
                     @else
                         <span class="font-medium text-ink-heading truncate max-w-[16rem]" aria-current="page">{{ $item['label'] }}</span>
                     @endif

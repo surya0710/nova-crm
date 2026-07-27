@@ -21,6 +21,8 @@ use App\Http\Controllers\Platform\SubscriptionController;
 use App\Http\Controllers\Platform\SupportController;
 use App\Http\Controllers\Platform\TransactionController;
 use App\Http\Controllers\Platform\UserController;
+use App\Http\Controllers\Platform\OnboardingWizardController;
+use App\Http\Controllers\Api\Platform\OnboardingApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('platform.guest')->group(function () {
@@ -40,6 +42,24 @@ Route::middleware('platform.auth')->group(function () {
     Route::get('organizations', [OrganizationController::class, 'index'])->name('organizations.index');
     Route::get('organizations/create', [OrganizationController::class, 'create'])->name('organizations.create');
     Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store');
+
+    Route::get('onboarding', [OnboardingWizardController::class, 'index'])->name('onboarding.index');
+    Route::post('onboarding', [OnboardingWizardController::class, 'store'])->name('onboarding.store');
+    Route::get('onboarding/{onboarding}', [OnboardingWizardController::class, 'show'])->name('onboarding.show');
+    Route::post('onboarding/{onboarding}/draft', [OnboardingWizardController::class, 'saveDraft'])->name('onboarding.draft');
+    Route::post('onboarding/{onboarding}/steps', [OnboardingWizardController::class, 'completeStep'])->name('onboarding.steps');
+    Route::post('onboarding/{onboarding}/previous', [OnboardingWizardController::class, 'previous'])->name('onboarding.previous');
+    Route::post('onboarding/{onboarding}/finish', [OnboardingWizardController::class, 'finish'])->name('onboarding.finish');
+
+    Route::prefix('api/onboarding')->name('api.onboarding.')->group(function () {
+        Route::post('/', [OnboardingApiController::class, 'store'])->name('store');
+        Route::get('{onboarding}', [OnboardingApiController::class, 'show'])->name('show');
+        Route::post('{onboarding}/steps', [OnboardingApiController::class, 'completeStep'])->name('steps');
+        Route::get('{onboarding}/progress', [OnboardingApiController::class, 'progress'])->name('progress');
+        Route::get('{onboarding}/validation', [OnboardingApiController::class, 'validation'])->name('validation');
+        Route::post('{onboarding}/finish', [OnboardingApiController::class, 'finish'])->name('finish');
+    });
+
     Route::get('organizations/{organization}', [OrganizationController::class, 'show'])->name('organizations.show');
     Route::get('organizations/{organization}/edit', [OrganizationController::class, 'edit'])->name('organizations.edit');
     Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update');

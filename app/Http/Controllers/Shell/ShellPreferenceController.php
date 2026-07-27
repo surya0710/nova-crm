@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Shell;
 
 use App\Http\Controllers\Controller;
 use App\Services\Navigation\FavoritePagesService;
+use App\Services\Navigation\FavoriteWorkspacesService;
 use App\Services\Navigation\NavigationContextManager;
 use App\Services\Navigation\RecentPagesService;
 use App\Services\Navigation\WorkspaceResolver;
@@ -63,6 +64,20 @@ class ShellPreferenceController extends Controller
             'workspace' => $data['workspace'],
             'href' => $meta['href'] ?? null,
         ]);
+    }
+
+    public function toggleFavoriteWorkspace(Request $request, TenantContext $tenant, FavoriteWorkspacesService $favorites): JsonResponse
+    {
+        $organization = $tenant->get();
+        abort_unless($organization, 404);
+
+        $data = $request->validate([
+            'workspace' => ['required', 'string', 'max:50'],
+        ]);
+
+        $list = $favorites->toggle($request->user(), $organization, $data['workspace']);
+
+        return response()->json(['ok' => true, 'favorite_workspaces' => $list->values()->all()]);
     }
 
     public function toggleFavorite(Request $request, TenantContext $tenant, FavoritePagesService $favorites): JsonResponse

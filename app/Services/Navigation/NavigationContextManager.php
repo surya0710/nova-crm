@@ -14,8 +14,11 @@ class NavigationContextManager
         protected MenuBuilder $menus,
         protected BreadcrumbBuilder $breadcrumbs,
         protected FavoritePagesService $favorites,
+        protected FavoriteWorkspacesService $favoriteWorkspaces,
         protected RecentPagesService $recents,
         protected PinnedPagesService $pinned,
+        protected NavigationService $navigation,
+        protected ShellQuickActionService $quickActions,
         protected ThemeService $theme,
     ) {}
 
@@ -44,14 +47,36 @@ class NavigationContextManager
 
         $currentMeta = $available->firstWhere('id', $currentWorkspace);
 
+        $favoriteWorkspaceIds = $organization
+            ? $this->favoriteWorkspaces->list($user, $organization)
+            : collect();
+        $recentWorkspaceIds = $organization
+            ? $this->favoriteWorkspaces->recent($user, $organization)
+            : collect();
+
+        $favoriteWorkspaceItems = $favoriteWorkspaceIds
+            ->map(fn ($id) => $available->firstWhere('id', $id))
+            ->filter()
+            ->values();
+        $recentWorkspaceItems = $recentWorkspaceIds
+            ->map(fn ($id) => $available->firstWhere('id', $id))
+            ->filter()
+            ->values();
+
         return [
             'workspaces' => $available,
             'currentWorkspace' => $currentWorkspace,
             'currentWorkspaceMeta' => $currentMeta,
             'menu' => $menu,
             'favorites' => $organization ? $this->favorites->list($user, $organization) : collect(),
+            'favoriteWorkspaces' => $favoriteWorkspaceItems,
+            'recentWorkspaces' => $recentWorkspaceItems,
             'recents' => $organization ? $this->recents->list($user, $organization) : collect(),
             'pinned' => $organization ? $this->pinned->list($user, $organization) : collect(),
+            'quickActions' => $organization
+                ? $this->quickActions->forWorkspace($user, $organization, $currentWorkspace)
+                : [],
+            'searchDefaultScope' => $this->navigation->defaultSearchScopeForWorkspace($currentWorkspace),
             'preferences' => $prefs,
             'sidebarCollapsed' => (bool) ($prefs?->sidebar_collapsed ?? false),
             'theme' => $prefs?->theme ?? 'light',
@@ -62,6 +87,8 @@ class NavigationContextManager
 
     public function rememberWorkspace(User $user, Organization $organization, string $workspace): UserUiPreference
     {
+        $this->favoriteWorkspaces->rememberRecent($user, $organization, $workspace);
+
         return $this->theme->updatePreferences($user, $organization, [
             'last_workspace' => $workspace,
         ]);

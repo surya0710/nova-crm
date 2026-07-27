@@ -13,6 +13,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Models\EmployeeShiftAssignment;
 use App\Models\HrmsShift;
+use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -115,6 +116,8 @@ class AttendanceService
             $clockInAt ??= now();
             $attendanceDate = $clockInAt->copy()->startOfDay();
 
+            $this->assertCanRecordAttendance($employee, $attendanceDate);
+
             $existing = AttendanceRecord::query()
                 ->where('employee_id', $employee->id)
                 ->whereDate('attendance_date', $attendanceDate)
@@ -166,6 +169,8 @@ class AttendanceService
 
             $clockOutAt ??= now();
             $attendanceDate = $clockOutAt->copy()->startOfDay();
+
+            $this->assertCanRecordAttendance($employee, $attendanceDate);
 
             $record = AttendanceRecord::query()
                 ->where('employee_id', $employee->id)
@@ -505,6 +510,44 @@ class AttendanceService
                 'employee_id' => __('Employee is not eligible for attendance recording.'),
             ]);
         }
+    }
+
+    protected function assertCanRecordAttendance(Employee $employee, Carbon $date): void
+    {
+        if ($this->isEmployeeOnLeave($employee, $date)) {
+            throw ValidationException::withMessages([
+                'employee_id' => __('Cannot record attendance while on approved leave.'),
+            ]);
+        }
+
+        if ($this->isHolidayForEmployee($employee, $date)) {
+            throw ValidationException::withMessages([
+                'employee_id' => __('Cannot record attendance on a holiday.'),
+            ]);
+        }
+
+        if ($this->isWeekend($date)) {
+            throw ValidationException::withMessages([
+                'employee_id' => __('Cannot record attendance on a weekend.'),
+            ]);
+        }
+    }
+
+    public function isHolidayForEmployee(Employee $employee, Carbon $date): bool
+    {
+        return Holiday::query()
+            ->where('organization_id', $employee->organization_id)
+            ->whereDate('holiday_date', $date)
+            ->where(function ($query) use ($employee) {
+                $query->whereNull('branch_id')
+                    ->orWhere('branch_id', $employee->branch_id);
+            })
+            ->exists();
+    }
+
+    public function isWeekend(Carbon $date): bool
+    {
+        return in_array(strtolower($date->englishDayOfWeek), config('hrms.weekend_days', []), true);
     }
 
     protected function assertNoOverlappingAssignment(Employee $employee, Carbon $from, ?Carbon $to): void

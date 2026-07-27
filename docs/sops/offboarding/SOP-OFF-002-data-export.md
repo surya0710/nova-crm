@@ -36,7 +36,11 @@ Provide customer data export packages required by contract before disable/deleti
 
 ## Step-by-step Procedure
 
+## Step-by-step Procedure
+
 ### 1. Export
+
+Use **Administration → Export Center** (Release 1.1.4) to generate organization-scoped Excel/CSV/PDF packages for required entities. Prefer filtered or selected exports over full dumps when contracts allow. Record the export session ID and secure download link expiry.
 
 1. Generate agreed datasets (CRM, files metadata, HR as scoped).
 2. Transfer via secure channel; do not email unencrypted PII.

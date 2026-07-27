@@ -12,6 +12,11 @@
             ]" />
         </x-slot:breadcrumbs>
 
+        <x-ui.alert variant="info" class="mb-4">
+            {{ __('Prefer the guided Onboarding Wizard for new customers.') }}
+            <a href="{{ route('platform.onboarding.index') }}" class="font-medium text-primary-700 hover:underline">{{ __('Open Onboarding') }}</a>
+        </x-ui.alert>
+
         <form method="POST" action="{{ route('platform.organizations.store') }}" class="space-y-6">
             @csrf
 

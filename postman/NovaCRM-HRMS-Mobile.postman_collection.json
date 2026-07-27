@@ -1,0 +1,991 @@
+{
+	"info": {
+		"_postman_id": "novacrm-hrms-mobile-collection",
+		"name": "NovaCRM — HRMS Mobile API",
+		"description": "Postman collection for the NovaCRM HRMS Mobile application.\n\nAll endpoints are extracted from the Laravel implementation (`routes/api*.php`).\n\n# Quick start\n\n1. Import this collection into Postman.\n2. Set collection variables:\n   - `base_url` — e.g. `http://localhost/nova-crm/public` or `https://your-nova-crm.host`\n   - `api_token` — Sanctum personal access token (Settings → API Tokens in web UI; requires `api.tokens`)\n   - `organization_id` — tenant ID from Organization Settings → Billing/Profile\n   - `user_id` — authenticated user ID (for task filters)\n   - `employee_id` — linked employee ID (optional)\n   - `task_id` / `project_id` — for task/project detail calls\n3. Run **Setup → Health Check (Attendance Dashboard)** to verify auth.\n\n# Authentication\n\nNovaCRM has **no mobile login API**. Create a Sanctum PAT in the web UI and paste it into `api_token`.\n\n```\nAuthorization: Bearer {{api_token}}\nAccept: application/json\nX-Organization-Id: {{organization_id}}\n```\n\n# Permissions (typical employee)\n\n| Feature | Permission |\n| --- | --- |\n| Attendance | `ess.access` |\n| Dashboard | `dashboard.view` |\n| Leave balance widget | `leave.view` |\n| Manager team summary | `manager.dashboard` |\n| Lookups | `hrms.view` |\n| Tasks/Projects | `api.access` + `tasks.view` |\n\n# API coverage\n\n| Available | Not yet implemented |\n| --- | --- |\n| Attendance dashboard, check-in/out | Leave apply/history |\n| Dashboard widgets | ESS profile |\n| Lookups (employees, depts, etc.) | Documents, payroll |\n| RBAC authorization | Notification inbox |\n| Tasks & projects (optional) | Push device registration |\n\nSee `docs/mobile/README.md` for full documentation.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "1.1.0"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{api_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"const orgId = pm.collectionVariables.get('organization_id');",
+					"if (orgId && pm.request.auth?.type !== 'noauth') {",
+					"    pm.request.headers.upsert({ key: 'X-Organization-Id', value: String(orgId) });",
+					"}",
+					"pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"if (pm.response.code === 401) {",
+					"    console.warn('401 Unauthenticated — check api_token');",
+					"}",
+					"if (pm.response.code === 403) {",
+					"    console.warn('403 Forbidden — check permission or module license');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost/nova-crm/public" },
+		{ "key": "api_token", "value": "" },
+		{ "key": "organization_id", "value": "1" },
+		{ "key": "user_id", "value": "1" },
+		{ "key": "employee_id", "value": "1" },
+		{ "key": "task_id", "value": "1" },
+		{ "key": "project_id", "value": "1" },
+		{ "key": "invitation_token", "value": "" },
+		{ "key": "lookup_query", "value": "" }
+	],
+	"item": [
+		{
+			"name": "0. Setup & Auth",
+			"description": "Token setup and connectivity checks.",
+			"item": [
+				{
+					"name": "How to get API token (Web UI)",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api-tokens",
+							"host": ["{{base_url}}"],
+							"path": ["api-tokens"]
+						},
+						"description": "Browser-only page. Log in, open **Settings → API Tokens**, create a token, copy plaintext value into collection variable `api_token`.\n\nRequires permissions: `api.tokens`"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check — Attendance Dashboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"const json = pm.response.json();",
+									"if (json.empty_state) {",
+									"    pm.test('Empty state — no employee linked', () => pm.expect(json.empty_state).to.be.true);",
+									"} else if (json.data) {",
+									"    pm.test('Has attendance state', () => pm.expect(json.data).to.have.property('state'));",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "dashboard"]
+						},
+						"description": "Verifies Bearer token, organization context, and `ess.access` permission.\n\nPermission: `ess.access`\nModule: `hrms`"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate Invitation (Public)",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{invitation_token}}\",\n  \"password\": \"SecurePass123!\",\n  \"password_confirmation\": \"SecurePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/invitations/activate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "invitations", "activate"]
+						},
+						"description": "Public endpoint. No auth required. Throttle: 10/min.\n\nUsed when employee accepts email invitation."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. RBAC & Permissions",
+			"description": "Check effective permissions for mobile feature gating.",
+			"item": [
+				{
+					"name": "List Effective Permissions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Has permissions array', () => {",
+									"    pm.expect(pm.response.json()).to.have.property('permissions');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rbac/authorization",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rbac", "authorization"]
+						},
+						"description": "Permission: `rbac.view`\n\nIf 404, try alternate path: `/api/v1/v1/rbac/authorization` (nested route prefix quirk)."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Permission — ess.access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rbac/authorization?permission=ess.access",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rbac", "authorization"],
+							"query": [{ "key": "permission", "value": "ess.access" }]
+						},
+						"description": "Returns `{ permission, allowed }`"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Permission — manager.dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rbac/authorization?permission=manager.dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rbac", "authorization"],
+							"query": [{ "key": "permission", "value": "manager.dashboard" }]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/rbac/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "rbac", "roles"]
+						},
+						"description": "Permission: `rbac.view`"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Employee Dashboard",
+			"description": "ESS home screen APIs.",
+			"item": [
+				{
+					"name": "Dashboard — Full Payload",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard"]
+						},
+						"description": "Permission: `dashboard.view`"
+					},
+					"response": []
+				},
+				{
+					"name": "Dashboard — Workspace",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/workspace",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "workspace"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Widgets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Quick Actions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/quick-actions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "quick-actions"]
+						},
+						"description": "Returns HRMS quick actions (Mark Attendance, Apply Leave) with web route names."
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Mark Attendance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/mark_attendance/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "mark_attendance", "data"]
+						},
+						"description": "Permission: `ess.access` | Module: `hrms`"
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Employee Attendance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/employee_attendance/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "employee_attendance", "data"]
+						},
+						"description": "Permission: `ess.access`"
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Working Hours",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/working_hours/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "working_hours", "data"]
+						},
+						"description": "Permission: `ess.access`"
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Shift Information",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/shift_information/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "shift_information", "data"]
+						},
+						"description": "Permission: `ess.access`"
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Leave Balance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/leave_balance/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "leave_balance", "data"]
+						},
+						"description": "Permission: `leave.view` | Partial workaround until leave API exists."
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/notifications/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "notifications", "data"]
+						},
+						"description": "Module: `notifications` | Returns last 5 + unread_count"
+					},
+					"response": []
+				},
+				{
+					"name": "Dashboard Preferences — Get",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/preferences",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "preferences"]
+						},
+						"description": "Permission: `dashboard.view`"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Attendance",
+			"description": "Core HRMS mobile APIs — check-in, check-out, dashboard.",
+			"item": [
+				{
+					"name": "Get Dashboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"const json = pm.response.json();",
+									"if (json.data?.actions) {",
+									"    pm.collectionVariables.set('can_check_in', json.data.actions.can_check_in);",
+									"    pm.collectionVariables.set('can_check_out', json.data.actions.can_check_out);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "dashboard"]
+						},
+						"description": "Permission: `ess.access`\n\nStates: not_checked_in, checked_in, checked_out, on_leave, holiday, weekend"
+					},
+					"response": []
+				},
+				{
+					"name": "Check In (now)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.test('Check-in success', () => {",
+									"        pm.expect(pm.response.json().message).to.include('Checked in');",
+									"    });",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/check-in",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "check-in"]
+						},
+						"description": "Permission: `ess.access` + EmployeePolicy::clock\n\nEmpty body = clock in at now().\n\n422 if: already checked in, on leave, holiday, weekend, ineligible status."
+					},
+					"response": []
+				},
+				{
+					"name": "Check In (custom time)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clock_in_at\": \"2026-07-21T09:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/check-in",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "check-in"]
+						},
+						"description": "Validation: clock_in_at — nullable, date"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Out (now)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.test('Check-out success', () => {",
+									"        pm.expect(pm.response.json().message).to.include('Checked out');",
+									"    });",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/check-out",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "check-out"]
+						},
+						"description": "Returns updated `record` + `dashboard` in response."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Out (custom time)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clock_out_at\": \"2026-07-21T18:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/check-out",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "check-out"]
+						},
+						"description": "Validation: clock_out_at — nullable, date; must be after clock_in_at"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Manager",
+			"description": "Manager dashboard APIs.",
+			"item": [
+				{
+					"name": "Team Attendance Summary",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Has team_count', () => {",
+									"    pm.expect(pm.response.json().data).to.have.property('team_count');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/attendance/team-summary",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "attendance", "team-summary"]
+						},
+						"description": "Permission: `manager.dashboard`\n\nScope: direct reports only. Cached 60 seconds."
+					},
+					"response": []
+				},
+				{
+					"name": "Widget — Manager Attendance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/dashboard/widgets/manager_attendance/data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "dashboard", "widgets", "manager_attendance", "data"]
+						},
+						"description": "Same data as team-summary via dashboard widget."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Lookups & Directory",
+			"description": "Employee search and org structure pickers.",
+			"item": [
+				{
+					"name": "Search Employees",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/employees?q={{lookup_query}}&page=1&per_page=20",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "employees"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" },
+								{ "key": "per_page", "value": "20" }
+							]
+						},
+						"description": "Permission: `hrms.view` | Module: `hrms`"
+					},
+					"response": []
+				},
+				{
+					"name": "Resolve Employee by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/employees?id={{employee_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "employees"],
+							"query": [{ "key": "id", "value": "{{employee_id}}" }]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Departments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/departments?q={{lookup_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "departments"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Branches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/branches?q={{lookup_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "branches"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Designations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/designations?q={{lookup_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "designations"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Shifts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/shifts?q={{lookup_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "shifts"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" }
+							]
+						},
+						"description": "Shift definitions — not employee schedule."
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/lookups/users?q={{lookup_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "lookups", "users"],
+							"query": [
+								{ "key": "q", "value": "{{lookup_query}}" },
+								{ "key": "page", "value": "1" }
+							]
+						},
+						"description": "No special permission required."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Notifications",
+			"item": [
+				{
+					"name": "Get Notification Preferences",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/notification-preferences",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "notification-preferences"]
+						},
+						"description": "Permission: `projects.notifications.manage` — project-scoped only."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Notification Preferences",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"in_app_enabled\": true,\n  \"email_enabled\": true,\n  \"digest_enabled\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/notification-preferences",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "notification-preferences"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Tasks & Projects (Optional)",
+			"description": "Requires `api.access` permission and projects module license.",
+			"item": [
+				{
+					"name": "My Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tasks?assigned_to={{user_id}}&is_archived=false",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tasks"],
+							"query": [
+								{ "key": "assigned_to", "value": "{{user_id}}" },
+								{ "key": "is_archived", "value": "false" },
+								{ "key": "search", "value": "", "disabled": true },
+								{ "key": "filter", "value": "overdue", "disabled": true }
+							]
+						},
+						"description": "Permission: `api.access` + `tasks.view`"
+					},
+					"response": []
+				},
+				{
+					"name": "Overdue Tasks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tasks?assigned_to={{user_id}}&filter=overdue",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tasks"],
+							"query": [
+								{ "key": "assigned_to", "value": "{{user_id}}" },
+								{ "key": "filter", "value": "overdue" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Task Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tasks/{{task_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tasks", "{{task_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Task",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tasks/{{task_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tasks", "{{task_id}}", "complete"]
+						},
+						"description": "Permission: `tasks.update`"
+					},
+					"response": []
+				},
+				{
+					"name": "List Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/projects",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "projects"]
+						},
+						"description": "Permission: `api.access` + `projects.view`"
+					},
+					"response": []
+				},
+				{
+					"name": "Project Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/projects/{{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "projects", "{{project_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Task Attachment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tasks/{{task_id}}/attachments",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tasks", "{{task_id}}", "attachments"]
+						},
+						"description": "Max 10MB. Types: pdf, jpg, png, doc, docx, xls, xlsx, csv, txt, zip"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Identity (Admin)",
+			"description": "HR admin identity management — not employee self-service.",
+			"item": [
+				{
+					"name": "Create Employee Login Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"send_invitation\": true,\n  \"portal_access\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/identity/employees/{{employee_id}}/login-account",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "identity", "employees", "{{employee_id}}", "login-account"]
+						},
+						"description": "Permission: `hrms.manage`"
+					},
+					"response": []
+				},
+				{
+					"name": "Send User Invitation",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/identity/users/{{user_id}}/invitations",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "identity", "users", "{{user_id}}", "invitations"]
+						},
+						"description": "Permission: `users.manage` or `hrms.manage`"
+					},
+					"response": []
+				},
+				{
+					"name": "Invitation Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/identity/users/{{user_id}}/invitation-status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "identity", "users", "{{user_id}}", "invitation-status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Password Reset",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/identity/users/{{user_id}}/password-reset",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "identity", "users", "{{user_id}}", "password-reset"]
+						},
+						"description": "Sends email — does not change password directly."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Not Yet Available (Reference)",
+			"description": "These endpoints do NOT exist in the API. Listed for mobile planning. Use web ESS routes or wait for backend implementation.",
+			"item": [
+				{
+					"name": "[NOT API] Leave — Apply",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/hrms/ess/leave",
+							"host": ["{{base_url}}"],
+							"path": ["hrms", "ess", "leave"]
+						},
+						"description": "Web only. Future API: POST /api/v1/ess/leave/applications"
+					},
+					"response": []
+				},
+				{
+					"name": "[NOT API] Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/hrms/ess/profile",
+							"host": ["{{base_url}}"],
+							"path": ["hrms", "ess", "profile"]
+						},
+						"description": "Web only. Future API: GET/PUT /api/v1/ess/profile"
+					},
+					"response": []
+				},
+				{
+					"name": "[NOT API] Documents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/hrms/ess/documents",
+							"host": ["{{base_url}}"],
+							"path": ["hrms", "ess", "documents"]
+						},
+						"description": "Web only. Future API: GET /api/v1/ess/documents"
+					},
+					"response": []
+				},
+				{
+					"name": "[NOT API] Attendance History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/hrms/ess/attendance",
+							"host": ["{{base_url}}"],
+							"path": ["hrms", "ess", "attendance"]
+						},
+						"description": "Web only. Future API: GET /api/v1/ess/attendance/history"
+					},
+					"response": []
+				},
+				{
+					"name": "[NOT API] Mobile Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "NOT IMPLEMENTED. Use Sanctum PAT from web UI."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

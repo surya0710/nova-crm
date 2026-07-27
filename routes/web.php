@@ -5,6 +5,7 @@ use App\Http\Controllers\Administration\BrandingController as AdministrationBran
 use App\Http\Controllers\Administration\DeveloperController as AdministrationDeveloperController;
 use App\Http\Controllers\Administration\ImportCenterController;
 use App\Http\Controllers\Administration\BulkOperationsController;
+use App\Http\Controllers\Administration\ExportCenterController;
 use App\Http\Controllers\Administration\ModulesController as AdministrationModulesController;
 use App\Http\Controllers\Administration\SecurityController as AdministrationSecurityController;
 use App\Http\Controllers\Analytics\AnalyticsHomeController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Crm\CrmActivitiesController;
 use App\Http\Controllers\Crm\CrmExportsController;
 use App\Http\Controllers\Crm\CrmHomeController;
+use App\Http\Controllers\Operations\OperationsHomeController;
 use App\Http\Controllers\Projects\ProjectsBudgetsHubController;
 use App\Http\Controllers\Projects\ProjectsHomeController;
 use App\Http\Controllers\Projects\ProjectsMilestonesHubController;
@@ -38,6 +40,7 @@ use App\Http\Controllers\Dashboard\RecentActivitiesController;
 use App\Http\Controllers\Dashboard\WorkspaceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Shell\CommandPaletteController;
+use App\Http\Controllers\Lookup\LookupController;
 use App\Http\Controllers\Shell\GlobalSearchController;
 use App\Http\Controllers\Shell\NotificationDrawerController;
 use App\Http\Controllers\Shell\ShellPreferenceController;
@@ -246,12 +249,14 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::prefix('shell')->name('shell.')->group(function () {
             Route::patch('preferences', [ShellPreferenceController::class, 'update'])->name('preferences.update');
             Route::post('workspace', [ShellPreferenceController::class, 'switchWorkspace'])->name('workspace.switch');
+            Route::post('workspace-favorites', [ShellPreferenceController::class, 'toggleFavoriteWorkspace'])->name('workspace-favorites.toggle');
             Route::post('favorites', [ShellPreferenceController::class, 'toggleFavorite'])->name('favorites.toggle');
             Route::post('recents', [ShellPreferenceController::class, 'recordRecent'])->name('recents.store');
             Route::delete('recents', [ShellPreferenceController::class, 'clearRecents'])->name('recents.clear');
             Route::get('commands', [CommandPaletteController::class, 'index'])->name('commands.index');
             Route::post('commands/recent', [CommandPaletteController::class, 'record'])->name('commands.record');
             Route::get('search', [GlobalSearchController::class, 'index'])->name('search.index');
+            Route::get('lookups/{entity}', [LookupController::class, 'search'])->name('lookups.search');
             Route::get('notifications', [NotificationDrawerController::class, 'index'])->name('notifications.index');
         });
 
@@ -1176,6 +1181,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         });
 
         Route::get('crm', CrmHomeController::class)->name('crm.home');
+        Route::get('operations', OperationsHomeController::class)->name('operations.home');
         Route::get('crm/activities', CrmActivitiesController::class)->name('crm.activities');
         Route::get('crm/revenue', CrmRevenueController::class)->name('crm.revenue');
         Route::get('crm/reports', CrmReportsController::class)->name('crm.reports');
@@ -1571,6 +1577,18 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
                 Route::post('/', [BulkOperationsController::class, 'store'])->name('store');
                 Route::get('operations/{operation}', [BulkOperationsController::class, 'show'])->name('show');
                 Route::get('operations/{operation}/errors', [BulkOperationsController::class, 'errors'])->name('errors');
+            });
+
+            Route::prefix('exports')->name('exports.')->group(function () {
+                Route::get('/', [ExportCenterController::class, 'index'])->name('index');
+                Route::get('history', [ExportCenterController::class, 'history'])->name('history');
+                Route::get('{entity}/create', [ExportCenterController::class, 'create'])->name('create');
+                Route::post('/', [ExportCenterController::class, 'store'])->name('store');
+                Route::get('sessions/{session}', [ExportCenterController::class, 'show'])->name('show');
+                Route::get('sessions/{session}/download', [ExportCenterController::class, 'download'])->name('download');
+                Route::post('sessions/{session}/revoke', [ExportCenterController::class, 'revoke'])->name('revoke');
+                Route::post('sessions/{session}/regenerate', [ExportCenterController::class, 'regenerate'])->name('regenerate');
+                Route::delete('sessions/{session}', [ExportCenterController::class, 'destroy'])->name('destroy');
             });
         });
 

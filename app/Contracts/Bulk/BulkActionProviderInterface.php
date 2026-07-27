@@ -38,7 +38,7 @@ interface BulkActionProviderInterface
     /**
      * Input fields required before execution.
      *
-     * @return list<array{key: string, label: string, type: string, required?: bool, options?: array<string, string>}>
+     * @return list<array{key: string, label: string, type: string, required?: bool, options?: array<string, string>, lookup?: string}>
      */
     public function inputFields(): array;
 

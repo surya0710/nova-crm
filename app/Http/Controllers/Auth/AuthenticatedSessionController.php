@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Services\Identity\UserAccountService;
-use App\Services\Navigation\WorkspaceResolver;
+use App\Services\Navigation\NavigationService;
 use App\Services\Platform\OrganizationLifecycleService;
-use App\Services\Theme\ThemeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,8 +23,7 @@ class AuthenticatedSessionController extends Controller
     public function store(
         LoginRequest $request,
         OrganizationLifecycleService $lifecycle,
-        ThemeService $theme,
-        WorkspaceResolver $workspaces,
+        NavigationService $navigation,
         UserAccountService $accounts,
     ): RedirectResponse {
         $request->authenticate();
@@ -46,8 +44,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         if ($organization) {
-            $prefs = $theme->preferencesFor($user, $organization);
-            $landing = $workspaces->landingUrlFor($user, $organization, $prefs->last_workspace);
+            $landing = $navigation->resolveLandingUrl($user, $organization);
 
             return redirect()->intended($landing);
         }

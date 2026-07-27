@@ -42,6 +42,7 @@ class WorkspaceHomesSmokeTest extends TestCase
             'hrms.home',
             'marketing.home',
             'analytics.home',
+            'operations.home',
             'administration.home',
         ];
 

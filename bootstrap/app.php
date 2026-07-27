@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsurePlatformPermission;
 use App\Http\Middleware\EnsureUserHasPermission;
 use App\Http\Middleware\MarketingTrackingMiddleware;
 use App\Http\Middleware\PreventPlatformSessionOnTenant;
+use App\Http\Middleware\RecordRecentPage;
 use App\Http\Middleware\RedirectIfPlatformAuthenticated;
 use App\Http\Middleware\SetCurrentOrganization;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -42,6 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(prepend: [
             ConfigureSubdirectory::class,
+        ]);
+
+        $middleware->web(append: [
+            RecordRecentPage::class,
         ]);
 
         $middleware->group('platform.web', [

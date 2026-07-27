@@ -63,7 +63,7 @@
                     </form>
                 @endif
 
-                @if (config('features.workspace_nav') && $workspaces->isNotEmpty())
+                @if (config('features.workspace_nav') && $workspaces->isNotEmpty() && ! config('features.header_workspace_switcher', true))
                     <div class="relative mt-3">
                         <x-nav.workspace-switcher :workspaces="$workspaces" :current="$currentWorkspace" />
                     </div>

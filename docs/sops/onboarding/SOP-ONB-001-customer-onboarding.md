@@ -53,6 +53,8 @@ Deliver a repeatable onboarding lifecycle from organization provisioning through
 
 Follow detailed checklists in [Onboarding Playbook](../../onboarding/playbook.md).
 
+For guided provisioning, use **Platform → Onboarding** (Release 1.1.5 Wizard) which orchestrates SOP-ONB-002 through SOP-ONB-007.
+
 ## Validation Checklist
 
 - [ ] Customer Admin can log in and perform core workflows

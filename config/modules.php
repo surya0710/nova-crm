@@ -333,8 +333,11 @@ return [
     'default_landing_pages' => [
         'default' => 'dashboard',
         'sales' => 'crm.home',
-        'project_manager' => 'projects.home',
+        'employee' => 'ess.dashboard',
+        'manager' => 'hrms.manager.dashboard',
         'hr' => 'hrms.home',
+        'project_manager' => 'projects.home',
         'admin' => 'administration.home',
+        'owner' => 'dashboard',
     ],
 ];

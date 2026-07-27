@@ -68,7 +68,9 @@ return [
             'label' => 'Operations',
             'icon' => 'task',
             'order' => 60,
+            'route' => 'operations.home',
             'any_permissions' => ['tasks.view'],
+            'match' => ['operations.*', 'tasks.*'],
         ],
         'analytics' => [
             'id' => 'analytics',
@@ -888,6 +890,13 @@ return [
                 'any_permissions' => ['imports.view', 'imports.create', 'imports.manage'],
             ],
             [
+                'label' => 'Export Center',
+                'route' => 'administration.exports.index',
+                'match' => ['administration.exports.*'],
+                'icon' => 'fields',
+                'any_permissions' => ['exports.view', 'exports.create', 'exports.manage'],
+            ],
+            [
                 'label' => 'Bulk Operations',
                 'route' => 'administration.bulk.index',
                 'match' => ['administration.bulk.*'],
@@ -962,7 +971,8 @@ return [
         'portfolio-reports.*' => 'projects',
         'hrms.*' => 'hr',
         'ess.*' => 'hr',
-        'tasks.*' => 'projects',
+        'tasks.*' => 'operations',
+        'operations.*' => 'operations',
         'reports.*' => 'analytics',
         'analytics.*' => 'analytics',
         'marketing.*' => 'marketing',
@@ -984,6 +994,94 @@ return [
 
     'recents' => [
         'max' => 10,
+        'record_patterns' => [
+            'crm.*',
+            'leads.*',
+            'customers.*',
+            'pipeline.*',
+            'projects.*',
+            'tasks.*',
+            'operations.*',
+            'hrms.*',
+            'ess.*',
+            'administration.*',
+            'analytics.*',
+            'marketing.*',
+        ],
+        'skip_patterns' => [
+            'shell.*',
+            'dashboard.api',
+            'dashboard.widgets.*',
+            'dashboard.preferences.*',
+            'dashboard.quick-actions.*',
+            'dashboard.recent-activities',
+        ],
+        'route_labels' => [
+            'crm.home' => 'CRM Home',
+            'projects.home' => 'Projects Home',
+            'hrms.home' => 'HR Home',
+            'operations.home' => 'Operations Home',
+            'administration.home' => 'Administration Home',
+            'marketing.home' => 'Marketing Home',
+            'analytics.home' => 'Analytics Home',
+            'ess.dashboard' => 'ESS Dashboard',
+            'hrms.manager.dashboard' => 'Manager Dashboard',
+            'leads.index' => 'Leads',
+            'customers.index' => 'Customers',
+            'tasks.index' => 'Tasks',
+            'tasks.board' => 'Task Board',
+            'tasks.list' => 'Task List',
+        ],
+    ],
+
+    'persona_landing_pages' => [
+        'default' => 'dashboard',
+        'owner' => 'dashboard',
+        'sales' => 'crm.home',
+        'employee' => 'ess.dashboard',
+        'manager' => 'hrms.manager.dashboard',
+        'hr' => 'hrms.home',
+        'project_manager' => 'projects.home',
+        'admin' => 'administration.home',
+    ],
+
+    'workspace_search_scopes' => [
+        'crm' => 'leads',
+        'projects' => 'projects',
+        'hr' => 'employees',
+        'operations' => 'tasks',
+        'administration' => 'users',
+        'marketing' => 'marketing_campaigns',
+        'analytics' => 'all',
+        'home' => 'all',
+    ],
+
+    'quick_actions' => [
+        'crm' => [
+            ['label' => 'Create Lead', 'route' => 'leads.create', 'permission' => 'leads.create', 'variant' => 'primary'],
+            ['label' => 'Create Customer', 'route' => 'customers.create', 'permission' => 'customers.create'],
+            ['label' => 'Log Activity', 'route' => 'crm.activities', 'any_permissions' => ['leads.view', 'customers.view']],
+        ],
+        'hr' => [
+            ['label' => 'Attendance', 'route' => 'ess.attendance.index', 'permission' => 'ess.access'],
+            ['label' => 'Apply Leave', 'route' => 'ess.leave.index', 'permission' => 'ess.access'],
+            ['label' => 'HR Dashboard', 'route' => 'hrms.home', 'any_permissions' => ['hrms.view', 'hr.dashboard']],
+        ],
+        'projects' => [
+            ['label' => 'Create Project', 'route' => 'projects.create', 'permission' => 'projects.create', 'variant' => 'primary'],
+            ['label' => 'Create Task', 'route' => 'tasks.create', 'permission' => 'tasks.create'],
+            ['label' => 'Task Board', 'route' => 'tasks.board', 'permission' => 'tasks.view'],
+        ],
+        'operations' => [
+            ['label' => 'Create Task', 'route' => 'tasks.create', 'permission' => 'tasks.create', 'variant' => 'primary'],
+            ['label' => 'Task Board', 'route' => 'tasks.board', 'permission' => 'tasks.view'],
+            ['label' => 'Task List', 'route' => 'tasks.list', 'permission' => 'tasks.view'],
+        ],
+        'administration' => [
+            ['label' => 'Invite User', 'route' => 'team.index', 'permission' => 'users.create', 'variant' => 'primary'],
+            ['label' => 'Manage Roles', 'route' => 'rbac.roles.index', 'any_permissions' => ['rbac.manage', 'rbac.view']],
+            ['label' => 'Configuration Hub', 'route' => 'organization.settings.hub', 'permission' => 'settings.manage'],
+        ],
     ],
 
     'favorites' => [

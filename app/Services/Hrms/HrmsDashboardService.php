@@ -23,6 +23,7 @@ class HrmsDashboardService
     public function __construct(
         protected TenantContext $tenantContext,
         protected AttendanceService $attendanceService,
+        protected AttendanceDashboardService $attendanceDashboard,
         protected LeaveService $leaveService,
         protected AssetService $assetService,
         protected EmployeeExitService $exitService,
@@ -33,19 +34,14 @@ class HrmsDashboardService
     public function employeeDashboard(Employee $employee): array
     {
         $employee->load(['department', 'designation', 'reportingManager', 'branch']);
-        $today = now()->startOfDay();
-
-        $todayRecord = AttendanceRecord::query()
-            ->where('employee_id', $employee->id)
-            ->whereDate('attendance_date', $today)
-            ->with('shift')
-            ->first();
+        $attendance = $this->attendanceDashboard->employeeSummary($employee);
 
         return [
             'employee' => $employee,
-            'todayAttendance' => $todayRecord,
-            'currentShift' => $this->attendanceService->resolveShiftForEmployee($employee, $today),
-            'onLeaveToday' => $this->leaveService->getApprovedLeaveForDate($employee, $today)->isNotEmpty(),
+            'attendance' => $attendance,
+            'todayAttendance' => $attendance['record'],
+            'currentShift' => $attendance['shift'],
+            'onLeaveToday' => $attendance['on_leave_today'],
             'leaveBalances' => $this->leaveService->getBalancesForEmployee($employee),
             'pendingLeave' => LeaveApplication::query()
                 ->where('employee_id', $employee->id)
@@ -96,28 +92,23 @@ class HrmsDashboardService
             ->limit(10)
             ->get();
 
-        $teamPresentToday = AttendanceRecord::query()
-            ->whereIn('employee_id', $teamIds)
-            ->whereDate('attendance_date', $today)
-            ->whereIn('status', ['present', 'late', 'half_day'])
-            ->count();
-
-        $birthdays = Employee::query()
-            ->whereIn('id', $teamIds)
-            ->whereNotNull('date_of_birth')
-            ->whereMonth('date_of_birth', now()->month)
-            ->orderByRaw('DAY(date_of_birth)')
-            ->limit(10)
-            ->get();
+        $teamSummary = $this->attendanceDashboard->teamSummary($manager);
 
         return [
             'manager' => $manager,
-            'teamCount' => $teamIds->count(),
-            'teamPresentToday' => $teamPresentToday,
+            'teamCount' => $teamSummary['team_count'],
+            'teamPresentToday' => $teamSummary['present'],
+            'teamSummary' => $teamSummary,
             'onLeaveToday' => $onLeaveToday,
             'pendingLeave' => $pendingLeave,
             'pendingCorrections' => $pendingCorrections,
-            'birthdays' => $birthdays,
+            'birthdays' => Employee::query()
+                ->whereIn('id', $teamIds)
+                ->whereNotNull('date_of_birth')
+                ->whereMonth('date_of_birth', now()->month)
+                ->orderByRaw('DAY(date_of_birth)')
+                ->limit(10)
+                ->get(),
             'announcements' => $this->announcementsForUser($manager->user, 5),
         ];
     }

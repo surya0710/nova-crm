@@ -30,12 +30,16 @@ export function registerShellStore() {
         paletteOpen: false,
         searchOpen: false,
         notificationsOpen: false,
+        currentWorkspace: 'home',
+        searchDefaultScope: 'all',
         endpoints: {},
 
         init(config = {}) {
             this.theme = config.theme || 'light';
             this.density = config.density || 'comfortable';
             this.sidebarCollapsed = !!config.sidebarCollapsed;
+            this.currentWorkspace = config.currentWorkspace || 'home';
+            this.searchDefaultScope = config.searchDefaultScope || 'all';
             this.endpoints = config.endpoints || {};
             this.applyDocumentTheme();
         },
@@ -117,13 +121,32 @@ export function registerShellStore() {
     });
 
     window.NovaShell = {
-        switchWorkspace(workspace) {
-            const endpoints = Alpine.store('shell').endpoints;
-            if (!endpoints.workspace) return;
+        switchWorkspace(workspace, href = null) {
+            const store = Alpine.store('shell');
+            const endpoints = store.endpoints;
+            if (!endpoints.workspace) {
+                if (href) window.location.href = href;
+                return;
+            }
             jsonFetch(endpoints.workspace, {
                 method: 'POST',
                 body: JSON.stringify({ workspace }),
-            }).catch(() => {});
+            })
+                .then((data) => {
+                    const target = data?.href || href;
+                    if (target) window.location.href = target;
+                })
+                .catch(() => {
+                    if (href) window.location.href = href;
+                });
+        },
+        toggleFavoriteWorkspace(workspace) {
+            const endpoint = Alpine.store('shell').endpoints.favoriteWorkspaces;
+            if (!endpoint) return Promise.resolve([]);
+            return jsonFetch(endpoint, {
+                method: 'POST',
+                body: JSON.stringify({ workspace }),
+            }).then((data) => data.favorite_workspaces || []);
         },
     };
 
@@ -229,6 +252,8 @@ export function registerShellComponents() {
         loading: false,
 
         init() {
+            const store = Alpine.store('shell');
+            this.activeScope = store.searchDefaultScope || 'all';
             window.addEventListener('shell-search-opened', () => {
                 this.$nextTick(() => this.$refs.input?.focus());
                 this.bootstrap();
@@ -236,7 +261,9 @@ export function registerShellComponents() {
         },
 
         async bootstrap() {
-            const url = Alpine.store('shell').endpoints.search;
+            const store = Alpine.store('shell');
+            this.activeScope = store.searchDefaultScope || this.activeScope || 'all';
+            const url = store.endpoints.search;
             if (!url) return;
             try {
                 const data = await jsonFetch(`${url}?q=`);
@@ -302,6 +329,71 @@ export function registerShellComponents() {
                 this.items = [];
             } finally {
                 this.loading = false;
+            }
+        },
+    }));
+
+    Alpine.data('headerWorkspaceSwitcher', (initial = {}) => ({
+        open: false,
+        query: '',
+        workspaces: initial.workspaces || [],
+        current: initial.current || null,
+        favorites: (initial.favorites || []).map((w) => w.id),
+        recent: initial.recent || [],
+        focusedIndex: 0,
+
+        get currentLabel() {
+            const match = this.workspaces.find((w) => w.id === this.current);
+            return match?.label || 'Workspace';
+        },
+
+        get filteredAll() {
+            const q = this.query.trim().toLowerCase();
+            if (!q) return this.workspaces;
+            return this.workspaces.filter((w) => (w.label || '').toLowerCase().includes(q));
+        },
+
+        get filteredFavorites() {
+            const ids = new Set(this.favorites);
+            return this.filteredAll.filter((w) => ids.has(w.id));
+        },
+
+        get filteredRecent() {
+            const favoriteIds = new Set(this.favorites);
+            const recentIds = new Set(this.recent.map((w) => w.id));
+            return this.filteredAll.filter((w) => recentIds.has(w.id) && !favoriteIds.has(w.id));
+        },
+
+        isFavorite(id) {
+            return this.favorites.includes(id);
+        },
+
+        move(delta) {
+            if (!this.filteredAll.length) return;
+            this.focusedIndex = (this.focusedIndex + delta + this.filteredAll.length) % this.filteredAll.length;
+        },
+
+        selectFocused() {
+            const workspace = this.filteredAll[this.focusedIndex];
+            if (workspace) this.switchTo(workspace);
+        },
+
+        switchTo(workspace) {
+            this.open = false;
+            if (!workspace?.id) return;
+            if (window.NovaShell) {
+                NovaShell.switchWorkspace(workspace.id, workspace.href || null);
+            } else if (workspace.href) {
+                window.location.href = workspace.href;
+            }
+        },
+
+        async toggleFavorite(workspaceId) {
+            if (!window.NovaShell?.toggleFavoriteWorkspace) return;
+            try {
+                this.favorites = await NovaShell.toggleFavoriteWorkspace(workspaceId);
+            } catch (e) {
+                // ignore
             }
         },
     }));

@@ -7,13 +7,21 @@ use App\Models\BulkOperation;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Assignment\AssignmentService;
+use App\Services\Bulk\Concerns\DefinesLookupField;
 use App\Services\Bulk\Providers\Concerns\ResolvesBulkSelection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class LeadAssignOwnerBulkAction implements BulkActionProviderInterface
 {
+    use DefinesLookupField;
     use ResolvesBulkSelection;
+
+    public function __construct(
+        protected AssignmentService $assignments,
+    ) {}
 
     public function key(): string
     {
@@ -53,12 +61,7 @@ class LeadAssignOwnerBulkAction implements BulkActionProviderInterface
     public function inputFields(): array
     {
         return [
-            [
-                'key' => 'owner_id',
-                'label' => 'Owner User ID',
-                'type' => 'integer',
-                'required' => true,
-            ],
+            $this->userField('owner_id', 'Assign Owner'),
         ];
     }
 
@@ -71,17 +74,27 @@ class LeadAssignOwnerBulkAction implements BulkActionProviderInterface
     {
         /** @var Lead $record */
         $ownerId = (int) ($input['owner_id'] ?? 0);
-        $owner = User::query()->find($ownerId);
 
-        if (! $owner || ! $owner->organizations()->where('organizations.id', $operation->organization_id)->exists()) {
-            return $this->failed('Owner is not a member of this organization.');
+        if ($ownerId <= 0) {
+            return $this->failed('A valid owner must be selected.');
         }
 
         if ((int) $record->assigned_to === $ownerId) {
             return $this->skipped('Already assigned to this owner.');
         }
 
-        $record->forceFill(['assigned_to' => $ownerId])->save();
+        $actor = User::query()->find($operation->initiated_by);
+        if (! $actor) {
+            return $this->failed('Bulk operation actor could not be resolved.');
+        }
+
+        try {
+            $this->assignments->assignOwner($record, $ownerId, $actor);
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first();
+
+            return $this->failed($message ?: 'Owner assignment failed.');
+        }
 
         return $this->success();
     }

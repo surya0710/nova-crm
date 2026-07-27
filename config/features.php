@@ -9,6 +9,7 @@
 return [
     'enterprise_shell' => (bool) env('ENTERPRISE_SHELL', true),
     'workspace_nav' => (bool) env('WORKSPACE_NAV', true),
+    'header_workspace_switcher' => (bool) env('HEADER_WORKSPACE_SWITCHER', true),
     'command_palette' => (bool) env('COMMAND_PALETTE', true),
     'global_search_modal' => (bool) env('GLOBAL_SEARCH_MODAL', true),
     'notification_drawer' => (bool) env('NOTIFICATION_DRAWER', true),

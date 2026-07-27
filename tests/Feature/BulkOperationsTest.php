@@ -167,4 +167,56 @@ class BulkOperationsTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('operation.success_count', 1);
     }
+
+    public function test_lead_assign_owner_bulk_uses_assignment_service_and_audit(): void
+    {
+        [$user, $organization] = $this->setupOwner();
+        $owner = User::factory()->create(['name' => 'New Owner']);
+        $organization->addMember($owner, 'employee');
+
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'assigned_to' => null,
+        ]);
+
+        $operation = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.assign_owner',
+            ['mode' => 'ids', 'ids' => [$lead->id]],
+            ['owner_id' => $owner->id],
+            true,
+        );
+
+        $this->assertSame(1, $operation->success_count);
+        $this->assertSame($owner->id, $lead->fresh()->assigned_to);
+
+        $this->assertDatabaseHas('assignment_histories', [
+            'organization_id' => $organization->id,
+            'entity_type' => 'lead',
+            'entity_id' => $lead->id,
+            'new_owner_id' => $owner->id,
+        ]);
+    }
+
+    public function test_assign_owner_bulk_action_exposes_user_lookup_field(): void
+    {
+        $registry = app(\App\Services\Bulk\BulkActionRegistry::class);
+        $action = $registry->resolve('lead.assign_owner');
+        $fields = $action->inputFields();
+
+        $this->assertSame('user', $fields[0]['type']);
+        $this->assertSame('owner_id', $fields[0]['key']);
+        $this->assertSame('Assign Owner', $fields[0]['label']);
+    }
+
+    public function test_employee_assign_department_exposes_lookup_field(): void
+    {
+        $registry = app(\App\Services\Bulk\BulkActionRegistry::class);
+        $action = $registry->resolve('employee.assign_department');
+        $fields = $action->inputFields();
+
+        $this->assertSame('department', $fields[0]['type']);
+        $this->assertSame('department_id', $fields[0]['key']);
+    }
 }

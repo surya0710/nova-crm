@@ -138,6 +138,12 @@ return [
             'match' => ['platform.organizations.*'],
         ],
         [
+            'label' => 'Onboarding',
+            'route' => 'platform.onboarding.index',
+            'permission' => 'platform.organizations.view',
+            'match' => ['platform.onboarding.*'],
+        ],
+        [
             'label' => 'Subscriptions',
             'route' => 'platform.subscriptions.index',
             'permission' => 'platform.subscriptions.view',

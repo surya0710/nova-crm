@@ -17,24 +17,42 @@
 
         <div class="space-y-6">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <x-ui.card class="md:col-span-2">
+                <x-ui.card>
                     <h2 class="font-medium text-ink-heading mb-2">{{ $employee->full_name }}</h2>
                     <p class="text-sm text-ink-muted">{{ $employee->department?->name ?? '—' }} · {{ $employee->designation?->name ?? '—' }}</p>
                     <p class="text-sm text-ink-muted mt-1">{{ __('Manager') }}: {{ $employee->reportingManager?->full_name ?? '—' }}</p>
                 </x-ui.card>
-                <x-ui.card>
-                    <p class="text-xs text-ink-muted">{{ __('Today') }}</p>
-                    @if ($onLeaveToday)
-                        <p class="text-lg font-semibold text-amber-700">{{ __('On Leave') }}</p>
-                    @elseif ($todayAttendance)
-                        <p class="text-lg font-semibold text-ink-heading">{{ ucfirst($todayAttendance->status) }}</p>
-                    @else
-                        <p class="text-lg font-semibold text-ink-muted">{{ __('Not clocked in') }}</p>
-                    @endif
-                    @if ($currentShift)
-                        <p class="text-xs text-ink-muted mt-1">{{ $currentShift->name }} ({{ $currentShift->start_time }}–{{ $currentShift->end_time }})</p>
-                    @endif
-                </x-ui.card>
+
+                @include('ess.partials.attendance-today', ['attendance' => $attendance])
+            </div>
+
+            <div class="grid gap-6 lg:grid-cols-2">
+                <x-workspace.widget :title="__('Recent Attendance')" :href="route('ess.attendance.index')">
+                    @forelse ($attendance['recent_attendance'] as $record)
+                        <div class="flex items-center justify-between py-2 text-sm border-b border-line last:border-0">
+                            <span class="text-ink-heading">{{ $record->attendance_date->format('M j, Y') }}</span>
+                            <span class="text-ink-muted">
+                                {{ $record->clock_in_at?->format('H:i') ?? '—' }}
+                                –
+                                {{ $record->clock_out_at?->format('H:i') ?? '—' }}
+                            </span>
+                            <x-ui.badge variant="neutral">{{ $record->statusLabel() }}</x-ui.badge>
+                        </div>
+                    @empty
+                        <x-ui.empty-state-preset variant="attendance" class="!py-6" />
+                    @endforelse
+                </x-workspace.widget>
+
+                <x-workspace.widget :title="__('Upcoming Holidays')">
+                    @forelse ($attendance['upcoming_holidays'] as $holiday)
+                        <div class="flex justify-between py-2 text-sm border-b border-line last:border-0">
+                            <span class="text-ink-heading">{{ $holiday->name }}</span>
+                            <span class="text-ink-muted">{{ $holiday->holiday_date->format('M j, Y') }}</span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-ink-muted py-4 text-center">{{ __('No upcoming holidays.') }}</p>
+                    @endforelse
+                </x-workspace.widget>
             </div>
 
             <div class="grid gap-6 lg:grid-cols-2">

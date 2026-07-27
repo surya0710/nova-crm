@@ -35,7 +35,11 @@ Actions also require their module permission (e.g. `leads.update`, `hrms.manage`
 - **Administration → Bulk Operations** — catalog + recent jobs
 - Listing toolbars on **Leads** and **Employees** (extend via `<x-bulk.toolbar>`)
 
-Flow: select records → choose action → configure inputs → confirm → execute → status page.
+Flow: select records → choose action → configure inputs (Entity Picker for relationships) → confirm → execute → status page.
+
+### Lookup fields (Release 1.1.S.1)
+
+Relationship fields use the Entity Picker instead of numeric IDs. See [Bulk lookup integration](./integration.md) and [Lookup Platform](../lookups/README.md).
 
 ## Queue
 

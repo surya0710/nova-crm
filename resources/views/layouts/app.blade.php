@@ -34,6 +34,7 @@
                 'preferences' => 'shell.preferences.update',
                 'workspace' => 'shell.workspace.switch',
                 'favorites' => 'shell.favorites.toggle',
+                'favoriteWorkspaces' => 'shell.workspace-favorites.toggle',
                 'recents' => 'shell.recents.store',
                 'recentsClear' => 'shell.recents.clear',
                 'commands' => 'shell.commands.index',
@@ -52,6 +53,8 @@
                     theme: @js($shellNav['theme'] ?? 'light'),
                     density: @js($shellNav['density'] ?? 'comfortable'),
                     sidebarCollapsed: @js($shellNav['sidebarCollapsed'] ?? false),
+                    currentWorkspace: @js($shellNav['currentWorkspace'] ?? 'home'),
+                    searchDefaultScope: @js($shellNav['searchDefaultScope'] ?? 'all'),
                     endpoints: @js($shellEndpoints),
                 });
             "
@@ -84,6 +87,7 @@
                         :unread-count="$unreadCount"
                         :organization="$currentOrganization"
                         :theme="$shellNav['theme'] ?? 'light'"
+                        :shell-nav="$shellNav"
                     >
                         @isset($header)
                             <x-slot:header>{{ $header }}</x-slot:header>

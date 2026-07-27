@@ -9,12 +9,14 @@ use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Employee;
 use App\Models\Organization;
+use App\Services\Bulk\Concerns\DefinesLookupField;
 use App\Services\Bulk\Providers\Concerns\ResolvesBulkSelection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeAssignOrgUnitBulkAction implements BulkActionProviderInterface
 {
+    use DefinesLookupField;
     use ResolvesBulkSelection;
 
     public function __construct(
@@ -22,6 +24,7 @@ class EmployeeAssignOrgUnitBulkAction implements BulkActionProviderInterface
         protected string $actionKey,
         protected string $actionLabel,
         protected string $modelClass,
+        protected string $lookupType,
     ) {}
 
     public function key(): string
@@ -62,12 +65,7 @@ class EmployeeAssignOrgUnitBulkAction implements BulkActionProviderInterface
     public function inputFields(): array
     {
         return [
-            [
-                'key' => $this->field,
-                'label' => $this->actionLabel,
-                'type' => 'integer',
-                'required' => true,
-            ],
+            $this->lookupField($this->field, $this->actionLabel, $this->lookupType),
         ];
     }
 
@@ -80,6 +78,11 @@ class EmployeeAssignOrgUnitBulkAction implements BulkActionProviderInterface
     {
         /** @var Employee $record */
         $id = (int) ($input[$this->field] ?? 0);
+
+        if ($id <= 0) {
+            return $this->failed('A valid '.$this->actionLabel.' must be selected.');
+        }
+
         $exists = $this->modelClass::query()
             ->where('organization_id', $operation->organization_id)
             ->whereKey($id)
@@ -100,16 +103,16 @@ class EmployeeAssignOrgUnitBulkAction implements BulkActionProviderInterface
 
     public static function department(): self
     {
-        return new self('department_id', 'employee.assign_department', 'Department', Department::class);
+        return new self('department_id', 'employee.assign_department', 'Department', Department::class, 'department');
     }
 
     public static function designation(): self
     {
-        return new self('designation_id', 'employee.assign_designation', 'Designation', Designation::class);
+        return new self('designation_id', 'employee.assign_designation', 'Designation', Designation::class, 'designation');
     }
 
     public static function branch(): self
     {
-        return new self('branch_id', 'employee.assign_branch', 'Branch', Branch::class);
+        return new self('branch_id', 'employee.assign_branch', 'Branch', Branch::class, 'branch');
     }
 }

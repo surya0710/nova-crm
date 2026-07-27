@@ -24,6 +24,41 @@
         </x-slot:kpis>
 
         <div class="space-y-6">
+            @if (! empty($onboarding))
+                <x-workspace.widget :title="__('Organization Onboarding')" :href="route('platform.onboarding.index')">
+                    <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4 text-sm">
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('Pending setup') }}</dt>
+                            <dd class="mt-1 text-xl font-semibold text-ink-heading">{{ $onboarding['pending_setup'] }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('In progress') }}</dt>
+                            <dd class="mt-1 text-xl font-semibold text-ink-heading">{{ $onboarding['in_progress'] }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('Ready') }}</dt>
+                            <dd class="mt-1 text-xl font-semibold text-ink-heading">{{ $onboarding['ready'] }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('Failed') }}</dt>
+                            <dd class="mt-1 text-xl font-semibold text-ink-heading">{{ $onboarding['failed'] }}</dd>
+                        </div>
+                    </dl>
+                    @if (($onboarding['active_sessions'] ?? collect())->isNotEmpty())
+                        <ul class="mt-4 space-y-1 text-sm">
+                            @foreach ($onboarding['active_sessions']->take(4) as $session)
+                                <li>
+                                    <a href="{{ route('platform.onboarding.show', $session) }}" class="text-primary-700 hover:underline">
+                                        {{ $session->organization?->name ?? __('Draft #:id', ['id' => $session->id]) }}
+                                    </a>
+                                    <span class="text-ink-muted"> · {{ $session->progress_percent }}% · {{ $session->current_step }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </x-workspace.widget>
+            @endif
+
             @if (in_array('org_totals', $widgets, true) || in_array('org_active', $widgets, true) || in_array('org_trial', $widgets, true) || in_array('org_expired', $widgets, true))
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     @if (in_array('org_totals', $widgets, true))

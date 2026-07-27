@@ -45,19 +45,19 @@
                 :actions="$bulkActions ?? []"
                 :page-ids="$pageIds"
                 :redirect-to="route('hrms.employees.index')"
+                :export-enabled="true"
+                :filters="request()->except(['page'])"
             >
                 <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
                     @foreach ($employees as $employee)
                         <tr class="hover:bg-surface-muted/60 transition">
                             <td class="px-4 py-3">
-                                @if (! empty($bulkActions))
                                     <input
                                         type="checkbox"
                                         class="rounded border-line text-primary-600"
                                         @change="toggleId({{ $employee->id }}, $event.target.checked)"
                                         :checked="selected.includes({{ $employee->id }})"
                                     >
-                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <a href="{{ route('hrms.employees.show', $employee) }}" class="text-sm font-medium text-primary-700 hover:text-primary-800">

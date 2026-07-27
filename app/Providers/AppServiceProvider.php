@@ -395,6 +395,23 @@ use App\Services\Import\Adapters\TaskImportAdapter;
 use App\Services\Import\Adapters\UserImportAdapter;
 use App\Services\Import\ImportEntityRegistry;
 use App\Services\Bulk\BulkActionRegistry;
+use App\Services\Export\ExportDefinitionRegistry;
+use App\Services\Export\Adapters\BranchExportAdapter;
+use App\Services\Export\Adapters\CampaignExportAdapter;
+use App\Services\Export\Adapters\CustomerExportAdapter;
+use App\Services\Export\Adapters\DepartmentExportAdapter;
+use App\Services\Export\Adapters\DesignationExportAdapter;
+use App\Services\Export\Adapters\EmployeeExportAdapter;
+use App\Services\Export\Adapters\HolidayExportAdapter;
+use App\Services\Export\Adapters\LeadExportAdapter;
+use App\Services\Export\Adapters\LeaveTypeExportAdapter;
+use App\Services\Export\Adapters\MilestoneExportAdapter;
+use App\Services\Export\Adapters\OpportunityExportAdapter;
+use App\Services\Export\Adapters\ProjectExportAdapter;
+use App\Services\Export\Adapters\RoleExportAdapter;
+use App\Services\Export\Adapters\ShiftExportAdapter;
+use App\Services\Export\Adapters\TaskExportAdapter;
+use App\Services\Export\Adapters\UserExportAdapter;
 use App\Services\Bulk\Providers\CrmDeleteBulkAction;
 use App\Services\Bulk\Providers\EmployeeAssignOrgUnitBulkAction;
 use App\Services\Bulk\Providers\EmployeeGenerateLoginBulkAction;
@@ -555,6 +572,8 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(ImportEntityRegistry::class);
         $this->app->singleton(BulkActionRegistry::class);
+        $this->app->singleton(\App\Services\Lookup\LookupRegistry::class);
+        $this->app->singleton(ExportDefinitionRegistry::class);
 
         $this->app->singleton(MarketingProviderRegistry::class, function ($app) {
             $registry = new MarketingProviderRegistry;
@@ -827,6 +846,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->registerBulkActions();
+        $this->registerLookups();
+        $this->registerExportAdapters();
 
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
@@ -1030,6 +1051,48 @@ class AppServiceProvider extends ServiceProvider
 
         foreach (['activate', 'disable', 'lock', 'unlock', 'resend_invitation'] as $mode) {
             $registry->register(new UserAccountBulkAction($accounts, $invitations, $mode));
+        }
+    }
+
+    protected function registerLookups(): void
+    {
+        $registry = $this->app->make(\App\Services\Lookup\LookupRegistry::class);
+
+        foreach ([
+            \App\Services\Lookup\UserLookupService::class,
+            \App\Services\Lookup\EmployeeLookupService::class,
+            \App\Services\Lookup\DepartmentLookupService::class,
+            \App\Services\Lookup\BranchLookupService::class,
+            \App\Services\Lookup\DesignationLookupService::class,
+            \App\Services\Lookup\ShiftLookupService::class,
+        ] as $serviceClass) {
+            $registry->register($this->app->make($serviceClass));
+        }
+    }
+
+    protected function registerExportAdapters(): void
+    {
+        $registry = $this->app->make(ExportDefinitionRegistry::class);
+
+        foreach ([
+            LeadExportAdapter::class,
+            CustomerExportAdapter::class,
+            OpportunityExportAdapter::class,
+            EmployeeExportAdapter::class,
+            DepartmentExportAdapter::class,
+            DesignationExportAdapter::class,
+            BranchExportAdapter::class,
+            ShiftExportAdapter::class,
+            LeaveTypeExportAdapter::class,
+            HolidayExportAdapter::class,
+            ProjectExportAdapter::class,
+            MilestoneExportAdapter::class,
+            TaskExportAdapter::class,
+            CampaignExportAdapter::class,
+            UserExportAdapter::class,
+            RoleExportAdapter::class,
+        ] as $adapterClass) {
+            $registry->register($this->app->make($adapterClass));
         }
     }
 }

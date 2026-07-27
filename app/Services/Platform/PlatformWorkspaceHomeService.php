@@ -9,6 +9,7 @@ class PlatformWorkspaceHomeService
 {
     public function __construct(
         protected PlatformDashboardService $dashboard,
+        protected OnboardingWizardService $onboarding,
     ) {}
 
     public function build(PlatformUser $user): array
@@ -32,6 +33,7 @@ class PlatformWorkspaceHomeService
             'kpis' => $this->kpis($metrics),
             'quickActions' => $this->quickActions($user),
             'alerts' => $this->alerts($metrics),
+            'onboarding' => $this->onboarding->dashboardSummary(),
         ];
     }
 
@@ -67,6 +69,13 @@ class PlatformWorkspaceHomeService
     protected function quickActions(PlatformUser $user): array
     {
         $actions = [];
+
+        if ($user->hasPermission('platform.organizations.manage') && Route::has('platform.onboarding.store')) {
+            $actions[] = [
+                'label' => __('Start Onboarding Wizard'),
+                'href' => route('platform.onboarding.index'),
+            ];
+        }
 
         if ($user->hasPermission('platform.organizations.manage') && Route::has('platform.organizations.create')) {
             $actions[] = [

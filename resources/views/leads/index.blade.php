@@ -120,19 +120,19 @@
                 :actions="$bulkActions ?? []"
                 :page-ids="$pageIds"
                 :redirect-to="route('leads.index')"
+                :export-enabled="true"
+                :filters="request()->except(['page'])"
             >
                 <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
                     @foreach ($leads as $lead)
                         <tr class="hover:bg-surface-muted/60 transition">
                             <td class="px-4 py-3">
-                                @if (! empty($bulkActions))
                                     <input
                                         type="checkbox"
                                         class="rounded border-line text-primary-600"
                                         @change="toggleId({{ $lead->id }}, $event.target.checked)"
                                         :checked="selected.includes({{ $lead->id }})"
                                     >
-                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <a href="{{ route('leads.show', $lead) }}" class="group block">

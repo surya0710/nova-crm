@@ -3,7 +3,20 @@
     'unreadCount' => 0,
     'organization' => null,
     'theme' => 'light',
+    'shellNav' => [],
 ])
+
+@php
+    $nav = is_array($shellNav) ? $shellNav : [];
+    $workspaces = collect($nav['workspaces'] ?? []);
+    $currentWorkspace = $nav['currentWorkspace'] ?? null;
+    $favoriteWorkspaces = collect($nav['favoriteWorkspaces'] ?? []);
+    $recentWorkspaces = collect($nav['recentWorkspaces'] ?? []);
+    $quickActions = $nav['quickActions'] ?? [];
+    $useHeaderSwitcher = config('features.header_workspace_switcher', true)
+        && config('features.workspace_nav')
+        && $workspaces->isNotEmpty();
+@endphp
 
 <header class="sticky top-0 z-sticky border-b border-line bg-surface-card">
     <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
@@ -26,7 +39,14 @@
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h10M4 18h16"/></svg>
             </button>
 
-            @if ($workspaceTitle)
+            @if ($useHeaderSwitcher)
+                <x-nav.header-workspace-switcher
+                    :workspaces="$workspaces"
+                    :current="$currentWorkspace"
+                    :favorite-workspaces="$favoriteWorkspaces"
+                    :recent-workspaces="$recentWorkspaces"
+                />
+            @elseif ($workspaceTitle)
                 <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-ink-heading">{{ $workspaceTitle }}</p>
                 </div>
@@ -38,6 +58,10 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-1 sm:gap-2">
+            @if (count($quickActions))
+                <x-nav.header-quick-actions :actions="$quickActions" />
+            @endif
+
             @if (config('features.global_search_modal') || config('features.command_palette'))
                 <button
                     type="button"
