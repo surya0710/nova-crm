@@ -83,10 +83,6 @@
                 </button>
             @endif
 
-            @isset($quickActions)
-                <div class="hidden sm:block">{{ $quickActions }}</div>
-            @endisset
-
             @if (config('documentation.help.button.show_in_header', true))
                 <x-help-dropdown />
             @endif
