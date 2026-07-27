@@ -6,19 +6,18 @@
 ])
 
 @php
-    $items = collect($workspaces)->reject(fn ($w) => ($w['footer'] ?? false));
-    $favoriteIds = collect($favoriteWorkspaces)->flip();
-    $recentIds = collect($recentWorkspaces)->flip();
+    $items = collect($workspaces)->reject(fn ($w) => ($w['footer'] ?? false))->values();
+    $switcherPayload = [
+        'workspaces' => $items->all(),
+        'current' => $current,
+        'favorites' => collect($favoriteWorkspaces)->pluck('id')->values()->all(),
+        'recent' => collect($recentWorkspaces)->values()->all(),
+    ];
 @endphp
 
 <div
     {{ $attributes->class(['relative']) }}
-    x-data="headerWorkspaceSwitcher(@js([
-        'workspaces' => $items->values()->all(),
-        'current' => $current,
-        'favorites' => $favoriteWorkspaces->values()->all(),
-        'recent' => $recentWorkspaces->values()->all(),
-    ]))"
+    x-data="headerWorkspaceSwitcher(@js($switcherPayload))"
     @click.outside="open = false"
 >
     <button
@@ -62,6 +61,7 @@
                             :class="workspace.id === current ? 'bg-primary-50 text-primary-700' : 'text-ink'"
                             @click="switchTo(workspace)"
                         >
+                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[11px] font-semibold uppercase text-ink-muted" x-text="(workspace.label || '?').slice(0, 2)"></span>
                             <span class="truncate" x-text="workspace.label"></span>
                         </button>
                         <button type="button" class="rounded p-1.5 text-amber-500 hover:bg-surface-muted" @click.stop="toggleFavorite(workspace.id)" :aria-label="'{{ __('Unfavorite') }}'">
@@ -83,6 +83,7 @@
                             :class="workspace.id === current ? 'bg-primary-50 text-primary-700' : 'text-ink'"
                             @click="switchTo(workspace)"
                         >
+                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[11px] font-semibold uppercase text-ink-muted" x-text="(workspace.label || '?').slice(0, 2)"></span>
                             <span class="truncate" x-text="workspace.label"></span>
                         </button>
                         <button
@@ -110,6 +111,7 @@
                         ]"
                         @click="switchTo(workspace)"
                     >
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[11px] font-semibold uppercase text-ink-muted" x-text="(workspace.label || '?').slice(0, 2)"></span>
                         <span class="truncate" x-text="workspace.label"></span>
                     </button>
                     <button

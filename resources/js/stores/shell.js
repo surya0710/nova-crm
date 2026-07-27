@@ -168,6 +168,79 @@ export function registerShellStore() {
     });
 }
 
+function headerWorkspaceSwitcher(initial = {}) {
+    const favorites = Array.isArray(initial.favorites)
+        ? initial.favorites.map((item) => (typeof item === 'string' ? item : item?.id)).filter(Boolean)
+        : [];
+
+    return {
+        open: false,
+        query: '',
+        workspaces: Array.isArray(initial.workspaces) ? initial.workspaces : [],
+        current: initial.current ?? null,
+        favorites,
+        recent: Array.isArray(initial.recent) ? initial.recent : [],
+        focusedIndex: 0,
+
+        get currentLabel() {
+            const match = this.workspaces.find((w) => w.id === this.current);
+            return match?.label || 'Workspace';
+        },
+
+        get filteredAll() {
+            const q = this.query.trim().toLowerCase();
+            if (!q) return this.workspaces;
+            return this.workspaces.filter((w) => (w.label || '').toLowerCase().includes(q));
+        },
+
+        get filteredFavorites() {
+            const ids = new Set(this.favorites);
+            return this.filteredAll.filter((w) => ids.has(w.id));
+        },
+
+        get filteredRecent() {
+            const favoriteIds = new Set(this.favorites);
+            const recentIds = new Set(this.recent.map((w) => w.id));
+            return this.filteredAll.filter((w) => recentIds.has(w.id) && !favoriteIds.has(w.id));
+        },
+
+        isFavorite(id) {
+            return this.favorites.includes(id);
+        },
+
+        move(delta) {
+            if (!this.filteredAll.length) return;
+            this.focusedIndex = (this.focusedIndex + delta + this.filteredAll.length) % this.filteredAll.length;
+        },
+
+        selectFocused() {
+            const workspace = this.filteredAll[this.focusedIndex];
+            if (workspace) this.switchTo(workspace);
+        },
+
+        switchTo(workspace) {
+            this.open = false;
+            if (!workspace?.id) return;
+            if (window.NovaShell) {
+                NovaShell.switchWorkspace(workspace.id, workspace.href || null);
+            } else if (workspace.href) {
+                window.location.href = workspace.href;
+            }
+        },
+
+        async toggleFavorite(workspaceId) {
+            if (!window.NovaShell?.toggleFavoriteWorkspace) return;
+            try {
+                this.favorites = await NovaShell.toggleFavoriteWorkspace(workspaceId);
+            } catch (e) {
+                // ignore
+            }
+        },
+    };
+}
+
+window.headerWorkspaceSwitcher = headerWorkspaceSwitcher;
+
 export function registerShellComponents() {
     Alpine.data('commandPalette', () => ({
         query: '',
@@ -333,68 +406,5 @@ export function registerShellComponents() {
         },
     }));
 
-    Alpine.data('headerWorkspaceSwitcher', (initial = {}) => ({
-        open: false,
-        query: '',
-        workspaces: initial.workspaces || [],
-        current: initial.current || null,
-        favorites: (initial.favorites || []).map((w) => w.id),
-        recent: initial.recent || [],
-        focusedIndex: 0,
-
-        get currentLabel() {
-            const match = this.workspaces.find((w) => w.id === this.current);
-            return match?.label || 'Workspace';
-        },
-
-        get filteredAll() {
-            const q = this.query.trim().toLowerCase();
-            if (!q) return this.workspaces;
-            return this.workspaces.filter((w) => (w.label || '').toLowerCase().includes(q));
-        },
-
-        get filteredFavorites() {
-            const ids = new Set(this.favorites);
-            return this.filteredAll.filter((w) => ids.has(w.id));
-        },
-
-        get filteredRecent() {
-            const favoriteIds = new Set(this.favorites);
-            const recentIds = new Set(this.recent.map((w) => w.id));
-            return this.filteredAll.filter((w) => recentIds.has(w.id) && !favoriteIds.has(w.id));
-        },
-
-        isFavorite(id) {
-            return this.favorites.includes(id);
-        },
-
-        move(delta) {
-            if (!this.filteredAll.length) return;
-            this.focusedIndex = (this.focusedIndex + delta + this.filteredAll.length) % this.filteredAll.length;
-        },
-
-        selectFocused() {
-            const workspace = this.filteredAll[this.focusedIndex];
-            if (workspace) this.switchTo(workspace);
-        },
-
-        switchTo(workspace) {
-            this.open = false;
-            if (!workspace?.id) return;
-            if (window.NovaShell) {
-                NovaShell.switchWorkspace(workspace.id, workspace.href || null);
-            } else if (workspace.href) {
-                window.location.href = workspace.href;
-            }
-        },
-
-        async toggleFavorite(workspaceId) {
-            if (!window.NovaShell?.toggleFavoriteWorkspace) return;
-            try {
-                this.favorites = await NovaShell.toggleFavoriteWorkspace(workspaceId);
-            } catch (e) {
-                // ignore
-            }
-        },
-    }));
+    Alpine.data('headerWorkspaceSwitcher', headerWorkspaceSwitcher);
 }
