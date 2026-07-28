@@ -101,6 +101,7 @@
     }"
     @keydown.escape.window="open = false"
     @click.outside="open = false"
+    @shell-sidebar-toggle.window="$nextTick(() => { open = false })"
 >
     <button
         type="button"
@@ -128,7 +129,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 translate-y-1"
-        class="absolute left-0 z-dropdown mt-1 w-80 max-w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-line bg-surface-card shadow-lg"
+        class="absolute left-0 z-50 mt-1 w-80 max-w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-line bg-surface-card shadow-lg"
         role="listbox"
         @click.stop
     >

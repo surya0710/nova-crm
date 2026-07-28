@@ -58,11 +58,11 @@
     }
 
     .nova-header {
-        @apply sticky top-0 z-sticky shrink-0 border-b border-line bg-surface-card;
+        @apply sticky top-0 z-20 shrink-0 overflow-visible border-b border-line bg-surface-card;
     }
 
     .nova-header-inner {
-        @apply flex h-14 min-w-0 items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6;
+        @apply relative flex h-14 min-w-0 items-center gap-2 overflow-visible px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6;
     }
 
     .landing-grid {

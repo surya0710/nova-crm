@@ -35,14 +35,25 @@
             </div>
 
             @if ($userOrganizations->count() > 1)
-                <form id="org-switch-form" method="POST" action="#" class="mt-3">
+                <form
+                    id="org-switch-form"
+                    method="POST"
+                    action="{{ route('organization.switch', $currentOrganization) }}"
+                    class="mt-3"
+                >
                     @csrf
                     <select
                         class="w-full text-xs bg-slate-800 border-slate-700 text-slate-300 rounded-lg py-1.5 px-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        onchange="if (this.value) { this.form.action = '{{ url('organization/switch') }}/' + this.value; this.form.submit(); }"
+                        data-current="{{ $currentOrganization->id }}"
+                        aria-label="{{ __('Switch organization') }}"
+                        onchange="window.NovaOrgSwitch && window.NovaOrgSwitch.submit(this)"
                     >
                         @foreach ($userOrganizations as $org)
-                            <option value="{{ $org->id }}" @selected($org->id === $currentOrganization->id)>
+                            <option
+                                value="{{ $org->id }}"
+                                data-url="{{ route('organization.switch', $org) }}"
+                                @selected($org->id === $currentOrganization->id)
+                            >
                                 {{ $org->name }}
                             </option>
                         @endforeach

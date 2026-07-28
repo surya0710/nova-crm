@@ -41,7 +41,6 @@
                 min-width: 0;
                 min-height: 0;
                 max-width: 100%;
-                overflow: hidden;
             }
             @media (min-width: 1024px) {
                 .nova-shell-main {
@@ -54,8 +53,13 @@
             .nova-header {
                 position: sticky;
                 top: 0;
-                z-index: 10;
+                z-index: 20;
                 flex-shrink: 0;
+                overflow: visible;
+            }
+            .nova-header [role="listbox"],
+            .nova-header [role="menu"] {
+                z-index: 50;
             }
             .nova-shell-content {
                 flex: 1 1 0%;

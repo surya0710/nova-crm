@@ -37,12 +37,12 @@
 @endphp
 
 <aside
-    class="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-text"
+    class="flex h-full w-full flex-col overflow-x-hidden bg-sidebar text-sidebar-text"
     aria-label="{{ __('Primary') }}"
     data-workspace="{{ $currentWorkspace }}"
 >
     @if ($currentOrganization)
-        <div class="shrink-0 border-b border-sidebar-border px-3 py-4">
+        <div class="shrink-0 overflow-visible border-b border-sidebar-border px-3 py-4">
             <div class="flex items-center gap-3">
                 <x-organization-logo :organization="$currentOrganization" size="md" />
                 <div class="min-w-0 flex-1" x-show="! $store.shell.sidebarCollapsed" x-cloak>
@@ -51,17 +51,27 @@
                 </div>
             </div>
 
-            <div x-show="! $store.shell.sidebarCollapsed" x-cloak>
+            <div class="mt-3" x-show="! $store.shell.sidebarCollapsed" x-cloak>
                 @if ($user->organizations->count() > 1)
-                    <form id="org-switch-form" method="POST" action="#" class="mt-3">
+                    <form
+                        id="org-switch-form"
+                        method="POST"
+                        action="{{ route('organization.switch', $currentOrganization) }}"
+                        class="org-switch-form"
+                    >
                         @csrf
                         <select
                             class="w-full rounded-lg border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-300 focus:border-primary-500 focus:ring-primary-500"
-                            onchange="if (this.value) { this.form.action = '{{ url('organization/switch') }}/' + this.value; this.form.submit(); }"
-                            aria-label="{{ __('Organization') }}"
+                            aria-label="{{ __('Switch organization') }}"
+                            data-current="{{ $currentOrganization->id }}"
+                            onchange="window.NovaOrgSwitch && window.NovaOrgSwitch.submit(this)"
                         >
                             @foreach ($user->organizations as $org)
-                                <option value="{{ $org->id }}" @selected($org->id === $currentOrganization->id)>{{ $org->name }}</option>
+                                <option
+                                    value="{{ $org->id }}"
+                                    data-url="{{ route('organization.switch', $org) }}"
+                                    @selected($org->id === $currentOrganization->id)
+                                >{{ $org->name }}</option>
                             @endforeach
                         </select>
                     </form>

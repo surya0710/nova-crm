@@ -22,6 +22,22 @@ async function jsonFetch(url, options = {}) {
     return response.json();
 }
 
+window.NovaOrgSwitch = {
+    submit(select) {
+        const option = select.options[select.selectedIndex];
+        const url = option?.dataset?.url;
+        const form = select.form;
+        if (!url || !form) {
+            return;
+        }
+        if (String(select.dataset.current || '') === String(select.value || '')) {
+            return;
+        }
+        form.action = url;
+        form.submit();
+    },
+};
+
 export function registerShellStore() {
     Alpine.store('shell', {
         theme: 'light',

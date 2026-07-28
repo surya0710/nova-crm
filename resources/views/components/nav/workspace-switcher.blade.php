@@ -21,7 +21,7 @@
         x-show="open"
         x-cloak
         x-transition
-        class="absolute z-dropdown mt-1 w-[calc(16rem-1.5rem)] rounded-lg border border-sidebar-border bg-slate-900 p-1 shadow-md"
+        class="absolute z-50 mt-1 w-[calc(16rem-1.5rem)] rounded-lg border border-sidebar-border bg-slate-900 p-1 shadow-md"
         role="listbox"
     >
         @foreach ($items as $workspace)

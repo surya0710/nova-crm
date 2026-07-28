@@ -69,7 +69,7 @@
                     x-show="open"
                     x-cloak
                     x-transition
-                    class="absolute right-0 z-dropdown mt-1 hidden w-56 rounded-xl border border-line bg-surface-card py-1 shadow-lg sm:block"
+                    class="absolute right-0 z-50 mt-1 hidden w-56 rounded-xl border border-line bg-surface-card py-1 shadow-lg sm:block"
                     role="menu"
                 >
                     <div class="hidden lg:block">
