@@ -32,8 +32,8 @@
     $searchPlaceholder = $searchPlaceholders[$currentWorkspace] ?? __('Search…');
 @endphp
 
-<header class="nova-header">
-    <div class="nova-header-inner">
+<header class="nova-header sticky top-0 z-10 shrink-0 border-b border-line bg-surface-card">
+    <div class="nova-header-inner flex h-14 min-w-0 items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6">
         {{-- Left: menu + workspace --}}
         <div class="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
             <button

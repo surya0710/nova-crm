@@ -17,6 +17,54 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
         @stack('page-assets')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        {{-- Critical shell layout: works before Alpine/Tailwind custom tokens load --}}
+        <style>
+            .nova-shell {
+                display: flex;
+                height: 100%;
+                min-height: 0;
+                width: 100%;
+                max-width: 100vw;
+                overflow: hidden;
+            }
+            .nova-shell-sidebar {
+                width: 16rem;
+                z-index: 30;
+            }
+            .nova-shell[data-sidebar-collapsed="true"] .nova-shell-sidebar {
+                width: 4rem;
+            }
+            .nova-shell-main {
+                display: flex;
+                flex: 1 1 0%;
+                flex-direction: column;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100%;
+                overflow: hidden;
+            }
+            @media (min-width: 1024px) {
+                .nova-shell-main {
+                    margin-left: 16rem;
+                }
+                .nova-shell[data-sidebar-collapsed="true"] .nova-shell-main {
+                    margin-left: 4rem;
+                }
+            }
+            .nova-header {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                flex-shrink: 0;
+            }
+            .nova-shell-content {
+                flex: 1 1 0%;
+                min-height: 0;
+                min-width: 0;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+        </style>
     </head>
     <body class="h-full overflow-x-hidden font-sans antialiased bg-app text-ink">
         <a href="#main-content" class="nova-skip-link">{{ __('Skip to content') }}</a>
@@ -46,6 +94,7 @@
                 $key => \Illuminate\Support\Facades\Route::has($name) ? route($name) : null,
             ])->all();
             $workspaceLabel = data_get($shellNav, 'currentWorkspaceMeta.label');
+            $sidebarCollapsed = (bool) ($shellNav['sidebarCollapsed'] ?? false);
         @endphp
 
         <div
@@ -54,13 +103,15 @@
                 Alpine.store('shell').init({
                     theme: @js($shellNav['theme'] ?? 'light'),
                     density: @js($shellNav['density'] ?? 'comfortable'),
-                    sidebarCollapsed: @js($shellNav['sidebarCollapsed'] ?? false),
+                    sidebarCollapsed: @js($sidebarCollapsed),
                     currentWorkspace: @js($shellNav['currentWorkspace'] ?? 'home'),
                     searchDefaultScope: @js($shellNav['searchDefaultScope'] ?? 'all'),
                     endpoints: @js($shellEndpoints),
                 });
             "
-            class="nova-shell"
+            class="nova-shell flex h-full min-h-0 w-full max-w-[100vw] overflow-hidden"
+            data-sidebar-collapsed="{{ $sidebarCollapsed ? 'true' : 'false' }}"
+            :data-sidebar-collapsed="$store.shell.sidebarCollapsed ? 'true' : 'false'"
         >
             @if ($enterpriseShell)
                 {{-- Mobile overlay --}}
@@ -79,23 +130,16 @@
 
                 {{-- Fixed sidebar (independent of content scroll) --}}
                 <aside
-                    class="nova-shell-sidebar fixed inset-y-0 left-0 z-sidebar flex h-full max-h-screen flex-col transition-transform duration-normal ease-in-out lg:translate-x-0"
+                    class="nova-shell-sidebar fixed inset-y-0 left-0 z-30 flex h-full max-h-screen flex-col transition-[width,transform] duration-200 ease-in-out lg:translate-x-0 {{ $sidebarCollapsed ? 'w-16' : 'w-64' }}"
                     :class="[
                         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-                        $store.shell.sidebarCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar',
+                        $store.shell.sidebarCollapsed ? 'w-16' : 'w-64',
                     ]"
                 >
                     <x-nav.sidebar :shell-nav="$shellNav" />
                 </aside>
 
-                {{-- Desktop spacer so content isn't under fixed sidebar --}}
-                <div
-                    class="hidden shrink-0 lg:block"
-                    :class="$store.shell.sidebarCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar'"
-                    aria-hidden="true"
-                ></div>
-
-                {{-- Main column: header fixed in column, content scrolls --}}
+                {{-- Main column: offset from fixed sidebar via critical CSS (data-sidebar-collapsed) --}}
                 <div class="nova-shell-main flex min-w-0 flex-1 flex-col overflow-hidden">
                     <x-shell.header
                         :workspace-title="$workspaceLabel"

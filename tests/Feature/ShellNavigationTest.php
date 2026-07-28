@@ -257,8 +257,11 @@ class ShellNavigationTest extends TestCase
             ->assertOk()
             ->assertSee('nova-shell', false)
             ->assertSee('nova-shell-sidebar', false)
+            ->assertSee('nova-shell-main', false)
+            ->assertSee('data-sidebar-collapsed', false)
             ->assertSee('nova-shell-content', false)
             ->assertSee('nova-header', false)
+            ->assertSee('sticky top-0', false)
             ->assertSee('CRM Workspace', false);
     }
 
