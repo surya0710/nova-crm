@@ -83,6 +83,19 @@ class LeadAssignOwnerBulkAction implements BulkActionProviderInterface
             return $this->skipped('Already assigned to this owner.');
         }
 
+        $assignee = $record->organization
+            ? $record->organization->users()->whereKey($ownerId)->first()
+            : null;
+        if (! $assignee) {
+            return $this->failed('The selected owner is not an organization member.');
+        }
+        if (($assignee->account_status ?? null) === 'disabled') {
+            return $this->failed('The selected owner is disabled.');
+        }
+        if (! $assignee->hasAnyPermission(['leads.view', 'leads.update'], $record->organization)) {
+            return $this->failed('The selected owner is not allowed to own leads.');
+        }
+
         $actor = User::query()->find($operation->initiated_by);
         if (! $actor) {
             return $this->failed('Bulk operation actor could not be resolved.');

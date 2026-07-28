@@ -56,6 +56,7 @@ use App\Http\Controllers\Hrms\AppraisalDashboardController as HrmsAppraisalDashb
 use App\Http\Controllers\Hrms\AppraisalDevelopmentPlanController as HrmsAppraisalDevelopmentPlanController;
 use App\Http\Controllers\Hrms\AppraisalSessionController as HrmsAppraisalSessionController;
 use App\Http\Controllers\Hrms\AssetController as HrmsAssetController;
+use App\Http\Controllers\Hrms\AttendanceCalendarController as HrmsAttendanceCalendarController;
 use App\Http\Controllers\Hrms\AttendanceController as HrmsAttendanceController;
 use App\Http\Controllers\Hrms\BranchController as HrmsBranchController;
 use App\Http\Controllers\Hrms\CompetencyCategoryController as HrmsCompetencyCategoryController;
@@ -427,9 +428,12 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->name('hrms.shift-assignments.store');
 
         Route::prefix('hrms/attendance')->group(function () {
-            Route::get('/', [HrmsAttendanceController::class, 'index'])
+            Route::get('/', [HrmsAttendanceCalendarController::class, 'index'])
                 ->middleware('permission:attendance.view')
                 ->name('hrms.attendance.index');
+            Route::get('/records', [HrmsAttendanceController::class, 'records'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.records');
             Route::get('/summary', [HrmsAttendanceController::class, 'summary'])
                 ->middleware('permission:attendance.view')
                 ->name('hrms.attendance.summary');
@@ -1167,6 +1171,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::get('/documents/{document}', [EssDocumentController::class, 'show'])->name('documents.show');
             Route::get('/documents/{document}/download', [EssDocumentController::class, 'download'])->name('documents.download');
             Route::get('/attendance', [EssAttendanceController::class, 'index'])->name('attendance.index');
+            Route::get('/attendance/records', [EssAttendanceController::class, 'records'])->name('attendance.records');
             Route::post('/attendance/clock-in', [EssAttendanceController::class, 'clockIn'])->name('attendance.clock-in');
             Route::post('/attendance/clock-out', [EssAttendanceController::class, 'clockOut'])->name('attendance.clock-out');
             Route::post('/attendance/corrections', [EssAttendanceController::class, 'storeCorrection'])->name('attendance.corrections.store');

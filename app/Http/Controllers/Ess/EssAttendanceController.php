@@ -8,6 +8,7 @@ use App\Http\Requests\Ess\EssClockInRequest;
 use App\Http\Requests\Ess\EssClockOutRequest;
 use App\Models\AttendanceCorrection;
 use App\Models\AttendanceRecord;
+use App\Services\Hrms\AttendanceCalendarService;
 use App\Services\Hrms\AttendanceService;
 use App\Services\Hrms\EssContext;
 use Carbon\Carbon;
@@ -19,9 +20,33 @@ class EssAttendanceController extends Controller
     public function __construct(
         protected EssContext $essContext,
         protected AttendanceService $service,
+        protected AttendanceCalendarService $calendarService,
     ) {}
 
-    public function index(): View
+    public function index(\Illuminate\Http\Request $request): View
+    {
+        $employee = $this->essContext->requireEmployee();
+        $this->authorize('viewAny', AttendanceRecord::class);
+
+        $year = (int) $request->input('year', now()->year);
+        $month = (int) $request->input('month', now()->month);
+
+        $calendarService = $this->calendarService;
+
+        return view('ess.attendance.calendar', [
+            'employee' => $employee,
+            'calendar' => $calendarService->monthForEmployee($employee, $year, $month),
+            'year' => $year,
+            'month' => $month,
+            'todayRecord' => AttendanceRecord::query()
+                ->where('employee_id', $employee->id)
+                ->whereDate('attendance_date', now())
+                ->with('shift')
+                ->first(),
+        ]);
+    }
+
+    public function records(): View
     {
         $employee = $this->essContext->requireEmployee();
         $this->authorize('viewAny', AttendanceRecord::class);

@@ -20,7 +20,7 @@ class AttendanceController extends Controller
 {
     public function __construct(protected AttendanceService $service) {}
 
-    public function index(Request $request): View
+    public function records(Request $request): View
     {
         $this->authorize('viewAny', AttendanceRecord::class);
 

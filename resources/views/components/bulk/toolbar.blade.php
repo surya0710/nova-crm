@@ -10,7 +10,7 @@
 @php
     $redirectTo = $redirectTo ?? url()->current();
     $showToolbar = count($actions) > 0 || $exportEnabled;
-    $lookupBaseUrl = url('/shell/lookups');
+    $lookupBaseUrl = route('shell.lookups.search', ['entity' => '__ENTITY__']);
     $lookupFieldTypes = config('lookups.bulk_field_types', []);
     $lookupTypeEntities = config('lookups.bulk_type_entities', []);
 @endphp
@@ -33,37 +33,45 @@
         lookupTypeEntities: @js($lookupTypeEntities),
     })"
 >
-    <div class="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-muted/40 px-3 py-2">
-        <label class="inline-flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" class="rounded border-line text-primary-600" @change="togglePage($event.target.checked)" :checked="pageSelected">
-            {{ __('Select page') }}
-        </label>
-        <button type="button" class="text-sm text-primary-700 hover:underline" @click="selectAllMode = true; selected = [...pageIds]">
-            {{ __('Select all results') }}
-        </button>
-        <button type="button" class="text-sm text-ink-muted hover:underline" @click="clearSelection()">
-            {{ __('Clear') }}
-        </button>
-        <span class="text-sm text-ink-muted" x-text="selectionLabel()"></span>
+    <div
+        x-show="hasSelection()"
+        x-cloak
+        class="sticky top-2 z-20 rounded-lg border border-line bg-surface-card px-3 py-2 shadow-sm"
+    >
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-semibold text-ink-heading" x-text="selectionHeading()"></span>
 
-        <div class="ml-auto flex flex-wrap items-center gap-2">
             @if (count($actions) > 0)
-                <select x-model="actionKey" class="block rounded-md border-line bg-surface-card text-sm text-ink shadow-sm focus:border-primary-500 focus:ring-primary-500">
-                    <option value="">{{ __('Bulk actions…') }}</option>
-                    <template x-for="action in actions" :key="action.key">
-                        <option :value="action.key" x-text="action.label"></option>
-                    </template>
-                </select>
-                <x-ui.button type="button" variant="secondary" size="sm" @click="openConfigure()" x-bind:disabled="!actionKey || selected.length === 0">
-                    {{ __('Configure') }}
-                </x-ui.button>
+                <template x-for="action in actions" :key="action.key">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-md border border-line bg-surface-muted px-2.5 py-1.5 text-xs font-medium text-ink-heading hover:bg-app sm:text-sm"
+                        @click="runAction(action.key)"
+                    >
+                        <span x-text="action.label"></span>
+                    </button>
+                </template>
             @endif
 
             @if ($exportEnabled)
-                <x-ui.button type="button" variant="secondary" size="sm" @click="openExport()" x-bind:disabled="selected.length === 0 && !selectAllMode">
+                <x-ui.button type="button" variant="secondary" size="sm" @click="openExport()">
                     {{ __('Export') }}
                 </x-ui.button>
             @endif
+
+            <button type="button" class="ml-auto text-sm text-ink-muted hover:underline" @click="clearSelection()">
+                {{ __('Clear selection') }}
+            </button>
+        </div>
+
+        <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-ink-muted">
+            <label class="inline-flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" class="rounded border-line text-primary-600" @change="togglePage($event.target.checked)" :checked="pageSelected">
+                {{ __('Select page') }}
+            </label>
+            <button type="button" class="text-primary-700 hover:underline" @click="selectAllFiltered()">
+                {{ __('Select all filtered records') }}
+            </button>
         </div>
     </div>
 
@@ -211,7 +219,7 @@ function bulkToolbar(config) {
         exportFormat: 'xlsx',
         exportSubmitting: false,
         exportError: '',
-        lookupBaseUrl: config.lookupBaseUrl || '/shell/lookups',
+        lookupBaseUrl: config.lookupBaseUrl || '/shell/lookups/__ENTITY__',
         lookupFieldTypes: config.lookupFieldTypes || [],
         lookupTypeEntities: config.lookupTypeEntities || {},
         isLookupField(type) {
@@ -219,7 +227,16 @@ function bulkToolbar(config) {
         },
         lookupEndpoint(field) {
             const entity = field.lookup || this.lookupTypeEntities[field.type] || field.type;
-            return this.lookupBaseUrl.replace(/\/$/, '') + '/' + entity;
+            return this.lookupBaseUrl.replace('__ENTITY__', entity);
+        },
+        hasSelection() {
+            return this.selected.length > 0 || this.selectAllMode;
+        },
+        selectionHeading() {
+            if (this.selectAllMode) {
+                return this.selected.length + ' {{ __('records selected') }} ({{ __('all filtered') }})';
+            }
+            return this.selected.length + ' {{ __('records selected') }}';
         },
         currentAction() {
             return this.actions.find(a => a.key === this.actionKey) || null;
@@ -229,6 +246,11 @@ function bulkToolbar(config) {
                 return this.selected.length + ' selected (all results mode)';
             }
             return this.selected.length + ' selected';
+        },
+        selectAllFiltered() {
+            this.selectAllMode = true;
+            this.pageSelected = true;
+            this.selected = [...this.pageIds];
         },
         togglePage(checked) {
             this.pageSelected = checked;
@@ -258,6 +280,10 @@ function bulkToolbar(config) {
                 if (field.type === 'boolean') this.input[field.key] = true;
             });
             this.showModal = true;
+        },
+        runAction(key) {
+            this.actionKey = key;
+            this.openConfigure();
         },
         openExport() {
             this.exportError = '';

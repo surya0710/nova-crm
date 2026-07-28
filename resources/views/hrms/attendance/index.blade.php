@@ -26,6 +26,7 @@
         </x-slot:breadcrumbs>
 
         <x-slot:actions>
+            <x-ui.button :href="route('hrms.attendance.index')" variant="secondary" size="sm">{{ __('Calendar') }}</x-ui.button>
             <x-ui.button :href="route('hrms.attendance.summary')" variant="secondary" size="sm">{{ __('Daily Summary') }}</x-ui.button>
             <x-ui.button :href="route('hrms.attendance.corrections.index')" variant="secondary" size="sm">{{ __('Corrections') }}</x-ui.button>
         </x-slot:actions>

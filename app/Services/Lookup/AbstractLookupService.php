@@ -76,9 +76,9 @@ abstract class AbstractLookupService implements LookupProviderInterface
         }
 
         $like = '%'.mb_strtolower($search).'%';
-        $table = $builder->getModel()->getTable();
+        $table = $query->getModel()->getTable();
 
-        $builder->where(function (Builder $inner) use ($like, $table) {
+        $query->where(function (Builder $inner) use ($like, $table) {
             foreach ($this->searchColumns() as $column) {
                 if (str_contains($column, '.')) {
                     [$relation, $field] = explode('.', $column, 2);

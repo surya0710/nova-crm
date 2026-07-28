@@ -33,6 +33,42 @@ class LeadTest extends TestCase
         $response->assertSee('Leads');
     }
 
+    public function test_leads_index_renders_bulk_toolbar_and_assign_owner_action(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('organization-owner');
+
+        Lead::factory()->count(2)->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('leads.index'));
+
+        $response->assertOk();
+        $response->assertSee('bulkToolbar(', false);
+        $response->assertSee('Assign Owner');
+        $response->assertSee('Select all filtered records');
+    }
+
+    public function test_lookup_users_endpoint_returns_results_for_bulk_assignment_search(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('organization-owner');
+        $assignee = User::factory()->create([
+            'name' => 'Bulk Assignable User',
+            'account_status' => 'active',
+        ]);
+        $organization->addMember($assignee, 'sales-executive');
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->getJson(route('shell.lookups.search', ['entity' => 'users', 'q' => 'Bulk Assignable']));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.label', 'Bulk Assignable User');
+    }
+
     public function test_user_without_leads_permission_cannot_access_leads(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('hr');

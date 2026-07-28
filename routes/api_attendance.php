@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Hrms\AttendanceCalendarApiController;
 use App\Http\Controllers\Api\Hrms\AttendanceDashboardApiController;
 use Illuminate\Support\Facades\Route;
 
@@ -7,6 +8,8 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'set.organization', 'ensure.o
     ->prefix('attendance')
     ->name('api.attendance.')
     ->group(function () {
+        Route::get('calendar', AttendanceCalendarApiController::class)->name('calendar');
+
         Route::middleware('permission:ess.access')->group(function () {
             Route::get('dashboard', [AttendanceDashboardApiController::class, 'employeeDashboard'])->name('dashboard');
             Route::post('check-in', [AttendanceDashboardApiController::class, 'checkIn'])->name('check-in');

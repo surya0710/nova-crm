@@ -23,6 +23,10 @@
             ]" />
         </x-slot:breadcrumbs>
 
+        <x-slot:actions>
+            <x-ui.button :href="route('ess.attendance.index')" variant="secondary" size="sm">{{ __('Calendar') }}</x-ui.button>
+        </x-slot:actions>
+
         @include('ess.partials.nav')
 
         <x-ui.card class="mb-6">
