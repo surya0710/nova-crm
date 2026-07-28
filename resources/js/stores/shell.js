@@ -140,10 +140,39 @@ export function registerShellStore() {
         switchWorkspace(workspace, href = null) {
             const store = Alpine.store('shell');
             const endpoints = store.endpoints;
-            if (!endpoints.workspace) {
-                if (href) window.location.href = href;
+
+            const navigate = (target) => {
+                if (target) {
+                    window.location.assign(target);
+                }
+            };
+
+            // Prefer direct navigation — never block the user on a fetch.
+            if (href) {
+                if (endpoints.workspace) {
+                    jsonFetch(endpoints.workspace, {
+                        method: 'POST',
+                        body: JSON.stringify({ workspace }),
+                    })
+                        .then((data) => {
+                            if (data?.workspace) {
+                                store.currentWorkspace = data.workspace;
+                            }
+                            if (data?.search_scope) {
+                                store.searchDefaultScope = data.search_scope;
+                            }
+                        })
+                        .catch(() => {});
+                }
+                navigate(href);
+
                 return;
             }
+
+            if (!endpoints.workspace) {
+                return;
+            }
+
             jsonFetch(endpoints.workspace, {
                 method: 'POST',
                 body: JSON.stringify({ workspace }),
@@ -155,11 +184,10 @@ export function registerShellStore() {
                     if (data?.search_scope) {
                         store.searchDefaultScope = data.search_scope;
                     }
-                    const target = data?.href || href;
-                    if (target) window.location.href = target;
+                    navigate(data?.href || href);
                 })
                 .catch(() => {
-                    if (href) window.location.href = href;
+                    navigate(href);
                 });
         },
         toggleFavoriteWorkspace(workspace) {

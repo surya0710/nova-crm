@@ -220,6 +220,43 @@ class ShellNavigationTest extends TestCase
         $this->assertTrue($recents->contains(fn ($item) => str_contains($item['label'], 'CRM')));
     }
 
+    public function test_hrms_home_includes_projects_workspace_link(): void
+    {
+        if (! Route::has('hrms.home') || ! Route::has('projects.home')) {
+            $this->markTestSkipped('Workspace homes are not registered.');
+        }
+
+        ['user' => $user, 'session' => $session] = $this->tenantWithRole('organization-owner');
+
+        $projectsHref = route('projects.home');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('hrms.home'))
+            ->assertOk()
+            ->assertSee('data-workspace-id="projects"', false)
+            ->assertSee($projectsHref, false);
+    }
+
+    public function test_switch_from_hrms_to_projects_persists_workspace(): void
+    {
+        if (! Route::has('hrms.home') || ! Route::has('projects.home')) {
+            $this->markTestSkipped('Workspace homes are not registered.');
+        }
+
+        ['user' => $user, 'session' => $session] = $this->tenantWithRole('organization-owner');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('shell.workspace.switch'), ['workspace' => 'projects'])
+            ->assertOk()
+            ->assertJsonPath('workspace', 'projects')
+            ->assertJsonPath('href', route('projects.home'));
+
+        $prefs = UserUiPreference::query()->where('user_id', $user->id)->first();
+        $this->assertSame('projects', $prefs?->last_workspace);
+    }
+
     public function test_header_includes_workspace_switcher_markup(): void
     {
         if (! Route::has('crm.home')) {
@@ -232,11 +269,11 @@ class ShellNavigationTest extends TestCase
             ->withSession($session)
             ->get(route('crm.home'))
             ->assertOk()
-            ->assertSee('headerWorkspaceSwitcher', false)
             ->assertSee('data-testid="header-workspace-switcher"', false)
             ->assertSee('x-show="open"', false)
             ->assertSee('x-cloak', false)
             ->assertSee('x-data="{', false)
+            ->assertSee('href="'.route('projects.home').'"', false)
             ->assertSee('workspace-switcher-search', false)
             ->assertSee('Search workspaces', false)
             ->assertSee('data-workspace-id="crm"', false)

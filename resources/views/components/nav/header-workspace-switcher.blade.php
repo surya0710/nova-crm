@@ -52,44 +52,52 @@
 
         return 2;
     })->values();
+
+    $hrefMap = $ordered->pluck('href', 'id')->all();
 @endphp
 
 {{--
-  Workspace rows are always server-rendered.
-  Alpine only: open/close, filter query, keyboard, favorites toggle.
-  Search filters the list — it never replaces it.
+  Workspace rows are server-rendered links (work without JS).
+  Alpine handles open/close, filter, favorites, and background workspace persistence.
 --}}
 <div
     {{ $attributes->class(['relative shrink-0']) }}
     data-testid="header-workspace-switcher"
-    data-component="headerWorkspaceSwitcher"
     x-data="{
         open: false,
         query: '',
         favorites: @js($favoriteIds->all()),
-        labels: @js($ordered->pluck('label')->all()),
-        matches(label) {
+        hrefs: @js($hrefMap),
+        labels: @js($ordered->pluck('label', 'id')->all()),
+        matches(id) {
             const q = this.query.trim().toLowerCase();
-            return !q || String(label || '').toLowerCase().includes(q);
-        },
-        get hasMatches() {
-            return this.labels.some((label) => this.matches(label));
+            if (!q) return true;
+            return String(this.labels[id] || '').toLowerCase().includes(q);
         },
         hasVisibleMatches() {
-            return this.labels.some((label) => this.matches(label));
+            return Object.keys(this.labels).some((id) => this.matches(id));
         },
         isFavorite(id) {
             return this.favorites.includes(id);
         },
-        switchTo(id, href) {
+        switchTo(event, id) {
+            const href = this.hrefs[id] || event?.currentTarget?.getAttribute('href');
+            if (!href || id === @js($current)) {
+                if (event) event.preventDefault();
+                this.open = false;
+                return;
+            }
+            event?.preventDefault();
             this.open = false;
             if (window.NovaShell) {
-                NovaShell.switchWorkspace(id, href || null);
-            } else if (href) {
-                window.location.href = href;
+                window.NovaShell.switchWorkspace(id, href);
+            } else {
+                window.location.assign(href);
             }
         },
-        async toggleFavorite(id) {
+        async toggleFavorite(id, event) {
+            event?.preventDefault();
+            event?.stopPropagation();
             if (!window.NovaShell?.toggleFavoriteWorkspace) return;
             try {
                 this.favorites = await NovaShell.toggleFavoriteWorkspace(id);
@@ -100,13 +108,11 @@
         }
     }"
     @keydown.escape.window="open = false"
-    @click.outside="open = false"
-    @shell-sidebar-toggle.window="$nextTick(() => { open = false })"
 >
     <button
         type="button"
         class="inline-flex min-w-[8.5rem] max-w-[16rem] items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-2 text-left text-sm font-semibold text-ink-heading hover:bg-app"
-        @click="open = ! open; if (open) focusSearch()"
+        @click.stop="open = ! open; if (open) focusSearch()"
         aria-haspopup="listbox"
         :aria-expanded="open.toString()"
         aria-controls="header-workspace-menu"
@@ -131,9 +137,8 @@
         x-transition:leave-end="opacity-0 translate-y-1"
         class="absolute left-0 z-50 mt-1 w-80 max-w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-line bg-surface-card shadow-lg"
         role="listbox"
-        @click.stop
+        @click.outside="open = false"
     >
-        {{-- Workspace list first (never replaced by search) --}}
         <div class="max-h-72 overflow-y-auto overflow-x-hidden p-2">
             @forelse ($ordered as $workspace)
                 @php
@@ -142,13 +147,13 @@
                 @endphp
                 <div
                     class="group flex items-center gap-0.5"
-                    x-show="matches(@js($workspace['label']))"
+                    x-show="matches(@js($workspace['id']))"
                     data-workspace-id="{{ $workspace['id'] }}"
                 >
-                    <button
-                        type="button"
+                    <a
+                        href="{{ $workspace['href'] }}"
                         class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-surface-muted {{ $isActive ? 'bg-primary-50 text-primary-700 ring-1 ring-primary-200' : 'text-ink' }}"
-                        @click="switchTo(@js($workspace['id']), @js($workspace['href']))"
+                        @click="switchTo($event, @js($workspace['id']))"
                         role="option"
                         @if ($isActive) aria-selected="true" @endif
                     >
@@ -161,11 +166,11 @@
                                 <span class="block text-[11px] text-primary-600">{{ __('Current workspace') }}</span>
                             @endif
                         </span>
-                    </button>
+                    </a>
                     <button
                         type="button"
                         class="rounded-md p-2 text-ink-muted opacity-70 hover:bg-surface-muted hover:opacity-100 group-hover:opacity-100"
-                        @click.stop="toggleFavorite(@js($workspace['id']))"
+                        @click="toggleFavorite(@js($workspace['id']), $event)"
                         :aria-label="isFavorite(@js($workspace['id'])) ? '{{ __('Unfavorite') }}' : '{{ __('Favorite') }}'"
                         :class="isFavorite(@js($workspace['id'])) ? 'text-amber-500 opacity-100' : ''"
                     >
@@ -183,7 +188,6 @@
             >{{ __('No workspaces match your search.') }}</p>
         </div>
 
-        {{-- Search filters the list above; it does not replace it --}}
         <div class="border-t border-line p-2">
             <label class="sr-only" for="workspace-switcher-search">{{ __('Search workspaces') }}</label>
             <div class="relative">
@@ -196,6 +200,8 @@
                     class="w-full rounded-lg border-line py-2 pl-8 pr-3 text-sm focus:border-primary-500 focus:ring-primary-500"
                     placeholder="{{ __('Search workspaces…') }}"
                     autocomplete="off"
+                    @click.stop
+                    @keydown.stop
                 />
             </div>
         </div>

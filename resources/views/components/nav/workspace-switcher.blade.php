@@ -29,10 +29,12 @@
                 href="{{ $workspace['href'] }}"
                 class="flex items-center gap-2 rounded-md px-3 py-2 text-sm {{ ($workspace['id'] ?? null) === $current ? 'bg-sidebar-active text-white' : 'text-slate-300 hover:bg-sidebar-hover hover:text-white' }}"
                 role="option"
-                @click="
+                @click.prevent="
                     open = false;
                     if (window.NovaShell) {
-                        NovaShell.switchWorkspace(@js($workspace['id']));
+                        NovaShell.switchWorkspace(@js($workspace['id']), @js($workspace['href']));
+                    } else {
+                        window.location.assign(@js($workspace['href']));
                     }
                 "
             >
