@@ -13,22 +13,36 @@
     $favoriteWorkspaces = collect($nav['favoriteWorkspaces'] ?? []);
     $recentWorkspaces = collect($nav['recentWorkspaces'] ?? []);
     $quickActions = $nav['quickActions'] ?? [];
-    $primaryWorkspaces = $workspaces->reject(fn ($w) => ($w['footer'] ?? false));
+    $searchScope = $nav['searchDefaultScope'] ?? 'all';
     $useHeaderSwitcher = config('features.header_workspace_switcher', true)
         && config('features.workspace_nav')
-        && $primaryWorkspaces->isNotEmpty();
+        && $workspaces->isNotEmpty();
+
+    $searchPlaceholders = [
+        'crm' => __('Search leads, customers…'),
+        'hr' => __('Search employees…'),
+        'recruitment' => __('Search candidates…'),
+        'projects' => __('Search projects, tasks…'),
+        'operations' => __('Search tasks…'),
+        'analytics' => __('Search reports…'),
+        'administration' => __('Search settings, users…'),
+        'marketing' => __('Search campaigns…'),
+        'home' => __('Search…'),
+    ];
+    $searchPlaceholder = $searchPlaceholders[$currentWorkspace] ?? __('Search…');
 @endphp
 
-<header class="sticky top-0 z-sticky border-b border-line bg-surface-card">
-    <div class="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div class="flex min-w-0 flex-1 items-center gap-3">
+<header class="nova-header">
+    <div class="nova-header-inner">
+        {{-- Left: menu + workspace --}}
+        <div class="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
             <button
                 type="button"
                 class="rounded-lg p-2 text-ink-muted hover:bg-surface-muted lg:hidden"
                 @click="sidebarOpen = ! sidebarOpen"
                 aria-label="{{ __('Open navigation') }}"
             >
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
 
             <button
@@ -42,50 +56,42 @@
 
             @if ($useHeaderSwitcher)
                 <x-nav.header-workspace-switcher
-                    :workspaces="$primaryWorkspaces"
+                    :workspaces="$workspaces"
                     :current="$currentWorkspace"
                     :favorite-workspaces="$favoriteWorkspaces"
                     :recent-workspaces="$recentWorkspaces"
                 />
             @elseif ($workspaceTitle)
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-ink-heading">{{ $workspaceTitle }}</p>
-                </div>
+                <p class="truncate text-sm font-semibold text-ink-heading">{{ $workspaceTitle }}</p>
             @endif
-
-            @isset($header)
-                <div class="min-w-0">{{ $header }}</div>
-            @endisset
         </div>
 
-        <div class="flex shrink-0 items-center gap-1 sm:gap-2">
-            @if (count($quickActions))
-                <x-nav.header-quick-actions :actions="$quickActions" />
-            @endif
-
+        {{-- Center: global search --}}
+        <div class="flex min-w-0 flex-1 justify-center px-1 sm:px-2">
             @if (config('features.global_search_modal') || config('features.command_palette'))
                 <button
                     type="button"
-                    class="hidden items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-1.5 text-sm text-ink-muted hover:bg-app md:inline-flex"
+                    class="flex w-full max-w-xl items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-2 text-left text-sm text-ink-muted hover:bg-app"
                     @click="Alpine.store('shell').openSearch()"
                     aria-label="{{ __('Search') }}"
                 >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
-                    <span>{{ __('Search…') }}</span>
-                    <kbd class="rounded border border-line bg-surface-card px-1.5 text-[10px] font-medium text-ink-muted">Ctrl K</kbd>
+                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
+                    <span class="min-w-0 flex-1 truncate">{{ $searchPlaceholder }}</span>
+                    <kbd class="hidden shrink-0 rounded border border-line bg-surface-card px-1.5 text-[10px] font-medium text-ink-muted sm:inline">Ctrl K</kbd>
                 </button>
-                <button
-                    type="button"
-                    class="rounded-lg p-2 text-ink-muted hover:bg-surface-muted md:hidden"
-                    @click="Alpine.store('shell').openSearch()"
-                    aria-label="{{ __('Search') }}"
-                >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
-                </button>
+            @endif
+        </div>
+
+        {{-- Right: actions --}}
+        <div class="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            @if (! empty($quickActions['primary']) || ! empty($quickActions['overflow']) || (! empty($quickActions) && ! isset($quickActions['primary'])))
+                <x-nav.header-quick-actions :actions="$quickActions" />
             @endif
 
             @if (config('documentation.help.button.show_in_header', true))
-                <x-help-dropdown />
+                <div class="hidden sm:block">
+                    <x-help-dropdown />
+                </div>
             @endif
 
             @if (config('features.notification_drawer'))
@@ -121,13 +127,6 @@
                 </button>
             @endif
 
-            @if ($organization)
-                <div class="hidden items-center gap-2 border-l border-line pl-2 sm:flex">
-                    <x-organization-logo :organization="$organization" size="sm" />
-                    <span class="max-w-[120px] truncate text-sm font-medium text-ink-heading">{{ $organization->name }}</span>
-                </div>
-            @endif
-
             <x-ui.dropdown align="right" width="56">
                 <x-slot:trigger>
                     <button type="button" class="rounded-lg p-1.5 hover:bg-surface-muted" aria-label="{{ __('User menu') }}">
@@ -138,6 +137,9 @@
                     <div class="border-b border-line px-3 py-2">
                         <p class="truncate text-sm font-medium text-ink-heading">{{ Auth::user()->name }}</p>
                         <p class="truncate text-xs text-ink-muted">{{ Auth::user()->email }}</p>
+                        @if ($organization)
+                            <p class="mt-1 truncate text-xs text-ink-muted">{{ $organization->name }}</p>
+                        @endif
                     </div>
                     <a href="{{ route('profile.edit') }}" class="block px-3 py-2 text-sm text-ink hover:bg-surface-muted">{{ __('Profile') }}</a>
                     @if (Route::has('knowledge.index'))

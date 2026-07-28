@@ -34,6 +34,7 @@ class ThemeService
             'density',
             'sidebar_collapsed',
             'last_workspace',
+            'default_workspace',
             'landing_page',
             'favorites',
             'pinned_pages',

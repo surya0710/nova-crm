@@ -14,12 +14,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('Analytics')"
+        :title="__('Reports Workspace')"
         :subtitle="__('Cross-module insights and executive metrics')"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('Analytics'), 'current' => true],
+                ['label' => __('Reports Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

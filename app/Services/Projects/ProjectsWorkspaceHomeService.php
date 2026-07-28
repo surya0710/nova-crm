@@ -12,6 +12,7 @@ use App\Models\ProjectRisk;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\UserUiPreference;
+use App\Services\Navigation\ShellQuickActionService;
 use App\Services\TenantContext;
 use App\Services\Workspace\CachesWorkspaceHome;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,7 @@ class ProjectsWorkspaceHomeService
 
     public function __construct(
         protected TenantContext $tenant,
+        protected ShellQuickActionService $shellQuickActions,
     ) {}
 
     /**
@@ -58,7 +60,7 @@ class ProjectsWorkspaceHomeService
             'budgetOverview' => $this->budgetOverview($user),
             'riskOverview' => $this->riskOverview($user),
             'recentActivity' => $this->recentActivity($user),
-            'quickActions' => $this->quickActions($user),
+            'quickActions' => $this->quickActions($user, $organization),
             'favoriteProjects' => $this->favoriteProjects($user, $prefs),
             'recentProjects' => $this->recentProjects($user),
             'pinnedPages' => $this->pinnedProjectPages($prefs),
@@ -410,29 +412,15 @@ class ProjectsWorkspaceHomeService
     }
 
     /**
-     * @return array<int, array{label: string, href: string, variant?: string}>
+     * @return array{primary: array<int, array{label: string, href: string, variant?: string}>, overflow: array<int, array{label: string, href: string, variant?: string}>, all: array<int, array{label: string, href: string, variant?: string}>}
      */
-    protected function quickActions(User $user): array
+    protected function quickActions(User $user, $organization): array
     {
-        $actions = [];
-
-        if ($user->hasPermission('projects.create') && Route::has('projects.create')) {
-            $actions[] = ['label' => __('Create Project'), 'href' => route('projects.create'), 'variant' => 'primary'];
-        }
-        if ($user->hasPermission('tasks.create') && Route::has('tasks.create')) {
-            $actions[] = ['label' => __('Create Task'), 'href' => route('tasks.create')];
-        }
-        if ($user->hasPermission('resources.view') && Route::has('resources.planner')) {
-            $actions[] = ['label' => __('Resource Planner'), 'href' => route('resources.planner')];
-        }
-        if ($user->hasPermission('projects.portfolios.view') && Route::has('portfolios.index')) {
-            $actions[] = ['label' => __('Open Portfolios'), 'href' => route('portfolios.index')];
-        }
-        if ($user->hasPermission('projects.view') && Route::has('risks.index')) {
-            $actions[] = ['label' => __('Log Risk'), 'href' => route('risks.index')];
+        if (! $organization) {
+            return ['primary' => [], 'overflow' => [], 'all' => []];
         }
 
-        return $actions;
+        return $this->shellQuickActions->forWorkspace($user, $organization, 'projects');
     }
 
     /**

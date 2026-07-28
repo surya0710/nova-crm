@@ -3,6 +3,7 @@
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     data-theme="{{ $shellNav['theme'] ?? 'light' }}"
     data-density="{{ $shellNav['density'] ?? 'comfortable' }}"
+    class="h-full overflow-x-hidden"
     @if (! empty($shellNav['branding']))
         style="{{ collect($shellNav['branding'])->map(fn ($v, $k) => $k.':'.$v)->implode(';') }}"
     @endif
@@ -17,7 +18,7 @@
         @stack('page-assets')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased bg-app text-ink">
+    <body class="h-full overflow-x-hidden font-sans antialiased bg-app text-ink">
         <a href="#main-content" class="nova-skip-link">{{ __('Skip to content') }}</a>
         <x-impersonation-banner />
 
@@ -44,6 +45,7 @@
             ])->mapWithKeys(fn ($name, $key) => [
                 $key => \Illuminate\Support\Facades\Route::has($name) ? route($name) : null,
             ])->all();
+            $workspaceLabel = data_get($shellNav, 'currentWorkspaceMeta.label');
         @endphp
 
         <div
@@ -58,9 +60,10 @@
                     endpoints: @js($shellEndpoints),
                 });
             "
-            class="flex min-h-screen"
+            class="nova-shell"
         >
             @if ($enterpriseShell)
+                {{-- Mobile overlay --}}
                 <div
                     x-show="sidebarOpen"
                     x-transition:enter="transition-opacity ease-linear duration-normal"
@@ -74,16 +77,28 @@
                     x-cloak
                 ></div>
 
-                <div
-                    class="fixed inset-y-0 left-0 z-sidebar h-screen transform transition-transform duration-normal ease-in-out lg:sticky lg:top-0 lg:translate-x-0 lg:shrink-0"
-                    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+                {{-- Fixed sidebar (independent of content scroll) --}}
+                <aside
+                    class="nova-shell-sidebar fixed inset-y-0 left-0 z-sidebar flex h-full max-h-screen flex-col transition-transform duration-normal ease-in-out lg:translate-x-0"
+                    :class="[
+                        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+                        $store.shell.sidebarCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar',
+                    ]"
                 >
-                    <x-nav.sidebar />
-                </div>
+                    <x-nav.sidebar :shell-nav="$shellNav" />
+                </aside>
 
-                <div class="flex min-w-0 flex-1 flex-col">
+                {{-- Desktop spacer so content isn't under fixed sidebar --}}
+                <div
+                    class="hidden shrink-0 lg:block"
+                    :class="$store.shell.sidebarCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar'"
+                    aria-hidden="true"
+                ></div>
+
+                {{-- Main column: header fixed in column, content scrolls --}}
+                <div class="nova-shell-main flex min-w-0 flex-1 flex-col overflow-hidden">
                     <x-shell.header
-                        :workspace-title="$shellNav['currentWorkspaceMeta']['label'] ?? null"
+                        :workspace-title="$workspaceLabel"
                         :unread-count="$unreadCount"
                         :organization="$currentOrganization"
                         :theme="$shellNav['theme'] ?? 'light'"
@@ -95,16 +110,18 @@
                     </x-shell.header>
 
                     @isset($contextBar)
-                        <div class="border-b border-line bg-surface-card px-4 py-2 sm:px-6 lg:px-8">
+                        <div class="shrink-0 border-b border-line bg-surface-card px-4 py-2 sm:px-6 lg:px-8">
                             {{ $contextBar }}
                         </div>
                     @endisset
 
-                    <main id="main-content" class="nova-content flex-1" tabindex="-1">
-                        {{ $slot }}
+                    <main id="main-content" class="nova-shell-content" tabindex="-1">
+                        <div class="nova-content">
+                            {{ $slot }}
+                        </div>
                     </main>
 
-                    <footer class="border-t border-line px-4 py-3 text-center text-xs text-ink-muted sm:px-6 lg:px-8">
+                    <footer class="shrink-0 border-t border-line px-4 py-2 text-center text-xs text-ink-muted sm:px-6 lg:px-8">
                         {{ config('app.name', 'NovaCRM') }}
                     </footer>
                 </div>
@@ -135,13 +152,14 @@
                     x-cloak
                 ></div>
                 <div
-                    class="fixed inset-y-0 left-0 z-40 h-screen w-64 transform transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0 lg:shrink-0"
+                    class="fixed inset-y-0 left-0 z-40 h-screen w-64 transform transition-transform duration-200 ease-in-out lg:translate-x-0"
                     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
                 >
                     @include('layouts.sidebar')
                 </div>
-                <div class="flex min-w-0 flex-1 flex-col">
-                    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white">
+                <div class="hidden w-64 shrink-0 lg:block" aria-hidden="true"></div>
+                <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+                    <header class="shrink-0 border-b border-slate-200 bg-white">
                         <div class="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                             <div class="flex min-w-0 flex-1 items-center gap-4">
                                 <button @click="sidebarOpen = !sidebarOpen" class="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden">
@@ -153,7 +171,7 @@
                             </div>
                         </div>
                     </header>
-                    <main id="main-content" class="flex-1 p-4 sm:p-6 lg:p-8">{{ $slot }}</main>
+                    <main id="main-content" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">{{ $slot }}</main>
                 </div>
             @endif
         </div>

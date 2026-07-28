@@ -2,12 +2,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('Projects')"
+        :title="__('Projects Workspace')"
         :subtitle="__('Deliver work on time and on budget')"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('Projects'), 'current' => true],
+                ['label' => __('Projects Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

@@ -2,7 +2,7 @@
 
 namespace App\View\Composers;
 
-use App\Services\Navigation\NavigationContextManager;
+use App\Services\Navigation\NavigationService;
 use App\Services\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -10,7 +10,7 @@ use Illuminate\View\View;
 class ShellComposer
 {
     public function __construct(
-        protected NavigationContextManager $navigation,
+        protected NavigationService $navigation,
         protected TenantContext $tenant,
     ) {}
 
@@ -20,28 +20,11 @@ class ShellComposer
         $organization = $this->tenant->get();
 
         if (! $user || ! $organization) {
-            $view->with('shellNav', [
-                'workspaces' => collect(),
-                'currentWorkspace' => 'home',
-                'currentWorkspaceMeta' => null,
-                'menu' => collect(),
-                'favorites' => collect(),
-                'favoriteWorkspaces' => collect(),
-                'recentWorkspaces' => collect(),
-                'recents' => collect(),
-                'pinned' => collect(),
-                'quickActions' => [],
-                'searchDefaultScope' => 'all',
-                'preferences' => null,
-                'sidebarCollapsed' => false,
-                'theme' => 'light',
-                'density' => 'comfortable',
-                'branding' => [],
-            ]);
+            $view->with('shellNav', $this->navigation->emptyShell());
 
             return;
         }
 
-        $view->with('shellNav', $this->navigation->forRequest($user, $organization));
+        $view->with('shellNav', $this->navigation->forShell($user, $organization));
     }
 }

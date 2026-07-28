@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\UserUiPreference;
 use App\Services\ExecutiveDashboardService;
+use App\Services\Navigation\ShellQuickActionService;
 use App\Services\ReportService;
 use App\Services\TenantContext;
 use App\Services\Workspace\CachesWorkspaceHome;
@@ -28,6 +29,7 @@ class AnalyticsWorkspaceHomeService
         protected ReportService $reports,
         protected ExecutiveDashboardService $executive,
         protected AnalyticsDomainService $domains,
+        protected ShellQuickActionService $shellQuickActions,
     ) {}
 
     /**
@@ -59,7 +61,7 @@ class AnalyticsWorkspaceHomeService
             'kpis' => $this->kpis($user, $organization),
             'domainCards' => $this->domainCards($user, $organization),
             'attention' => $this->attention($user, $organization),
-            'quickActions' => $this->quickActions($user),
+            'quickActions' => $this->quickActions($user, $organization),
             'recentActivity' => $this->recentActivity($user),
             'widgetLayout' => $prefs?->dashboard_layout['analytics'] ?? [
                 'widgets' => $defaultWidgets,
@@ -323,69 +325,15 @@ class AnalyticsWorkspaceHomeService
     }
 
     /**
-     * @return array<int, array{label: string, href: string, variant?: string}>
+     * @return array{primary: array<int, array{label: string, href: string, variant?: string}>, overflow: array<int, array{label: string, href: string, variant?: string}>, all: array<int, array{label: string, href: string, variant?: string}>}
      */
-    protected function quickActions(User $user): array
+    protected function quickActions(User $user, $organization): array
     {
-        $actions = [];
-
-        if ($user->hasPermission('reports.view') && Route::has('reports.index')) {
-            $actions[] = [
-                'label' => __('Open Sales report'),
-                'href' => route('reports.index'),
-            ];
+        if (! $organization) {
+            return ['primary' => [], 'overflow' => [], 'all' => []];
         }
 
-        if ($user->hasAnyPermission(['reports.view', 'finance.view']) && Route::has('reports.finance')) {
-            $actions[] = [
-                'label' => __('Open Finance'),
-                'href' => route('reports.finance'),
-            ];
-        }
-
-        if ($user->hasPermission('reports.view') && Route::has('analytics.reports.index')) {
-            $actions[] = [
-                'label' => __('Export reports'),
-                'href' => route('analytics.reports.index'),
-            ];
-        } elseif ($user->hasPermission('reports.view') && Route::has('reports.index')) {
-            $actions[] = [
-                'label' => __('Export reports'),
-                'href' => route('reports.index').'#export',
-            ];
-        }
-
-        if ($user->hasPermission('projects.view') && Route::has('projects.executive')) {
-            $actions[] = [
-                'label' => __('Open Executive Projects'),
-                'href' => route('projects.executive'),
-            ];
-        }
-
-        if ($user->hasPermission('reports.view') && Route::has('analytics.kpis.index')) {
-            $actions[] = [
-                'label' => __('Open KPI Library'),
-                'href' => route('analytics.kpis.index'),
-            ];
-        }
-
-        if ($user->hasPermission('reports.view') && Route::has('analytics.ai-insights')) {
-            $actions[] = [
-                'label' => __('Open AI Insights'),
-                'href' => route('analytics.ai-insights'),
-                'variant' => 'primary',
-            ];
-        }
-
-        if ($user->hasPermission('reports.view') && Route::has('analytics.executive')) {
-            array_unshift($actions, [
-                'label' => __('Executive dashboard'),
-                'href' => route('analytics.executive'),
-                'variant' => 'primary',
-            ]);
-        }
-
-        return $actions;
+        return $this->shellQuickActions->forWorkspace($user, $organization, 'analytics');
     }
 
     /**

@@ -1,6 +1,6 @@
 # Shell Implementation
 
-Enterprise Application Shell delivered in Phase 14.1. Product blueprints: [../product/sidebar-blueprint.md](../product/sidebar-blueprint.md), [../design/layout-system.md](../design/layout-system.md).
+Enterprise Application Shell (Phase 14.1) with **Release 1.1.S.3.1** UX stabilization. Product blueprints: [../product/sidebar-blueprint.md](../product/sidebar-blueprint.md), [../design/layout-system.md](../design/layout-system.md).
 
 ---
 
@@ -10,27 +10,69 @@ Enterprise Application Shell delivered in Phase 14.1. Product blueprints: [../pr
 <html data-theme data-density [brand CSS vars]>
   skip link
   impersonation banner
-  AppShell
-    Sidebar (workspace switcher · favorites · pinned · menu · recents · admin · user)
-    Column
-      Header (collapse · workspace title · search · help · notifications · theme · org · user menu)
+  .nova-shell (h-full, overflow hidden — no page-level scroll)
+    Fixed sidebar (.nova-shell-sidebar) — Logo → Pinned → Workspace nav → Admin → Profile
+    Desktop spacer (matches sidebar width)
+    .nova-shell-main (flex column, overflow hidden)
+      Sticky header (.nova-header) — ☰ · Workspace switcher · Search · Quick actions · … · Profile
       optional Context bar
-      Main #main-content
-      Footer
+      Scrollable main (.nova-shell-content > .nova-content)
+      Footer (shrink-0)
   Command palette · Global search · Notification drawer
 ```
 
 Entry layout: `resources/views/layouts/app.blade.php` via `<x-app-layout>`.
 
+**Scroll contract:** only `.nova-shell-content` scrolls. Header and sidebar stay fixed. Avoid `100vw` and nested scroll regions that cause horizontal overflow.
+
 ---
 
-## Navigation pipeline
+## Navigation pipeline (SSOT)
 
-1. `config/navigation.php` — workspace + menu definitions  
-2. `MenuBuilder` — permission + route existence filter  
-3. `WorkspaceResolver` — available workspaces + current from route / preference  
-4. `NavigationContextManager` — assembles favorites, recents, pinned, theme prefs  
-5. `ShellComposer` — injects `shellNav` into layout views  
+1. `config/navigation.php` — workspace + menu + search scopes + quick actions  
+2. `NavigationService` — **only** source of truth for shell nav (`forShell`, menus, workspaces, quick actions, search scope)  
+3. `WorkspaceResolver` — current workspace from **route first**, then preference  
+4. `NavigationContextManager` — thin adapter around `forShell` / `rememberWorkspace`  
+5. `ShellComposer` — injects `shellNav` **once** on `layouts.app`  
+
+Blade receives plain arrays in `$shellNav`. Do not hardcode workspace lists in views.
+
+---
+
+## Workspace switcher
+
+Component: `x-nav.header-workspace-switcher`
+
+- Workspace rows are **server-rendered** (icons, active state, favorites)  
+- Search sits **below** the list and **filters** rows — it never replaces them  
+- Alpine handles open/close, filter query, Escape / outside click, favorite toggle  
+- Feature flags: `workspace_nav` + `header_workspace_switcher`
+
+---
+
+## Header / search / quick actions
+
+Order: menu toggle · workspace switcher · global search · **primary quick actions** · **More Actions** · help · notifications · theme · profile.
+
+- Search placeholder and default scope follow `currentWorkspace`
+- Quick actions: `NavigationService::quickActions` → `{ primary, overflow, all }` from `config/navigation.php`
+- Max primary buttons: `quick_action_limits.primary` (default 5); tablet shows fewer; mobile uses icon + drawer
+- Shortcut: `Ctrl/Cmd + K` opens global search
+
+---
+
+## Dashboard layout helpers
+
+CSS utilities in `resources/css/app.css`:
+
+| Class | Role |
+|-------|------|
+| `.dashboard-stack` | Vertical rhythm between sections |
+| `.dashboard-kpis` | KPI row grid |
+| `.dashboard-primary` | Main + aside columns |
+| `.dashboard-primary-main` / `-aside` | Hierarchy split |
+
+Workspace homes should use these classes via `x-layouts.workspace-home`.
 
 ---
 
@@ -40,7 +82,7 @@ Entry layout: `resources/views/layouts/app.blade.php` via `<x-app-layout>`.
 |----------|--------|
 | `Ctrl/Cmd + K` | Open global search |
 | `Ctrl/Cmd + Shift + K` | Open command palette |
-| `Esc` | Close overlay |
+| `Esc` | Close overlay / workspace switcher |
 
 ---
 
@@ -88,6 +130,7 @@ Implement `SearchProviderInterface` and register on `SearchProviderRegistry`. De
 - `:focus-visible` rings via tokens  
 - Dialog overlays with `role="dialog"` / `aria-modal`  
 - Landmark regions (`nav`, `main`, `header`, `footer`)  
+- Workspace switcher: `listbox` / `option`, Escape, outside click  
 - `prefers-reduced-motion` zeroes motion tokens  
 
 ---

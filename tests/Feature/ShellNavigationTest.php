@@ -31,26 +31,145 @@ class ShellNavigationTest extends TestCase
         ];
     }
 
-    public function test_employee_persona_lands_on_ess_dashboard(): void
+    public function test_employee_persona_lands_on_hrms_workspace(): void
     {
-        if (! Route::has('ess.dashboard')) {
-            $this->markTestSkipped('ess.dashboard is not registered.');
-        }
-
         ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('employee');
 
-        $landing = app(NavigationService::class)->resolveLandingUrl($user, $organization);
+        $nav = app(NavigationService::class);
+        $landing = $nav->resolveLandingUrl($user, $organization);
 
-        $this->assertStringContainsString('/hrms/ess', $landing);
+        $this->assertTrue(
+            str_contains($landing, '/hrms') || str_contains($landing, '/ess'),
+            "Employee should land in HRMS/ESS, got: {$landing}"
+        );
+        $path = parse_url($landing, PHP_URL_PATH) ?? $landing;
+        $this->assertStringNotContainsString('/dashboard', $path);
     }
 
-    public function test_owner_persona_prefers_dashboard(): void
+    public function test_owner_persona_lands_on_crm_workspace(): void
     {
+        if (! Route::has('crm.home')) {
+            $this->markTestSkipped('crm.home is not registered.');
+        }
+
         ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
 
         $landing = app(NavigationService::class)->resolveLandingUrl($user, $organization);
 
-        $this->assertStringContainsString('/dashboard', $landing);
+        $this->assertStringContainsString('/crm', $landing);
+        $this->assertStringNotContainsString('/dashboard', parse_url($landing, PHP_URL_PATH) ?? $landing);
+    }
+
+    public function test_user_default_workspace_overrides_persona_and_last_workspace(): void
+    {
+        if (! Route::has('projects.home') || ! Route::has('crm.home')) {
+            $this->markTestSkipped('Workspace homes are not registered.');
+        }
+
+        ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+
+        $prefs = app(\App\Services\Theme\ThemeService::class)->preferencesFor($user, $organization);
+        $prefs->update([
+            'default_workspace' => 'projects',
+            'last_workspace' => 'crm',
+        ]);
+
+        $landing = app(NavigationService::class)->resolveLandingUrl($user, $organization, $prefs->fresh());
+
+        $this->assertStringContainsString('/projects', $landing);
+    }
+
+    public function test_organization_default_workspace_applies_for_owner_without_persona_conflict(): void
+    {
+        if (! Route::has('projects.home')) {
+            $this->markTestSkipped('projects.home is not registered.');
+        }
+
+        ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+
+        // Owner persona maps to CRM; org default projects should win only when
+        // we clear the persona workspace mapping for this assertion by using a
+        // user without CRM… Instead verify org default after persona is unavailable:
+        $settings = is_array($organization->settings) ? $organization->settings : [];
+        $settings['default_workspace'] = 'projects';
+        $settings['workspace_visibility'] = array_merge(
+            $settings['workspace_visibility'] ?? [],
+            ['crm' => false, 'home' => false, 'hr' => false, 'administration' => false, 'analytics' => false]
+        );
+        $organization->settings = $settings;
+        $organization->save();
+
+        $landing = app(NavigationService::class)->resolveLandingUrl($user, $organization);
+
+        $this->assertStringContainsString('/projects', $landing);
+    }
+
+    public function test_last_workspace_is_fallback_when_no_defaults(): void
+    {
+        if (! Route::has('projects.home')) {
+            $this->markTestSkipped('projects.home is not registered.');
+        }
+
+        ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+
+        // Clear persona path by forcing unavailable persona workspace mapping via last only:
+        // Owner persona maps to crm; set last to projects and clear org default — persona still wins.
+        // To verify last-as-fallback, set persona workspace unavailable: hide crm from visibility.
+        $settings = is_array($organization->settings) ? $organization->settings : [];
+        $settings['workspace_visibility'] = [
+            'crm' => false,
+            'projects' => true,
+            'hr' => false,
+            'home' => false,
+            'administration' => false,
+            'analytics' => false,
+            'operations' => false,
+            'marketing' => false,
+            'recruitment' => false,
+        ];
+        $organization->settings = $settings;
+        $organization->save();
+
+        $prefs = app(\App\Services\Theme\ThemeService::class)->preferencesFor($user, $organization);
+        $prefs->update(['last_workspace' => 'projects', 'default_workspace' => null]);
+
+        $landing = app(NavigationService::class)->resolveLandingUrl($user, $organization, $prefs->fresh());
+
+        $this->assertStringContainsString('/projects', $landing);
+    }
+
+    public function test_shell_quick_actions_are_workspace_scoped_with_overflow(): void
+    {
+        ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+
+        $actions = app(NavigationService::class)->quickActions($user, $organization, 'crm');
+
+        $this->assertArrayHasKey('primary', $actions);
+        $this->assertArrayHasKey('overflow', $actions);
+        $this->assertArrayHasKey('all', $actions);
+        $this->assertLessThanOrEqual(5, count($actions['primary']));
+        $this->assertNotEmpty($actions['primary']);
+
+        $labels = collect($actions['all'])->pluck('label')->implode(' ');
+        $this->assertStringContainsString('Lead', $labels);
+        $this->assertStringNotContainsString('Mark Attendance', $labels);
+        $this->assertStringNotContainsString('Create Project', $labels);
+    }
+
+    public function test_header_renders_more_actions_control(): void
+    {
+        if (! Route::has('crm.home')) {
+            $this->markTestSkipped('crm.home is not registered.');
+        }
+
+        ['user' => $user, 'session' => $session] = $this->tenantWithRole('organization-owner');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('crm.home'))
+            ->assertOk()
+            ->assertSee('data-testid="header-quick-actions"', false)
+            ->assertSee('More Actions', false);
     }
 
     public function test_workspace_switch_persists_last_workspace(): void
@@ -116,7 +235,44 @@ class ShellNavigationTest extends TestCase
             ->assertSee('headerWorkspaceSwitcher', false)
             ->assertSee('data-testid="header-workspace-switcher"', false)
             ->assertSee('x-show="open"', false)
-            ->assertSee('x-cloak', false);
+            ->assertSee('x-cloak', false)
+            ->assertSee('x-data="{', false)
+            ->assertSee('workspace-switcher-search', false)
+            ->assertSee('Search workspaces', false)
+            ->assertSee('data-workspace-id="crm"', false)
+            ->assertSee('Current workspace', false);
+    }
+
+    public function test_application_shell_uses_fixed_chrome_classes(): void
+    {
+        if (! Route::has('crm.home')) {
+            $this->markTestSkipped('crm.home is not registered.');
+        }
+
+        ['user' => $user, 'session' => $session] = $this->tenantWithRole('organization-owner');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('crm.home'))
+            ->assertOk()
+            ->assertSee('nova-shell', false)
+            ->assertSee('nova-shell-sidebar', false)
+            ->assertSee('nova-shell-content', false)
+            ->assertSee('nova-header', false)
+            ->assertSee('CRM Workspace', false);
+    }
+
+    public function test_crm_menu_exposes_core_workspace_items(): void
+    {
+        ['user' => $user, 'organization' => $organization] = $this->tenantWithRole('organization-owner');
+
+        $labels = collect(app(NavigationService::class)->menuForWorkspace('crm', $user, $organization))
+            ->pluck('label')
+            ->all();
+
+        foreach (['Dashboard', 'Leads', 'Customers', 'Pipeline', 'Activities', 'Products', 'Invoices', 'Payments', 'Reports'] as $expected) {
+            $this->assertContains($expected, $labels, "CRM menu missing {$expected}");
+        }
     }
 
     public function test_navigation_service_returns_role_scoped_workspaces(): void

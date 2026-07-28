@@ -2,12 +2,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('HR')"
+        :title="__('HRMS Workspace')"
         :subtitle="__('Hire, support, and pay people')"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('HR'), 'current' => true],
+                ['label' => __('HRMS Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

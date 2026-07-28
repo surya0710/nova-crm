@@ -13,6 +13,7 @@ use App\Models\PayrollRun;
 use App\Models\PerformanceReview;
 use App\Models\User;
 use App\Models\UserUiPreference;
+use App\Services\Navigation\ShellQuickActionService;
 use App\Services\TenantContext;
 use App\Services\Workspace\CachesWorkspaceHome;
 use Illuminate\Support\Carbon;
@@ -27,6 +28,7 @@ class HrmsWorkspaceHomeService
     public function __construct(
         protected TenantContext $tenant,
         protected HrmsDashboardService $dashboard,
+        protected ShellQuickActionService $shellQuickActions,
     ) {}
 
     /**
@@ -72,7 +74,7 @@ class HrmsWorkspaceHomeService
             'assetsAssigned' => $this->assetsAssigned($user, $hrData),
             'upcomingHolidays' => $this->upcomingHolidays($user),
             'recentActivities' => $this->recentActivities($user),
-            'quickActions' => $this->quickActions($user),
+            'quickActions' => $this->quickActions($user, $organization),
             'pinnedPages' => $this->pinnedHrPages($prefs),
             'widgetLayout' => $prefs?->dashboard_layout['hr'] ?? null,
         ];
@@ -589,61 +591,15 @@ class HrmsWorkspaceHomeService
     }
 
     /**
-     * @return array<int, array{label: string, href: string, variant?: string}>
+     * @return array{primary: array<int, array{label: string, href: string, variant?: string}>, overflow: array<int, array{label: string, href: string, variant?: string}>, all: array<int, array{label: string, href: string, variant?: string}>}
      */
-    protected function quickActions(User $user): array
+    protected function quickActions(User $user, $organization): array
     {
-        $actions = [];
-
-        if ($user->hasPermission('hrms.view') && Route::has('hrms.employees.create')) {
-            $actions[] = [
-                'label' => __('Add Employee'),
-                'href' => route('hrms.employees.create'),
-                'variant' => 'primary',
-            ];
+        if (! $organization) {
+            return ['primary' => [], 'overflow' => [], 'all' => []];
         }
 
-        if ($user->hasAnyPermission(['leave.view', 'leave.approve']) && Route::has('hrms.leave.dashboard')) {
-            $actions[] = [
-                'label' => __('Approve Leave'),
-                'href' => route('hrms.leave.dashboard'),
-            ];
-        }
-
-        if ($user->hasPermission('recruitment.view') && Route::has('hrms.recruitment.openings.create')) {
-            $actions[] = [
-                'label' => __('Post Opening'),
-                'href' => route('hrms.recruitment.openings.create'),
-            ];
-        } elseif ($user->hasPermission('recruitment.view') && Route::has('hrms.recruitment.openings.index')) {
-            $actions[] = [
-                'label' => __('Open Recruitment'),
-                'href' => route('hrms.recruitment.dashboard'),
-            ];
-        }
-
-        if ($user->hasPermission('announcements.manage') && Route::has('hrms.announcements.index')) {
-            $actions[] = [
-                'label' => __('New Announcement'),
-                'href' => route('hrms.announcements.index'),
-            ];
-        }
-
-        if ($user->hasPermission('ess.access') && Route::has('ess.leave.index')) {
-            $actions[] = [
-                'label' => __('Apply Leave'),
-                'href' => route('ess.leave.index'),
-            ];
-        }
-
-        if ($user->hasPermission('ess.access') && Route::has('ess.attendance.index')) {
-            $actions[] = [
-                'label' => __('Mark Attendance'),
-                'href' => route('ess.attendance.index'),
-            ];
-        }
-
-        return $actions;
+        return $this->shellQuickActions->forWorkspace($user, $organization, 'hr');
     }
 
     /**

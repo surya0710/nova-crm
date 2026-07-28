@@ -665,8 +665,6 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer([
             'layouts.app',
-            'components.nav.sidebar',
-            'components.shell.header',
         ], ShellComposer::class);
 
         Event::listen([

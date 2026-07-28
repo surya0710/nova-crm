@@ -2,12 +2,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('CRM')"
+        :title="__('CRM Workspace')"
         :subtitle="__('Win and collect revenue today')"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('CRM'), 'current' => true],
+                ['label' => __('CRM Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

@@ -214,9 +214,8 @@ Route::get('/', function () {
             ?? $user->organizations()->first();
 
         if ($organization) {
-            $prefs = app(\App\Services\Theme\ThemeService::class)->preferencesFor($user, $organization);
-            $landing = app(\App\Services\Navigation\WorkspaceResolver::class)
-                ->landingUrlFor($user, $organization, $prefs->last_workspace);
+            $landing = app(\App\Services\Navigation\NavigationService::class)
+                ->resolveLandingUrl($user, $organization);
 
             return redirect()->to($landing);
         }

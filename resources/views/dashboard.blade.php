@@ -19,12 +19,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('Home')"
+        :title="__('Home Workspace')"
         :subtitle="__(':org — your workspace overview', ['org' => $organization->name])"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('Home'), 'current' => true],
+                ['label' => __('Home Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

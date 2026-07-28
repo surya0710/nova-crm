@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\UserUiPreference;
 use App\Services\LeadFollowUpService;
+use App\Services\Navigation\ShellQuickActionService;
 use App\Services\TenantContext;
 use App\Services\Workspace\CachesWorkspaceHome;
 use Illuminate\Support\Collection;
@@ -23,6 +24,7 @@ class CrmWorkspaceHomeService
     public function __construct(
         protected LeadFollowUpService $followUps,
         protected TenantContext $tenant,
+        protected ShellQuickActionService $shellQuickActions,
     ) {}
 
     /**
@@ -55,7 +57,7 @@ class CrmWorkspaceHomeService
             'recentOpportunities' => $this->recentOpportunities($user),
             'tasksDueToday' => $this->tasksDueToday($user),
             'recentActivity' => $this->recentActivity($user),
-            'quickActions' => $this->quickActions($user),
+            'quickActions' => $this->quickActions($user, $organization),
             'pinnedPages' => $this->pinnedCrmPages($prefs),
             'favoriteReports' => $this->favoriteReports($user, $prefs),
             'widgetLayout' => $prefs?->dashboard_layout['crm'] ?? null,
@@ -352,29 +354,15 @@ class CrmWorkspaceHomeService
     }
 
     /**
-     * @return array<int, array{label: string, href: string, variant?: string}>
+     * @return array{primary: array<int, array{label: string, href: string, variant?: string}>, overflow: array<int, array{label: string, href: string, variant?: string}>, all: array<int, array{label: string, href: string, variant?: string}>}
      */
-    protected function quickActions(User $user): array
+    protected function quickActions(User $user, $organization): array
     {
-        $actions = [];
-
-        if ($user->hasPermission('leads.create') && Route::has('leads.create')) {
-            $actions[] = ['label' => __('Create Lead'), 'href' => route('leads.create'), 'variant' => 'primary'];
-        }
-        if ($user->hasPermission('opportunities.create') && Route::has('pipeline.create')) {
-            $actions[] = ['label' => __('Create Opportunity'), 'href' => route('pipeline.create')];
-        }
-        if ($user->hasPermission('customers.create') && Route::has('customers.create')) {
-            $actions[] = ['label' => __('Create Customer'), 'href' => route('customers.create')];
-        }
-        if ($user->hasPermission('quotations.create') && Route::has('quotations.create')) {
-            $actions[] = ['label' => __('New Quotation'), 'href' => route('quotations.create')];
-        }
-        if ($user->hasPermission('payments.create') && Route::has('payments.create')) {
-            $actions[] = ['label' => __('Record Payment'), 'href' => route('payments.create')];
+        if (! $organization) {
+            return ['primary' => [], 'overflow' => [], 'all' => []];
         }
 
-        return $actions;
+        return $this->shellQuickActions->forWorkspace($user, $organization, 'crm');
     }
 
     /**

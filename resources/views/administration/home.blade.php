@@ -2,12 +2,12 @@
     <x-flash-messages />
 
     <x-layouts.workspace-home
-        :title="__('Administration')"
+        :title="__('Administration Workspace')"
         :subtitle="__('People, access, and organization configuration')"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
-                ['label' => __('Administration'), 'current' => true],
+                ['label' => __('Administration Workspace'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

@@ -1,5 +1,5 @@
 @props(['title' => null, 'subtitle' => null])
-<div {{ $attributes->class(['space-y-6']) }}>
+<div {{ $attributes->class(['dashboard-stack']) }}>
     @if ($title)
         <x-ui.page-header :title="$title" :subtitle="$subtitle">
             @isset($breadcrumbs)
@@ -11,7 +11,7 @@
         </x-ui.page-header>
     @endif
     @isset($kpis)
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{{ $kpis }}</div>
+        <section class="dashboard-kpis" aria-label="{{ __('Key metrics') }}">{{ $kpis }}</section>
     @endisset
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{{ $slot }}</div>
 </div>

@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Shell;
 use App\Http\Controllers\Controller;
 use App\Services\Navigation\FavoritePagesService;
 use App\Services\Navigation\FavoriteWorkspacesService;
-use App\Services\Navigation\NavigationContextManager;
 use App\Services\Navigation\NavigationService;
 use App\Services\Navigation\RecentPagesService;
-use App\Services\Navigation\ShellQuickActionService;
 use App\Services\TenantContext;
 use App\Services\Theme\ThemeService;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +24,7 @@ class ShellPreferenceController extends Controller
             'density' => ['sometimes', 'in:comfortable,compact'],
             'sidebar_collapsed' => ['sometimes', 'boolean'],
             'last_workspace' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'default_workspace' => ['sometimes', 'nullable', 'string', 'max:50'],
             'landing_page' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
@@ -38,12 +37,13 @@ class ShellPreferenceController extends Controller
                 'density' => $prefs->density,
                 'sidebar_collapsed' => $prefs->sidebar_collapsed,
                 'last_workspace' => $prefs->last_workspace,
+                'default_workspace' => $prefs->default_workspace,
                 'landing_page' => $prefs->landing_page,
             ],
         ]);
     }
 
-    public function switchWorkspace(Request $request, TenantContext $tenant, NavigationContextManager $nav, NavigationService $navigation): JsonResponse
+    public function switchWorkspace(Request $request, TenantContext $tenant, NavigationService $navigation): JsonResponse
     {
         $organization = $tenant->get();
         abort_unless($organization, 404);
@@ -56,16 +56,15 @@ class ShellPreferenceController extends Controller
         $meta = $available->firstWhere('id', $data['workspace']);
         abort_unless($meta !== null, 403, __('Module not licensed.'));
 
-        $nav->rememberWorkspace($request->user(), $organization, $data['workspace']);
+        $navigation->rememberWorkspace($request->user(), $organization, $data['workspace']);
 
         return response()->json([
             'ok' => true,
             'workspace' => $data['workspace'],
             'href' => $meta['href'] ?? null,
             'label' => $meta['label'] ?? null,
-            'search_scope' => $meta['search_scope'] ?? $navigation->defaultSearchScopeForWorkspace($data['workspace']),
-            'quick_actions' => app(ShellQuickActionService::class)
-                ->forWorkspace($request->user(), $organization, $data['workspace']),
+            'search_scope' => $navigation->searchScope($data['workspace']),
+            'quick_actions' => $navigation->quickActions($request->user(), $organization, $data['workspace']),
         ]);
     }
 
