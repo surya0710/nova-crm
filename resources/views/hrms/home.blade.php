@@ -16,15 +16,36 @@
         </x-slot:actions>
 
         <x-slot:kpis>
-            @forelse ($kpis as $kpi)
+            @if (collect($kpis ?? [])->isNotEmpty())
+                @foreach ($kpis as $kpi)
+                    <x-ui.stat-card
+                        :label="$kpi['label']"
+                        :value="$kpi['value']"
+                        :hint="$kpi['hint'] ?? null"
+                    />
+                @endforeach
+            @elseif (auth()->user()->hasPermission('ess.access') && \Illuminate\Support\Facades\Route::has('ess.dashboard'))
                 <x-ui.stat-card
-                    :label="$kpi['label']"
-                    :value="$kpi['value']"
-                    :hint="$kpi['hint'] ?? null"
+                    :label="__('My HR')"
+                    :value="__('ESS')"
+                    :hint="__('Open your employee self-service dashboard')"
                 />
-            @empty
-                <x-ui.stat-card :label="__('HR')" :value="__('—')" :hint="__('No metrics available for your role')" />
-            @endforelse
+                <a href="{{ route('ess.attendance.index') }}" class="rounded-xl border border-line bg-surface-card p-5 shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40">
+                    <p class="text-sm font-medium text-ink-muted">{{ __('Attendance') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-ink-heading">{{ __('Check in') }}</p>
+                    <p class="mt-1 text-xs text-ink-muted">{{ __('Mark today’s attendance') }}</p>
+                </a>
+                <a href="{{ route('ess.leave.index') }}" class="rounded-xl border border-line bg-surface-card p-5 shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40">
+                    <p class="text-sm font-medium text-ink-muted">{{ __('Leave') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-ink-heading">{{ __('Apply') }}</p>
+                    <p class="mt-1 text-xs text-ink-muted">{{ __('Request time off') }}</p>
+                </a>
+                <a href="{{ route('ess.payroll.payslips') }}" class="rounded-xl border border-line bg-surface-card p-5 shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40">
+                    <p class="text-sm font-medium text-ink-muted">{{ __('Payslips') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-ink-heading">{{ __('View') }}</p>
+                    <p class="mt-1 text-xs text-ink-muted">{{ __('Download recent payslips') }}</p>
+                </a>
+            @endif
         </x-slot:kpis>
 
         <div class="space-y-6">
@@ -321,15 +342,18 @@
 
         <x-slot:aside>
             <x-workspace.attention-rail :title="__('Needs attention')">
-                @forelse ($attention as $item)
-                    <x-workspace.attention-item
-                        :href="$item['href'] ?? null"
-                        :title="$item['title']"
-                        :subtitle="$item['subtitle'] ?? null"
-                        :badge="$item['badge'] ?? null"
-                    />
-                @empty
-                @endforelse
+                @if (collect($attention ?? [])->isEmpty())
+                    {{-- Explicit empty state so the rail is not a blank card --}}
+                @else
+                    @foreach ($attention as $item)
+                        <x-workspace.attention-item
+                            :href="$item['href'] ?? null"
+                            :title="$item['title']"
+                            :subtitle="$item['subtitle'] ?? null"
+                            :badge="$item['badge'] ?? null"
+                        />
+                    @endforeach
+                @endif
             </x-workspace.attention-rail>
 
             <x-entity.section :title="__('Pinned pages')">
