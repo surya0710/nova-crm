@@ -25,6 +25,14 @@ class ShellComposer
             return;
         }
 
-        $view->with('shellNav', $this->navigation->forShell($user, $organization));
+        $shellNav = $this->navigation->forShell($user, $organization);
+        $currentWorkspace = $shellNav['currentWorkspace'] ?? null;
+        $lastWorkspace = $shellNav['preferences']?->last_workspace ?? null;
+
+        if (is_string($currentWorkspace) && $currentWorkspace !== '' && $currentWorkspace !== $lastWorkspace) {
+            $this->navigation->rememberWorkspace($user, $organization, $currentWorkspace);
+        }
+
+        $view->with('shellNav', $shellNav);
     }
 }

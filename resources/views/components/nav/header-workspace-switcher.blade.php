@@ -53,12 +53,11 @@
         return 2;
     })->values();
 
-    $hrefMap = $ordered->pluck('href', 'id')->all();
 @endphp
 
 {{--
   Workspace rows are server-rendered links (work without JS).
-  Alpine handles open/close, filter, favorites, and background workspace persistence.
+  Alpine handles open/close, filter, and favorites.
 --}}
 <div
     {{ $attributes->class(['relative shrink-0']) }}
@@ -67,7 +66,6 @@
         open: false,
         query: '',
         favorites: @js($favoriteIds->all()),
-        hrefs: @js($hrefMap),
         labels: @js($ordered->pluck('label', 'id')->all()),
         matches(id) {
             const q = this.query.trim().toLowerCase();
@@ -79,21 +77,6 @@
         },
         isFavorite(id) {
             return this.favorites.includes(id);
-        },
-        switchTo(event, id) {
-            const href = this.hrefs[id] || event?.currentTarget?.getAttribute('href');
-            if (!href || id === @js($current)) {
-                if (event) event.preventDefault();
-                this.open = false;
-                return;
-            }
-            event?.preventDefault();
-            this.open = false;
-            if (window.NovaShell) {
-                window.NovaShell.switchWorkspace(id, href);
-            } else {
-                window.location.assign(href);
-            }
         },
         async toggleFavorite(id, event) {
             event?.preventDefault();
@@ -153,7 +136,7 @@
                     <a
                         href="{{ $workspace['href'] }}"
                         class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-surface-muted {{ $isActive ? 'bg-primary-50 text-primary-700 ring-1 ring-primary-200' : 'text-ink' }}"
-                        @click="switchTo($event, @js($workspace['id']))"
+                        @click="open = false"
                         role="option"
                         @if ($isActive) aria-selected="true" @endif
                     >
