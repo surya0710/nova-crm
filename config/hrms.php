@@ -213,6 +213,11 @@ return [
         'sunday',
     ],
 
+    'attendance_calendar' => [
+        'year_range_before' => (int) env('HRMS_CALENDAR_YEAR_RANGE_BEFORE', 5),
+        'year_range_after' => (int) env('HRMS_CALENDAR_YEAR_RANGE_AFTER', 5),
+    ],
+
     'half_day_periods' => [
         'first_half' => 'First half',
         'second_half' => 'Second half',

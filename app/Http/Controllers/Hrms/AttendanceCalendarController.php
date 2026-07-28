@@ -24,12 +24,14 @@ class AttendanceCalendarController extends Controller
 
         $year = (int) $request->input('year', now()->year);
         $month = (int) $request->input('month', now()->month);
+        [$year, $month] = array_values($this->calendar->normalizeYearMonth($year, $month));
         $view = $request->input('view', 'my');
         $employeeId = $request->integer('employee_id') ?: null;
 
         $employee = $this->resolveEmployee($request, $employeeId);
         $canViewTeam = $request->user()?->hasPermission('manager.dashboard') ?? false;
         $canFilterEmployees = $request->user()?->hasPermission('attendance.view') ?? false;
+        $navigation = $this->calendar->navigationConfig();
 
         if ($view === 'team' && $canViewTeam) {
             $manager = $this->essContext->employeeFor($request->user());
@@ -47,6 +49,8 @@ class AttendanceCalendarController extends Controller
                     : collect(),
                 'canViewTeam' => $canViewTeam,
                 'canFilterEmployees' => $canFilterEmployees,
+                'navigation' => $navigation,
+                'apiUrl' => url('/api/v1/attendance/calendar'),
             ]);
         }
 
@@ -55,13 +59,15 @@ class AttendanceCalendarController extends Controller
             'calendar' => $this->calendar->monthForEmployee($employee, $year, $month),
             'year' => $year,
             'month' => $month,
-            'view' => 'my',
+            'view' => $view,
             'employee' => $employee,
             'employees' => $canFilterEmployees
                 ? Employee::query()->whereIn('status', config('hrms.clockable_employee_statuses', []))->orderBy('first_name')->get()
                 : collect(),
             'canViewTeam' => $canViewTeam,
             'canFilterEmployees' => $canFilterEmployees,
+            'navigation' => $navigation,
+            'apiUrl' => url('/api/v1/attendance/calendar'),
         ]);
     }
 

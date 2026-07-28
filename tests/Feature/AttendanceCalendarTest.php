@@ -43,7 +43,8 @@ class AttendanceCalendarTest extends TestCase
             ->assertOk()
             ->assertSee('Attendance Calendar')
             ->assertSee('Present')
-            ->assertSee('July 2026');
+            ->assertSee('Today')
+            ->assertSee('attendanceCalendar');
     }
 
     public function test_ess_attendance_index_renders_calendar(): void
@@ -54,7 +55,8 @@ class AttendanceCalendarTest extends TestCase
             ->get(route('ess.attendance.index', ['year' => 2026, 'month' => 7]))
             ->assertOk()
             ->assertSee('My Attendance')
-            ->assertSee('July 2026');
+            ->assertSee('July 2026')
+            ->assertSee('Today');
     }
 
     public function test_calendar_marks_present_holiday_weekend_and_leave(): void
@@ -99,7 +101,26 @@ class AttendanceCalendarTest extends TestCase
         $this->assertGreaterThan(0, $calendar['summary']['holiday']);
     }
 
-    public function test_calendar_api_returns_month_payload(): void
+    public function test_calendar_navigation_bounds_are_configurable(): void
+    {
+        config([
+            'hrms.attendance_calendar.year_range_before' => 5,
+            'hrms.attendance_calendar.year_range_after' => 5,
+        ]);
+
+        $service = app(AttendanceCalendarService::class);
+        $navigation = $service->navigationConfig(2026);
+
+        $this->assertSame(2021, $navigation['min_year']);
+        $this->assertSame(2031, $navigation['max_year']);
+        $this->assertCount(11, $navigation['years']);
+
+        [$year, $month] = array_values($service->normalizeYearMonth(2010, 13));
+        $this->assertSame(2021, $year);
+        $this->assertSame(12, $month);
+    }
+
+    public function test_calendar_api_includes_navigation_metadata(): void
     {
         [$organization, $user, $employee] = $this->employeeSetup();
         Sanctum::actingAs($user);
@@ -116,6 +137,7 @@ class AttendanceCalendarTest extends TestCase
                     'leave_balances',
                     'timeline',
                     'legend',
+                    'navigation' => ['min_year', 'max_year', 'years', 'today_year', 'today_month'],
                 ],
             ]);
     }

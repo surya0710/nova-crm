@@ -2,6 +2,19 @@
 
 The Attendance module opens on a **monthly calendar** instead of a table. All day status, leave, holiday, and weekend calculations reuse existing services — no duplicate business logic.
 
+## Navigation
+
+Month and year changes load asynchronously via `GET /api/v1/attendance/calendar` without a full page reload.
+
+Controls:
+
+- Previous / Next month
+- Month and year dropdowns
+- **Today** returns to the current month
+- Year range defaults to current year ±5 (`HRMS_CALENDAR_YEAR_RANGE_BEFORE` / `HRMS_CALENDAR_YEAR_RANGE_AFTER`)
+
+Filters (employee, team view) are preserved in the URL and across async reloads.
+
 ## Routes
 
 | Route | Audience | Description |

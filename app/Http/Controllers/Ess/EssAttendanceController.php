@@ -30,14 +30,15 @@ class EssAttendanceController extends Controller
 
         $year = (int) $request->input('year', now()->year);
         $month = (int) $request->input('month', now()->month);
-
-        $calendarService = $this->calendarService;
+        [$year, $month] = array_values($this->calendarService->normalizeYearMonth($year, $month));
 
         return view('ess.attendance.calendar', [
             'employee' => $employee,
-            'calendar' => $calendarService->monthForEmployee($employee, $year, $month),
+            'calendar' => $this->calendarService->monthForEmployee($employee, $year, $month),
             'year' => $year,
             'month' => $month,
+            'navigation' => $this->calendarService->navigationConfig(),
+            'apiUrl' => url('/api/v1/attendance/calendar'),
             'todayRecord' => AttendanceRecord::query()
                 ->where('employee_id', $employee->id)
                 ->whereDate('attendance_date', now())

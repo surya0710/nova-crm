@@ -463,4 +463,43 @@ class AttendanceCalendarService
             'end_date' => $application->end_date->toDateString(),
         ];
     }
+
+    /**
+     * @return array{min_year: int, max_year: int, years: list<int>, today_year: int, today_month: int}
+     */
+    public function navigationConfig(?int $referenceYear = null): array
+    {
+        $referenceYear ??= (int) now()->year;
+        $before = (int) config('hrms.attendance_calendar.year_range_before', 5);
+        $after = (int) config('hrms.attendance_calendar.year_range_after', 5);
+        $minYear = $referenceYear - $before;
+        $maxYear = $referenceYear + $after;
+
+        return [
+            'min_year' => $minYear,
+            'max_year' => $maxYear,
+            'years' => range($minYear, $maxYear),
+            'today_year' => (int) now()->year,
+            'today_month' => (int) now()->month,
+        ];
+    }
+
+    /**
+     * @return array{year: int, month: int}
+     */
+    public function normalizeYearMonth(int $year, int $month): array
+    {
+        $month = max(1, min(12, $month));
+        $bounds = $this->navigationConfig();
+        $year = max($bounds['min_year'], min($bounds['max_year'], $year));
+
+        return ['year' => $year, 'month' => $month];
+    }
+
+    public function appendNavigation(array $payload): array
+    {
+        $payload['navigation'] = $this->navigationConfig();
+
+        return $payload;
+    }
 }

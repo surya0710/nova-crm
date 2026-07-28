@@ -26,6 +26,7 @@ class AttendanceCalendarApiController extends Controller
 
         $year = (int) $request->input('year', now()->year);
         $month = (int) $request->input('month', now()->month);
+        [$year, $month] = array_values($this->calendar->normalizeYearMonth($year, $month));
         $employeeId = $request->integer('employee_id') ?: null;
 
         if ($employeeId !== null && $request->user()?->hasPermission('attendance.view')) {
@@ -42,10 +43,14 @@ class AttendanceCalendarApiController extends Controller
             $manager = $this->essContext->requireEmployee($request->user());
 
             return response()->json([
-                'data' => $this->calendar->teamMonthForManager($manager, $year, $month),
+                'data' => $this->calendar->appendNavigation(
+                    $this->calendar->teamMonthForManager($manager, $year, $month)
+                ),
             ]);
         }
 
-        return response()->json(['data' => $data]);
+        return response()->json([
+            'data' => $this->calendar->appendNavigation($data),
+        ]);
     }
 }
