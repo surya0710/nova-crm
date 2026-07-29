@@ -35,9 +35,11 @@ return [
     'number_padding' => 4,
 
     'default_statuses' => [
+        ['name' => 'Backlog', 'slug' => 'backlog', 'color' => '#64748b', 'is_default' => false, 'is_closed' => false, 'sort_order' => 5],
         ['name' => 'To Do', 'slug' => 'to-do', 'color' => '#94a3b8', 'is_default' => true, 'is_closed' => false, 'sort_order' => 10],
         ['name' => 'In Progress', 'slug' => 'in-progress', 'color' => '#0ea5e9', 'is_default' => false, 'is_closed' => false, 'sort_order' => 20],
         ['name' => 'Review', 'slug' => 'review', 'color' => '#a855f7', 'is_default' => false, 'is_closed' => false, 'sort_order' => 30],
+        ['name' => 'Testing', 'slug' => 'testing', 'color' => '#f97316', 'is_default' => false, 'is_closed' => false, 'sort_order' => 35],
         ['name' => 'Blocked', 'slug' => 'blocked', 'color' => '#f59e0b', 'is_default' => false, 'is_closed' => false, 'sort_order' => 40],
         ['name' => 'Completed', 'slug' => 'completed', 'color' => '#22c55e', 'is_default' => false, 'is_closed' => true, 'sort_order' => 50],
         ['name' => 'Cancelled', 'slug' => 'cancelled', 'color' => '#ef4444', 'is_default' => false, 'is_closed' => true, 'sort_order' => 60],
@@ -57,9 +59,21 @@ return [
         'start_to_finish' => 'Start to Finish',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dependency blocking (Release 1.2.2)
+    |--------------------------------------------------------------------------
+    */
+    'enforce_dependency_blocking' => env('TASKS_ENFORCE_DEPENDENCY_BLOCKING', true),
+
+    'blocking_dependency_types' => [
+        'finish_to_start',
+    ],
+
     'time_log_sources' => [
         'manual' => 'Manual',
         'timer' => 'Timer',
+        'paused' => 'Paused',
         'import' => 'Import',
     ],
 
@@ -81,9 +95,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'status_slug_legacy_map' => [
+        'backlog' => 'pending',
         'to-do' => 'pending',
         'in-progress' => 'in_progress',
         'review' => 'in_progress',
+        'testing' => 'in_progress',
         'blocked' => 'in_progress',
         'completed' => 'completed',
         'cancelled' => 'cancelled',
@@ -99,5 +115,61 @@ return [
         'medium' => 'medium',
         'high' => 'high',
         'critical' => 'high',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sprint foundation (Release 1.2.3)
+    |--------------------------------------------------------------------------
+    */
+    'sprint_statuses' => [
+        'planned' => 'Planned',
+        'active' => 'Active',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enterprise Kanban board (Release 1.2.3)
+    |--------------------------------------------------------------------------
+    */
+    'board' => [
+        'columns' => [
+            'backlog' => [
+                'label' => 'Backlog',
+                'slugs' => ['backlog'],
+            ],
+            'todo' => [
+                'label' => 'Todo',
+                'slugs' => ['to-do'],
+            ],
+            'in_progress' => [
+                'label' => 'In Progress',
+                'slugs' => ['in-progress'],
+            ],
+            'review' => [
+                'label' => 'Review',
+                'slugs' => ['review'],
+            ],
+            'testing' => [
+                'label' => 'Testing',
+                'slugs' => ['testing'],
+            ],
+            'done' => [
+                'label' => 'Done',
+                'slugs' => ['completed'],
+            ],
+        ],
+        'swimlanes' => [
+            'none' => 'None',
+            'assignee' => 'Assignee',
+            'priority' => 'Priority',
+            'milestone' => 'Milestone',
+            'sprint' => 'Sprint',
+            'status' => 'Status',
+        ],
+        'wip_notify' => true,
+        'hide_cancelled_column' => true,
     ],
 ];

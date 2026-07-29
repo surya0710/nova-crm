@@ -43,6 +43,7 @@ class ProjectProgressDashboardController extends Controller
         $timeline = $this->timelineService->build($project);
         $overdueTasks = $this->healthService->detectOverdueTasks($project);
         $delayedMilestones = $this->healthService->detectDelayedMilestones($project);
+        $teamCapacity = $this->healthService->teamCapacityPercentage($project);
 
         return view('projects.progress.dashboard', [
             'project' => $project,
@@ -52,6 +53,7 @@ class ProjectProgressDashboardController extends Controller
             'timeline' => $timeline,
             'overdueTasks' => $overdueTasks,
             'delayedMilestones' => $delayedMilestones,
+            'teamCapacity' => $teamCapacity,
             'healthStatuses' => config('projects.health_statuses', []),
         ]);
     }
@@ -68,6 +70,7 @@ class ProjectProgressDashboardController extends Controller
             'timeline' => $this->timelineService->build($project),
             'overdueTasks' => collect(),
             'delayedMilestones' => collect(),
+            'teamCapacity' => $this->healthService->teamCapacityPercentage($project),
             'healthStatuses' => config('projects.health_statuses', []),
             'statisticsOnly' => true,
         ]);

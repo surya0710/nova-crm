@@ -21,7 +21,7 @@
             ]" />
         </x-slot:breadcrumbs>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         @if ($snapshot)
             <div class="lg:col-span-2 rounded-xl bg-white border border-slate-200 shadow-sm p-5">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Health') }}</p>
@@ -39,8 +39,24 @@
             <p class="mt-1 text-2xl font-bold text-slate-900">{{ $statistics['tasks']['open'] ?? 0 }}</p>
         </div>
         <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Overdue Tasks') }}</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Completed Tasks') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ $statistics['tasks']['closed'] ?? 0 }}</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Delayed Tasks') }}</p>
             <p class="mt-1 text-2xl font-bold {{ ($statistics['tasks']['overdue'] ?? 0) > 0 ? 'text-red-600' : 'text-slate-900' }}">{{ $statistics['tasks']['overdue'] ?? 0 }}</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Hours Logged') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format((float) ($statistics['hours']['actual'] ?? 0), 1) }}</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Remaining Hours') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format((float) ($statistics['hours']['remaining'] ?? 0), 1) }}</p>
+        </div>
+        <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Team Capacity') }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format((float) ($teamCapacity ?? ($snapshot?->metadata['metrics']['team_capacity_percentage'] ?? 0)), 0) }}%</p>
         </div>
     </div>
 

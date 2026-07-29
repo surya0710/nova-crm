@@ -42,6 +42,24 @@ class TaskTimeLogController extends Controller
         return back()->with('status', 'task-timer-started');
     }
 
+    public function pause(Task $task, Request $request): RedirectResponse
+    {
+        $this->authorize('timeLog', $task);
+
+        $this->timeTracking->pauseTimer($task, $request->user());
+
+        return back()->with('status', 'task-timer-paused');
+    }
+
+    public function resume(Task $task, Request $request): RedirectResponse
+    {
+        $this->authorize('timeLog', $task);
+
+        $this->timeTracking->resumeTimer($task, $request->user());
+
+        return back()->with('status', 'task-timer-resumed');
+    }
+
     public function stop(Task $task, Request $request): RedirectResponse
     {
         $this->authorize('timeLog', $task);

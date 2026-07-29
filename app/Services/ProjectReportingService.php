@@ -88,9 +88,10 @@ class ProjectReportingService
     ): array {
         return match ($reportType) {
             'summary' => $this->buildSummaryPayload($project, $organization),
-            'task_progress' => $this->buildTaskProgressPayload($project, $organization, $filters),
-            'resource_utilization' => $this->buildResourceUtilizationPayload($project, $organization, $filters),
-            'milestone_status' => $this->buildMilestoneStatusPayload($project, $organization),
+            'task_progress', 'project_progress' => $this->buildTaskProgressPayload($project, $organization, $filters),
+            'resource_utilization', 'resource_allocation' => $this->buildResourceUtilizationPayload($project, $organization, $filters),
+            'workload' => $this->buildWorkloadPayload($project, $organization, $filters),
+            'milestone_status', 'milestone_report' => $this->buildMilestoneStatusPayload($project, $organization),
             'time_tracking' => $this->buildTimeTrackingPayload($project, $organization, $filters),
             'timeline' => $this->buildTimelinePayload($project, $organization),
             'executive' => $this->buildExecutivePayload($project, $organization),
@@ -180,6 +181,50 @@ class ProjectReportingService
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    protected function buildWorkloadPayload(?Project $project, Organization $organization, array $filters): array
+    {
+        $from = ! empty($filters['from'])
+            ? \Carbon\Carbon::parse($filters['from'])->startOfDay()
+            : now()->startOfWeek();
+        $to = ! empty($filters['to'])
+            ? \Carbon\Carbon::parse($filters['to'])->startOfDay()
+            : now()->endOfWeek()->startOfDay();
+
+        $rows = app(WorkloadService::class)->allocationDashboard($organization, $from, $to, [
+            'project_id' => $project?->id ?? ($filters['project_id'] ?? null),
+            'department_id' => $filters['department_id'] ?? null,
+            'branch_id' => $filters['branch_id'] ?? null,
+        ]);
+
+        return [
+            'title' => __('Workload Report'),
+            'headers' => [
+                __('Employee'),
+                __('Projects'),
+                __('Tasks'),
+                __('Estimated Hours'),
+                __('Logged Hours'),
+                __('Remaining Hours'),
+                __('Capacity %'),
+                __('Status'),
+            ],
+            'rows' => collect($rows)->map(fn (array $row) => [
+                $row['employee_name'],
+                $row['active_projects'],
+                $row['active_tasks'],
+                $row['estimated_hours'],
+                $row['logged_hours'],
+                $row['remaining_hours'],
+                $row['capacity_percentage'],
+                $row['display_status'],
+            ])->all(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function buildMilestoneStatusPayload(?Project $project, Organization $organization): array
@@ -194,14 +239,23 @@ class ProjectReportingService
 
         return [
             'title' => __('Milestone Status Report'),
-            'headers' => [__('Milestone'), __('Planned %'), __('Actual %'), __('Delay Days'), __('Remaining Tasks'), __('Delayed')],
+            'headers' => [
+                __('Milestone'),
+                __('Progress %'),
+                __('Tasks'),
+                __('Completed'),
+                __('Remaining'),
+                __('Target Date'),
+                __('Overdue'),
+            ],
             'rows' => $rows->map(fn (array $row) => [
                 $row['name'],
-                $row['planned_progress'],
-                $row['actual_progress'],
-                $row['delay_days'],
+                $row['progress_percentage'] ?? $row['actual_progress'],
+                $row['tasks_total'] ?? 0,
+                $row['tasks_completed'] ?? 0,
                 $row['remaining_tasks'],
-                $row['is_delayed'] ? __('Yes') : __('No'),
+                $row['target_date'] ?? '',
+                ($row['is_overdue'] ?? $row['is_delayed']) ? __('Yes') : __('No'),
             ])->all(),
         ];
     }

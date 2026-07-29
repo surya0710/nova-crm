@@ -14,8 +14,11 @@ use App\Models\Designation;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\Bulk\BulkOperationsService;
+use App\Services\Hrms\AttendanceCalendarService;
 use App\Services\Hrms\EmployeeProvisioningService;
+use App\Services\Hrms\EmployeeProfileService;
 use App\Services\Hrms\EmployeeService;
+use App\Services\Hrms\LeaveService;
 use App\Services\Identity\BulkEmployeeUserProvisioningService;
 use App\Services\Identity\UserAccountService;
 use App\Services\Identity\UserInvitationService;
@@ -33,6 +36,9 @@ class EmployeeController extends Controller
         protected UserAccountService $accounts,
         protected BulkEmployeeUserProvisioningService $bulkProvisioning,
         protected BulkOperationsService $bulkOperations,
+        protected AttendanceCalendarService $attendanceCalendar,
+        protected LeaveService $leaveService,
+        protected EmployeeProfileService $profileService,
     ) {
         $this->authorizeResource(Employee::class, 'employee');
     }
@@ -102,13 +108,16 @@ class EmployeeController extends Controller
             'branch',
             'department',
             'designation',
-            'reportingManager',
+            'reportingManager.designation',
             'user.latestInvitation',
             'emergencyContacts',
             'bankAccounts',
             'identities',
             'educations',
             'experiences',
+            'skills',
+            'certifications',
+            'directReports.designation',
             'documents' => fn ($query) => $query->latest()->limit(5),
             'assets' => fn ($query) => $query->latest()->limit(5),
             'leaveApplications' => fn ($query) => $query->with('leaveType')->latest()->limit(5),
@@ -123,6 +132,11 @@ class EmployeeController extends Controller
             ? $this->invitations->invitationStatus($employee->user, $organization)
             : null;
 
+        $profile = $this->profileService->profileDashboard($employee);
+        $attendanceSummary = $profile['attendance']['raw'];
+        $leaveBalances = $profile['leave']['balances'];
+        $currentProjects = $profile['work']['projects'];
+
         return view('hrms.employees.show', [
             'employee' => $employee,
             'organizationUsers' => $organization?->users()->orderBy('users.name')->get() ?? collect(),
@@ -130,13 +144,30 @@ class EmployeeController extends Controller
             'assetCount' => $employee->assets()->count(),
             'loginActivity' => $loginActivity,
             'invitationStatus' => $invitationStatus,
+            'attendanceSummary' => $attendanceSummary,
+            'attendancePercentage' => $profile['attendance']['attendance_percentage'],
+            'leaveBalances' => $leaveBalances,
+            'leaveSummary' => $profile['leave'],
+            'currentProjects' => $currentProjects,
+            'workSummary' => $profile['work'],
+            'reportingStructure' => $profile['reporting'],
+            'profileCompletion' => $profile['completion'],
+            'upcomingHolidays' => $profile['upcoming_holidays'],
         ]);
     }
 
     public function edit(Employee $employee): View
     {
         $organization = $this->tenantContext->get();
-        $employee->load(['emergencyContacts', 'bankAccounts', 'identities', 'educations', 'experiences']);
+        $employee->load([
+            'emergencyContacts',
+            'bankAccounts',
+            'identities',
+            'educations',
+            'experiences',
+            'skills',
+            'certifications',
+        ]);
 
         return view('hrms.employees.edit', [
             'employee' => $employee,

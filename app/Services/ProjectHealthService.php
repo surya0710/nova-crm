@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\ProjectCompleted;
 use App\Events\ProjectDelayed;
 use App\Events\ProjectHealthChanged;
+use App\Models\Employee;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectHealthSnapshot;
@@ -69,6 +70,7 @@ class ProjectHealthService
         $scheduleVariance = $this->scheduleVariance($project, $completion);
         $budgetVariance = $this->budgetVariance($project);
         $estimatedCompletion = $this->predictCompletionDate($project);
+        $teamCapacity = $this->teamCapacityPercentage($project);
 
         $metrics = [
             'task_completion_percentage' => $taskPct,
@@ -78,6 +80,7 @@ class ProjectHealthService
             'delayed_milestones_count' => $delayedMilestones->count(),
             'schedule_variance_days' => $scheduleVariance,
             'budget_variance' => $budgetVariance,
+            'team_capacity_percentage' => $teamCapacity,
         ];
 
         $healthStatus = $this->determineHealthStatus($project, $metrics);
@@ -109,6 +112,7 @@ class ProjectHealthService
 
             if ($healthStatus === 'delayed' && $previousStatus !== 'delayed') {
                 $this->dispatchProjectDelayed($project, $snapshot, $actor);
+                $this->notifyCriticalHealth($project, $snapshot, $actor);
             }
         } elseif ($previousStatus === null && in_array($healthStatus, ['completed', 'delayed'], true)) {
             if ($healthStatus === 'completed') {
@@ -117,6 +121,7 @@ class ProjectHealthService
 
             if ($healthStatus === 'delayed') {
                 $this->dispatchProjectDelayed($project, $snapshot, $actor);
+                $this->notifyCriticalHealth($project, $snapshot, $actor);
             }
         }
 
@@ -186,20 +191,85 @@ class ProjectHealthService
         $overdueTasks = (int) ($metrics['overdue_tasks_count'] ?? 0);
         $missedMilestones = (int) ($metrics['delayed_milestones_count'] ?? 0);
         $scheduleVariance = (float) ($metrics['schedule_variance_days'] ?? 0);
+        $teamCapacity = (float) ($metrics['team_capacity_percentage'] ?? 0);
 
         if ($overdueTasks >= (int) ($thresholds['overdue_tasks_delayed'] ?? 3)
             || $missedMilestones >= (int) ($thresholds['missed_milestones_delayed'] ?? 2)
-            || $scheduleVariance >= (float) ($thresholds['schedule_variance_delayed_days'] ?? 7)) {
+            || $scheduleVariance >= (float) ($thresholds['schedule_variance_delayed_days'] ?? 7)
+            || $teamCapacity > (float) ($thresholds['team_capacity_critical'] ?? 125)) {
             return 'delayed';
         }
 
         if ($overdueTasks >= (int) ($thresholds['overdue_tasks_at_risk'] ?? 1)
             || $missedMilestones >= (int) ($thresholds['missed_milestones_at_risk'] ?? 1)
-            || $scheduleVariance >= (float) ($thresholds['schedule_variance_at_risk_days'] ?? 3)) {
+            || $scheduleVariance >= (float) ($thresholds['schedule_variance_at_risk_days'] ?? 3)
+            || $teamCapacity > (float) ($thresholds['team_capacity_at_risk'] ?? 100)) {
             return 'at_risk';
         }
 
         return 'on_track';
+    }
+
+    /**
+     * Average utilization of active project members (0 when no linked employees).
+     */
+    public function teamCapacityPercentage(Project $project): float
+    {
+        $userIds = $project->members()
+            ->where('is_active', true)
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return 0.0;
+        }
+
+        $employees = Employee::query()
+            ->where('organization_id', $project->organization_id)
+            ->whereIn('user_id', $userIds)
+            ->get();
+
+        if ($employees->isEmpty()) {
+            return 0.0;
+        }
+
+        $from = now()->startOfWeek();
+        $to = now()->endOfWeek();
+        $workload = app(WorkloadService::class);
+        $utilizations = [];
+
+        foreach ($employees as $employee) {
+            $utilizations[] = $workload->calculateForEmployee($employee, $from, $to)['utilization'];
+        }
+
+        if ($utilizations === []) {
+            return 0.0;
+        }
+
+        return round(array_sum($utilizations) / count($utilizations), 2);
+    }
+
+    /**
+     * @return array{label: string, indicator: string}
+     */
+    public function displayForStatus(string $status): array
+    {
+        $display = config('projects.health_display.'.$status);
+
+        if (is_array($display)) {
+            return [
+                'label' => __($display['label'] ?? $status),
+                'indicator' => $display['indicator'] ?? 'slate',
+            ];
+        }
+
+        return [
+            'label' => config('projects.health_statuses.'.$status, ucfirst(str_replace('_', ' ', $status))),
+            'indicator' => 'slate',
+        ];
     }
 
     public function predictCompletionDate(Project $project): ?Carbon
@@ -398,6 +468,21 @@ class ProjectHealthService
             $actor,
             __('Project delayed'),
             __(':project has been marked as delayed.', ['project' => $project->name]),
+        );
+    }
+
+    protected function notifyCriticalHealth(Project $project, ProjectHealthSnapshot $snapshot, ?User $actor): void
+    {
+        $display = $this->displayForStatus($snapshot->health_status);
+
+        $this->notifyStakeholders(
+            $project,
+            $actor,
+            __('Project health critical'),
+            __(':project health is now :status.', [
+                'project' => $project->name,
+                'status' => $display['label'],
+            ]),
         );
     }
 

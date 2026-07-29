@@ -17,6 +17,7 @@ class TaskAttachmentController extends Controller
 
     public function index(Task $task): View
     {
+        abort_unless(config('attachments.task_attachments_enabled', true), 404);
         $this->authorize('view', $task);
 
         return view('tasks.attachments.index', [

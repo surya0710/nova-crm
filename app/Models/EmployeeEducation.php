@@ -19,16 +19,27 @@ class EmployeeEducation extends Model
         'institution',
         'degree',
         'field_of_study',
+        'start_date',
+        'end_date',
         'start_year',
         'end_year',
+        'grade',
+        'description',
     ];
 
     protected function casts(): array
     {
         return [
+            'start_date' => 'date',
+            'end_date' => 'date',
             'start_year' => 'integer',
             'end_year' => 'integer',
         ];
+    }
+
+    public function getSpecializationAttribute(): ?string
+    {
+        return $this->field_of_study;
     }
 
     public function employee(): BelongsTo

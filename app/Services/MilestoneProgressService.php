@@ -30,9 +30,14 @@ class MilestoneProgressService
      * @return array{
      *     planned_progress: int,
      *     actual_progress: int,
+     *     progress_percentage: int,
      *     delay_days: int,
+     *     tasks_total: int,
+     *     tasks_completed: int,
      *     remaining_tasks: int,
-     *     is_delayed: bool
+     *     target_date: string|null,
+     *     is_delayed: bool,
+     *     is_overdue: bool
      * }
      */
     public function forMilestone(ProjectMilestone $milestone): array
@@ -42,7 +47,7 @@ class MilestoneProgressService
 
         $planned = $project ? $this->plannedProgress($project, $milestone) : 0;
         $actual = $this->actualProgress($milestone);
-        $remainingTasks = $this->remainingTasks($milestone)->count();
+        $taskStats = $this->taskCounts($milestone);
         $isDelayed = $this->isDelayed($milestone);
         $delayDays = $this->delayDays($milestone);
 
@@ -53,9 +58,14 @@ class MilestoneProgressService
         return [
             'planned_progress' => $planned,
             'actual_progress' => $actual,
+            'progress_percentage' => $actual,
             'delay_days' => $delayDays,
-            'remaining_tasks' => $remainingTasks,
+            'tasks_total' => $taskStats['total'],
+            'tasks_completed' => $taskStats['completed'],
+            'remaining_tasks' => $taskStats['remaining'],
+            'target_date' => $milestone->due_date?->toDateString(),
             'is_delayed' => $isDelayed,
+            'is_overdue' => $isDelayed,
         ];
     }
 
@@ -131,6 +141,22 @@ class MilestoneProgressService
                 $inner->whereDate('created_at', '<=', $milestone->due_date);
             }
         });
+    }
+
+    /**
+     * @return array{total: int, completed: int, remaining: int}
+     */
+    protected function taskCounts(ProjectMilestone $milestone): array
+    {
+        $tasks = $this->milestoneTasks($milestone)->with('taskStatus')->get();
+        $completed = $tasks->filter(fn (Task $task) => $task->isClosed())->count();
+        $remaining = $tasks->filter(fn (Task $task) => $task->isOpen())->count();
+
+        return [
+            'total' => $tasks->count(),
+            'completed' => $completed,
+            'remaining' => $remaining,
+        ];
     }
 
     /**

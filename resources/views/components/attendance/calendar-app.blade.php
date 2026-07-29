@@ -6,6 +6,8 @@
     'view' => 'my',
     'employeeId' => null,
     'employees' => null,
+    'departments' => null,
+    'departmentId' => null,
     'canViewTeam' => false,
     'canFilterEmployees' => false,
     'navigation' => [],
@@ -26,6 +28,16 @@
         ['key' => 'half_day', 'label' => __('Half Day')],
     ];
     $weekdays = [__('Sun'), __('Mon'), __('Tue'), __('Wed'), __('Thu'), __('Fri'), __('Sat')];
+    $employeeOptions = ($employees ?? collect())->map(fn ($emp) => [
+        'id' => $emp->id,
+        'name' => $emp->full_name,
+        'department_id' => $emp->department_id,
+    ])->values()->all();
+    $departmentOptions = ($departments ?? collect())->map(fn ($dept) => [
+        'id' => $dept->id,
+        'name' => $dept->name,
+    ])->values()->all();
+    $showEmployeeFilter = ($canFilterEmployees || $canViewTeam) && count($employeeOptions) > 0;
 @endphp
 
 <div
@@ -36,78 +48,48 @@
         mode: @js($mode),
         view: @js($view),
         employeeId: @js($employeeId),
+        departmentId: @js($departmentId),
         calendar: @js($calendar),
         navigation: @js($navigation),
         monthNames: @js($monthNames),
+        allEmployees: @js($employeeOptions),
+        departments: @js($departmentOptions),
+        canFilterEmployees: @js($canFilterEmployees),
     })"
     x-init="init()"
     class="relative"
 >
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div class="flex flex-wrap items-end gap-2">
-            <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
-                @click="previousMonth()"
-                x-bind:disabled="!canGoPrevious"
-            >
-                <span aria-hidden="true">‹</span>
-            </button>
-
-            <x-forms.field :label="__('Month')" class="mb-0 min-w-[9rem]">
-                <select
-                    x-model.number="month"
-                    @change="loadCalendar()"
-                    class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                >
-                    <template x-for="(label, value) in monthNames" :key="value">
-                        <option :value="Number(value)" x-text="label"></option>
-                    </template>
-                </select>
-            </x-forms.field>
-
-            <x-forms.field :label="__('Year')" class="mb-0 min-w-[7rem]">
-                <select
-                    x-model.number="year"
-                    @change="loadCalendar()"
-                    class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                >
-                    <template x-for="y in years" :key="y">
-                        <option :value="y" x-text="y"></option>
-                    </template>
-                </select>
-            </x-forms.field>
-
-            <x-ui.button type="button" variant="secondary" size="sm" @click="goToday()">{{ __('Today') }}</x-ui.button>
-
-            <button
-                type="button"
-                class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
-                @click="nextMonth()"
-                x-bind:disabled="!canGoNext"
-            >
-                <span aria-hidden="true">›</span>
-            </button>
-        </div>
-
-        <p class="text-sm font-medium text-ink-heading" x-text="calendar.month_label || ''"></p>
-    </div>
-
-    @if (($canFilterEmployees && ($employees?->isNotEmpty() ?? false)) || $canViewTeam)
+    @if ($canFilterEmployees || $canViewTeam || $showEmployeeFilter)
         <div class="mb-6 flex flex-wrap items-end gap-3">
-            @if ($canFilterEmployees && ($employees?->isNotEmpty() ?? false))
+            @if ($canFilterEmployees && count($departmentOptions) > 0)
+                <x-forms.field :label="__('Department')" class="mb-0 min-w-[12rem]">
+                    <select
+                        x-model="departmentId"
+                        @change="onDepartmentChange()"
+                        class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    >
+                        <option value="">{{ __('All departments') }}</option>
+                        <template x-for="dept in departments" :key="dept.id">
+                            <option :value="String(dept.id)" x-text="dept.name"></option>
+                        </template>
+                    </select>
+                </x-forms.field>
+            @endif
+
+            @if ($showEmployeeFilter)
                 <x-forms.field :label="__('Employee')" class="mb-0 min-w-[12rem]">
                     <select
                         x-model.number="employeeId"
                         @change="onFilterChange()"
                         class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
                     >
-                        @foreach ($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->full_name }}</option>
-                        @endforeach
+                        <template x-for="emp in filteredEmployees" :key="emp.id">
+                            <option :value="emp.id" x-text="emp.name"></option>
+                        </template>
                     </select>
                 </x-forms.field>
             @endif
+
             @if ($canViewTeam)
                 <x-forms.field :label="__('View')" class="mb-0 min-w-[10rem]">
                     <select
@@ -115,7 +97,7 @@
                         @change="onFilterChange()"
                         class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
                     >
-                        <option value="my">{{ __('My Calendar') }}</option>
+                        <option value="my">{{ __('Employee Calendar') }}</option>
                         <option value="team">{{ __('Team Calendar') }}</option>
                     </select>
                 </x-forms.field>
@@ -129,37 +111,89 @@
 
     <template x-if="mode === 'team'">
         <x-ui.card class="mb-6">
-            <x-entity.section :title="__('Team Calendar')">
-                <div class="space-y-4">
-                    <template x-for="member in (calendar.members || [])" :key="member.employee.id">
-                        <div class="rounded-lg border border-line p-4">
-                            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                    <p class="font-medium text-ink-heading" x-text="member.employee.name"></p>
-                                    <p class="text-xs text-ink-muted" x-text="member.employee.code || ''"></p>
-                                </div>
-                                <button
-                                    type="button"
-                                    class="text-sm font-medium text-primary-600 hover:text-primary-700"
-                                    @click="viewMember(member.employee.id)"
-                                >{{ __('View Calendar') }}</button>
-                            </div>
-                            <div class="grid grid-cols-7 gap-1">
-                                <template x-for="day in member.days" :key="day.date">
-                                    <span
-                                        class="h-2 rounded-full"
-                                        :class="dotColor(day.visual?.color)"
-                                        :title="`${day.date} · ${day.visual?.label || ''}`"
-                                    ></span>
-                                </template>
-                            </div>
-                        </div>
-                    </template>
-                    <template x-if="!(calendar.members || []).length">
-                        <x-ui.empty-state-preset variant="attendance" :title="__('No team members found.')" />
-                    </template>
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+                <div>
+                    <p class="font-medium text-ink-heading">{{ __('Team Calendar') }}</p>
+                    <p class="text-sm text-ink-muted" x-text="calendar.month_label || ''"></p>
                 </div>
-            </x-entity.section>
+                <div class="flex flex-wrap items-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
+                        @click="previousMonth()"
+                        x-bind:disabled="!canGoPrevious"
+                        aria-label="{{ __('Previous month') }}"
+                    >
+                        <span aria-hidden="true">‹</span>
+                    </button>
+
+                    <x-forms.field :label="__('Month')" class="mb-0 min-w-[9rem]">
+                        <select
+                            x-model.number="month"
+                            @change="loadCalendar()"
+                            class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        >
+                            <template x-for="(label, value) in monthNames" :key="value">
+                                <option :value="Number(value)" x-text="label"></option>
+                            </template>
+                        </select>
+                    </x-forms.field>
+
+                    <x-forms.field :label="__('Year')" class="mb-0 min-w-[7rem]">
+                        <select
+                            x-model.number="year"
+                            @change="loadCalendar()"
+                            class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        >
+                            <template x-for="y in years" :key="y">
+                                <option :value="y" x-text="y"></option>
+                            </template>
+                        </select>
+                    </x-forms.field>
+
+                    <x-ui.button type="button" variant="secondary" size="sm" @click="goToday()">{{ __('Today') }}</x-ui.button>
+
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
+                        @click="nextMonth()"
+                        x-bind:disabled="!canGoNext"
+                        aria-label="{{ __('Next month') }}"
+                    >
+                        <span aria-hidden="true">›</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="member in (calendar.members || [])" :key="member.employee.id">
+                    <div class="rounded-lg border border-line p-4">
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="font-medium text-ink-heading" x-text="member.employee.name"></p>
+                                <p class="text-xs text-ink-muted" x-text="member.employee.code || ''"></p>
+                            </div>
+                            <button
+                                type="button"
+                                class="text-sm font-medium text-primary-600 hover:text-primary-700"
+                                @click="viewMember(member.employee.id)"
+                            >{{ __('View Calendar') }}</button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1">
+                            <template x-for="day in member.days" :key="day.date">
+                                <span
+                                    class="h-2 rounded-full"
+                                    :class="dotColor(day.visual?.color)"
+                                    :title="`${day.date} · ${day.visual?.label || ''}`"
+                                ></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!(calendar.members || []).length">
+                    <x-ui.empty-state-preset variant="attendance" :title="__('No team members found.')" />
+                </template>
+            </div>
         </x-ui.card>
     </template>
 
@@ -177,9 +211,59 @@
             <div class="grid gap-6 lg:grid-cols-3">
                 <div class="lg:col-span-2">
                     <x-ui.card>
-                        <div class="mb-4">
-                            <p class="font-medium text-ink-heading" x-text="calendar.employee?.name || ''"></p>
-                            <p class="text-sm text-ink-muted" x-text="calendar.month_label || ''"></p>
+                        <div class="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+                            <div>
+                                <p class="font-medium text-ink-heading" x-text="calendar.employee?.name || ''"></p>
+                                <p class="text-sm text-ink-muted" x-text="calendar.month_label || ''"></p>
+                            </div>
+
+                            <div class="flex flex-wrap items-end gap-2">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
+                                    @click="previousMonth()"
+                                    x-bind:disabled="!canGoPrevious"
+                                    aria-label="{{ __('Previous month') }}"
+                                >
+                                    <span aria-hidden="true">‹</span>
+                                </button>
+
+                                <x-forms.field :label="__('Month')" class="mb-0 min-w-[9rem]">
+                                    <select
+                                        x-model.number="month"
+                                        @change="loadCalendar()"
+                                        class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    >
+                                        <template x-for="(label, value) in monthNames" :key="value">
+                                            <option :value="Number(value)" x-text="label"></option>
+                                        </template>
+                                    </select>
+                                </x-forms.field>
+
+                                <x-forms.field :label="__('Year')" class="mb-0 min-w-[7rem]">
+                                    <select
+                                        x-model.number="year"
+                                        @change="loadCalendar()"
+                                        class="block w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    >
+                                        <template x-for="y in years" :key="y">
+                                            <option :value="y" x-text="y"></option>
+                                        </template>
+                                    </select>
+                                </x-forms.field>
+
+                                <x-ui.button type="button" variant="secondary" size="sm" @click="goToday()">{{ __('Today') }}</x-ui.button>
+
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-md border border-line bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-heading hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50"
+                                    @click="nextMonth()"
+                                    x-bind:disabled="!canGoNext"
+                                    aria-label="{{ __('Next month') }}"
+                                >
+                                    <span aria-hidden="true">›</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-medium text-ink-muted">
@@ -286,24 +370,24 @@
                         <p class="text-blue-700" x-show="selectedDay.leave.reason" x-text="selectedDay.leave.reason"></p>
                     </div>
                 </template>
-                <template x-if="selectedDay.attendance">
+                <template x-if="selectedDay.attendance || selectedDay.shift">
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <p class="text-xs text-ink-muted">{{ __('Check In') }}</p>
-                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance.clock_in || '—'"></p>
+                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance?.clock_in || '—'"></p>
                             </div>
                             <div>
                                 <p class="text-xs text-ink-muted">{{ __('Check Out') }}</p>
-                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance.clock_out || '—'"></p>
+                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance?.clock_out || '—'"></p>
                             </div>
                             <div>
                                 <p class="text-xs text-ink-muted">{{ __('Working Hours') }}</p>
-                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance.working_label || '—'"></p>
+                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance?.working_label || '—'"></p>
                             </div>
                             <div>
                                 <p class="text-xs text-ink-muted">{{ __('Status') }}</p>
-                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance.status_label"></p>
+                                <p class="font-medium text-ink-heading" x-text="selectedDay.attendance?.status_label || selectedDay.visual?.label || '—'"></p>
                             </div>
                         </div>
                         <template x-if="selectedDay.shift">
@@ -312,14 +396,23 @@
                                 <p class="font-medium text-ink-heading" x-text="selectedDay.shift.name"></p>
                             </div>
                         </template>
-                        <template x-if="selectedDay.indicator">
-                            <div>
-                                <p class="text-xs text-ink-muted">{{ __('Indicator') }}</p>
-                                <p class="font-medium text-ink-heading" x-text="selectedDay.indicator.label"></p>
-                            </div>
-                        </template>
                     </div>
                 </template>
+
+                <div>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Timeline') }}</p>
+                    <div class="space-y-2">
+                        <template x-for="(entry, index) in (selectedDay.timeline || [])" :key="index">
+                            <div class="flex items-start justify-between gap-3 border-b border-line py-2 last:border-0">
+                                <p class="text-ink-heading" x-text="entry.label"></p>
+                                <span class="shrink-0 text-ink-muted" x-text="entry.time || ''"></span>
+                            </div>
+                        </template>
+                        <template x-if="!(selectedDay.timeline || []).length">
+                            <p class="text-ink-muted">{{ __('No timeline events for this day.') }}</p>
+                        </template>
+                    </div>
+                </div>
             </div>
         </template>
     </x-ui.drawer>
@@ -336,9 +429,13 @@
                     mode: config.mode,
                     view: config.view,
                     employeeId: config.employeeId,
+                    departmentId: config.departmentId ? String(config.departmentId) : '',
                     calendar: config.calendar,
                     navigation: config.navigation,
                     monthNames: config.monthNames,
+                    allEmployees: config.allEmployees || [],
+                    departments: config.departments || [],
+                    canFilterEmployees: config.canFilterEmployees || false,
                     years: config.navigation?.years || [],
                     minYear: config.navigation?.min_year,
                     maxYear: config.navigation?.max_year,
@@ -350,6 +447,17 @@
 
                     init() {
                         this.syncYears();
+                        this.ensureEmployeeSelection();
+                    },
+
+                    get filteredEmployees() {
+                        if (!this.departmentId) {
+                            return this.allEmployees;
+                        }
+
+                        const deptId = Number(this.departmentId);
+
+                        return this.allEmployees.filter((emp) => Number(emp.department_id) === deptId);
                     },
 
                     get gridPadding() {
@@ -385,6 +493,18 @@
                         }
                     },
 
+                    ensureEmployeeSelection() {
+                        const options = this.filteredEmployees;
+                        if (!options.length) {
+                            return;
+                        }
+
+                        const current = options.find((emp) => Number(emp.id) === Number(this.employeeId));
+                        if (!current) {
+                            this.employeeId = options[0].id;
+                        }
+                    },
+
                     async loadCalendar() {
                         const token = ++this.requestToken;
                         this.loading = true;
@@ -395,7 +515,7 @@
                                 month: String(this.month),
                             });
 
-                            if (this.employeeId) {
+                            if (this.employeeId && this.view !== 'team') {
                                 params.set('employee_id', String(this.employeeId));
                             }
 
@@ -437,10 +557,15 @@
                         const url = new URL(window.location.href);
                         url.searchParams.set('year', String(this.year));
                         url.searchParams.set('month', String(this.month));
-                        if (this.employeeId) {
+                        if (this.employeeId && this.view !== 'team') {
                             url.searchParams.set('employee_id', String(this.employeeId));
                         } else {
                             url.searchParams.delete('employee_id');
+                        }
+                        if (this.departmentId) {
+                            url.searchParams.set('department_id', String(this.departmentId));
+                        } else {
+                            url.searchParams.delete('department_id');
                         }
                         if (this.view && this.view !== 'my') {
                             url.searchParams.set('view', this.view);
@@ -482,7 +607,19 @@
                         this.loadCalendar();
                     },
 
+                    onDepartmentChange() {
+                        this.ensureEmployeeSelection();
+                        this.view = 'my';
+                        this.loadCalendar();
+                    },
+
                     onFilterChange() {
+                        if (this.view === 'team') {
+                            this.loadCalendar();
+                            return;
+                        }
+
+                        this.ensureEmployeeSelection();
                         this.loadCalendar();
                     },
 

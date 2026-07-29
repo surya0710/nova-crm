@@ -134,6 +134,9 @@ class TaskStatusService
             'is_default' => $isDefault,
             'is_closed' => $isClosed,
             'sort_order' => isset($data['sort_order']) ? (int) $data['sort_order'] : ($ignore?->sort_order ?? 0),
+            'wip_limit' => array_key_exists('wip_limit', $data)
+                ? ($data['wip_limit'] !== null && $data['wip_limit'] !== '' ? (int) $data['wip_limit'] : null)
+                : $ignore?->wip_limit,
         ];
     }
 }

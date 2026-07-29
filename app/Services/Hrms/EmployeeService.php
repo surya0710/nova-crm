@@ -10,9 +10,7 @@ use App\Events\EmployeeProfileUpdated;
 use App\Events\EmployeeUpdated;
 use App\Models\Employee;
 use App\Models\EmployeeBankAccount;
-use App\Models\EmployeeEducation;
 use App\Models\EmployeeEmergencyContact;
-use App\Models\EmployeeExperience;
 use App\Models\EmployeeIdentity;
 use App\Models\Organization;
 use App\Models\User;
@@ -27,6 +25,10 @@ class EmployeeService
     public function __construct(
         protected TenantContext $tenantContext,
         protected AuditLogger $auditLogger,
+        protected EmployeeSkillService $skillService,
+        protected EmployeeCertificationService $certificationService,
+        protected EmployeeEducationService $educationService,
+        protected EmployeeExperienceService $experienceService,
     ) {}
 
     public function createEmployee(array $data, User $actor): Employee
@@ -35,7 +37,15 @@ class EmployeeService
 
         return DB::transaction(function () use ($data, $actor, $organization): Employee {
             $employee = Employee::query()->create([
-                ...Arr::except($data, ['emergency_contacts', 'bank_accounts', 'identities', 'educations', 'experiences']),
+                ...Arr::except($data, [
+                    'emergency_contacts',
+                    'bank_accounts',
+                    'identities',
+                    'educations',
+                    'experiences',
+                    'skills',
+                    'certifications',
+                ]),
                 'employee_code' => $this->generateEmployeeCode($organization),
             ]);
 
@@ -54,7 +64,16 @@ class EmployeeService
     {
         return DB::transaction(function () use ($employee, $data, $actor): Employee {
             $before = $employee->only(['status', 'reporting_manager_id', 'department_id', 'branch_id', 'designation_id']);
-            $employee->update(Arr::except($data, ['employee_code', 'emergency_contacts', 'bank_accounts', 'identities', 'educations', 'experiences']));
+            $employee->update(Arr::except($data, [
+                'employee_code',
+                'emergency_contacts',
+                'bank_accounts',
+                'identities',
+                'educations',
+                'experiences',
+                'skills',
+                'certifications',
+            ]));
             $this->validateManagerHierarchy($employee, $employee->reporting_manager_id);
             $this->syncProfile($employee, $data, $actor);
             $employee->refresh();
@@ -98,8 +117,15 @@ class EmployeeService
                 $employee->update($profileData);
             }
 
-            if (array_key_exists('emergency_contacts', $data)) {
-                $this->syncProfile($employee, ['emergency_contacts' => $data['emergency_contacts']], $actor);
+            $sections = config('hrms.ess.self_editable_profile_sections', ['emergency_contacts']);
+            $syncPayload = [];
+            foreach ($sections as $section) {
+                if (array_key_exists($section, $data)) {
+                    $syncPayload[$section] = $data[$section];
+                }
+            }
+            if ($syncPayload !== []) {
+                $this->syncProfile($employee, $syncPayload, $actor);
             }
 
             $employee->refresh();
@@ -110,7 +136,16 @@ class EmployeeService
             ], $actor);
             event(EmployeeProfileUpdated::forModel($employee, ['actor_id' => $actor->id]));
 
-            return $employee->load(['emergencyContacts', 'department', 'designation', 'reportingManager']);
+            return $employee->load([
+                'emergencyContacts',
+                'skills',
+                'certifications',
+                'educations',
+                'experiences',
+                'department',
+                'designation',
+                'reportingManager',
+            ]);
         });
     }
 
@@ -201,8 +236,30 @@ class EmployeeService
     {
         if (array_key_exists('emergency_contacts', $data)) {
             EmployeeEmergencyContact::query()->where('employee_id', $employee->id)->delete();
+            $hasPrimary = false;
             foreach ($data['emergency_contacts'] ?? [] as $contact) {
-                $employee->emergencyContacts()->create($contact);
+                if (blank($contact['name'] ?? null) || blank($contact['phone'] ?? ($contact['mobile'] ?? null))) {
+                    continue;
+                }
+                $isPrimary = (bool) ($contact['is_primary'] ?? false);
+                if ($isPrimary) {
+                    $hasPrimary = true;
+                }
+                $employee->emergencyContacts()->create([
+                    'name' => $contact['name'],
+                    'relationship' => $contact['relationship'] ?? null,
+                    'phone' => $contact['phone'] ?? $contact['mobile'] ?? null,
+                    'alternate_mobile' => $contact['alternate_mobile'] ?? null,
+                    'email' => $contact['email'] ?? null,
+                    'address' => $contact['address'] ?? null,
+                    'is_primary' => $isPrimary,
+                ]);
+            }
+            if (! $hasPrimary) {
+                $first = $employee->emergencyContacts()->first();
+                if ($first) {
+                    $first->update(['is_primary' => true]);
+                }
             }
         }
 
@@ -221,17 +278,19 @@ class EmployeeService
         }
 
         if (array_key_exists('educations', $data)) {
-            EmployeeEducation::query()->where('employee_id', $employee->id)->delete();
-            foreach ($data['educations'] ?? [] as $education) {
-                $employee->educations()->create($education);
-            }
+            $this->educationService->syncForEmployee($employee, $data['educations'] ?? [], $actor);
         }
 
         if (array_key_exists('experiences', $data)) {
-            EmployeeExperience::query()->where('employee_id', $employee->id)->delete();
-            foreach ($data['experiences'] ?? [] as $experience) {
-                $employee->experiences()->create($experience);
-            }
+            $this->experienceService->syncForEmployee($employee, $data['experiences'] ?? [], $actor);
+        }
+
+        if (array_key_exists('skills', $data)) {
+            $this->skillService->syncForEmployee($employee, $data['skills'] ?? [], $actor);
+        }
+
+        if (array_key_exists('certifications', $data)) {
+            $this->certificationService->syncForEmployee($employee, $data['certifications'] ?? [], $actor);
         }
     }
 

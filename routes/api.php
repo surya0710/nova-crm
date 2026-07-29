@@ -274,6 +274,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
         Route::get('tasks/{task}/time-logs', [ApiTaskTimeLogController::class, 'index']);
         Route::post('tasks/{task}/time-logs', [ApiTaskTimeLogController::class, 'store']);
         Route::post('tasks/{task}/time-logs/start', [ApiTaskTimeLogController::class, 'start']);
+        Route::post('tasks/{task}/time-logs/pause', [ApiTaskTimeLogController::class, 'pause']);
+        Route::post('tasks/{task}/time-logs/resume', [ApiTaskTimeLogController::class, 'resume']);
         Route::post('tasks/{task}/time-logs/stop', [ApiTaskTimeLogController::class, 'stop']);
         Route::delete('tasks/{task}/time-logs/{time_log}', [ApiTaskTimeLogController::class, 'destroy']);
 

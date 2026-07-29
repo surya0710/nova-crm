@@ -17,6 +17,12 @@ class TaskAttachmentService
 
     public function upload(Task $task, UploadedFile $file, User $actor): TaskAttachment
     {
+        if (! app(TaskAuthorizationService::class)->attachmentsEnabled()) {
+            throw ValidationException::withMessages([
+                'file' => __('Task attachments are currently disabled.'),
+            ]);
+        }
+
         if ($task->isArchived()) {
             throw ValidationException::withMessages([
                 'task' => __('Archived tasks are read-only.'),

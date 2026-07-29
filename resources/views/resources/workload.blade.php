@@ -45,6 +45,42 @@
         </div>
     </div>
 
+    @if (! empty($timeline))
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                <h3 class="text-sm font-semibold text-slate-900 mb-2">{{ __('Current tasks') }}</h3>
+                <ul class="space-y-1 text-sm">
+                    @forelse ($timeline['current_tasks'] as $task)
+                        <li><a class="text-primary-600 hover:text-primary-700" href="{{ $task['url'] }}">{{ $task['title'] }}</a></li>
+                    @empty
+                        <li class="text-slate-400">{{ __('None') }}</li>
+                    @endforelse
+                </ul>
+            </div>
+            <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                <h3 class="text-sm font-semibold text-slate-900 mb-2">{{ __('Future tasks') }}</h3>
+                <ul class="space-y-1 text-sm">
+                    @forelse ($timeline['future_tasks'] as $task)
+                        <li><a class="text-primary-600 hover:text-primary-700" href="{{ $task['url'] }}">{{ $task['title'] }}</a></li>
+                    @empty
+                        <li class="text-slate-400">{{ __('None') }}</li>
+                    @endforelse
+                </ul>
+            </div>
+            <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                <h3 class="text-sm font-semibold text-slate-900 mb-2">{{ __('Leave & free capacity') }}</h3>
+                <p class="text-2xl font-semibold text-slate-900 mb-2">{{ number_format($timeline['free_capacity_hours'], 1) }}h</p>
+                <ul class="space-y-1 text-sm text-slate-600">
+                    @forelse ($timeline['leave'] as $leave)
+                        <li>{{ $leave['type'] ?? __('Leave') }} · {{ $leave['start_date'] }} → {{ $leave['end_date'] }}</li>
+                    @empty
+                        <li class="text-slate-400">{{ __('No leave in range') }}</li>
+                    @endforelse
+                </ul>
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200">

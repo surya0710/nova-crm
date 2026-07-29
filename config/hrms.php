@@ -218,6 +218,20 @@ return [
         'year_range_after' => (int) env('HRMS_CALENDAR_YEAR_RANGE_AFTER', 5),
     ],
 
+    'attendance_reports' => [
+        'types' => [
+            'monthly_attendance' => 'Monthly Attendance',
+            'late_report' => 'Late Report',
+            'absent_report' => 'Absent Report',
+            'leave_summary' => 'Leave Summary',
+        ],
+        'export_formats' => [
+            'csv' => 'CSV',
+            'xlsx' => 'Excel',
+            'pdf' => 'PDF',
+        ],
+    ],
+
     'half_day_periods' => [
         'first_half' => 'First half',
         'second_half' => 'Second half',
@@ -255,6 +269,67 @@ return [
             'state',
             'postal_code',
             'country',
+        ],
+        'self_editable_profile_sections' => [
+            'emergency_contacts',
+            'skills',
+            'educations',
+            'experiences',
+            'certifications',
+        ],
+    ],
+
+    'skill_proficiencies' => [
+        'beginner' => 'Beginner',
+        'intermediate' => 'Intermediate',
+        'advanced' => 'Advanced',
+        'expert' => 'Expert',
+    ],
+
+    'certification_statuses' => [
+        'active' => 'Active',
+        'expired' => 'Expired',
+        'revoked' => 'Revoked',
+    ],
+
+    'certification_display_statuses' => [
+        'active' => 'Active',
+        'expiring_soon' => 'Expiring Soon',
+        'expired' => 'Expired',
+    ],
+
+    'certification_expiring_soon_days' => 60,
+
+    'profile_completion' => [
+        'sections' => [
+            'personal' => [
+                'label' => 'Personal Information',
+                'weight' => 20,
+            ],
+            'emergency_contact' => [
+                'label' => 'Emergency Contact',
+                'weight' => 15,
+            ],
+            'skills' => [
+                'label' => 'Skills',
+                'weight' => 15,
+            ],
+            'education' => [
+                'label' => 'Education',
+                'weight' => 15,
+            ],
+            'experience' => [
+                'label' => 'Experience',
+                'weight' => 15,
+            ],
+            'certifications' => [
+                'label' => 'Certifications',
+                'weight' => 10,
+            ],
+            'identity' => [
+                'label' => 'Identity Documents',
+                'weight' => 10,
+            ],
         ],
     ],
 

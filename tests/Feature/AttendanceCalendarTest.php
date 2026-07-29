@@ -41,7 +41,7 @@ class AttendanceCalendarTest extends TestCase
         $this->actingAs($hr)->withSession(['current_organization_id' => $organization->id])
             ->get(route('hrms.attendance.index', ['year' => 2026, 'month' => 7]))
             ->assertOk()
-            ->assertSee('Attendance Calendar')
+            ->assertSee('Attendance')
             ->assertSee('Present')
             ->assertSee('Today')
             ->assertSee('attendanceCalendar');
@@ -150,6 +150,75 @@ class AttendanceCalendarTest extends TestCase
         $this->actingAs($hr)->withSession(['current_organization_id' => $organization->id])
             ->get(route('hrms.attendance.index', ['year' => 2026, 'month' => 7, 'employee_id' => $employee->id]))
             ->assertOk()
+            ->assertSee($employee->full_name);
+    }
+
+    public function test_calendar_api_includes_day_timeline(): void
+    {
+        [$organization, $user, $employee] = $this->employeeSetup();
+
+        AttendanceRecord::factory()->create([
+            'organization_id' => $organization->id,
+            'employee_id' => $employee->id,
+            'attendance_date' => '2026-07-14',
+            'status' => 'present',
+            'clock_in_at' => '2026-07-14 09:00:00',
+            'clock_out_at' => '2026-07-14 18:00:00',
+        ]);
+
+        $calendar = app(AttendanceCalendarService::class)->monthForEmployee($employee, 2026, 7);
+        $day = collect($calendar['days'])->firstWhere('date', '2026-07-14');
+
+        $this->assertNotEmpty($day['timeline']);
+        $this->assertTrue(collect($day['timeline'])->contains(fn (array $entry) => $entry['type'] === 'check_in'));
+        $this->assertTrue(collect($day['timeline'])->contains(fn (array $entry) => $entry['type'] === 'check_out'));
+    }
+
+    public function test_manager_can_open_direct_report_calendar(): void
+    {
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
+        $managerUser = User::factory()->create();
+        $organization->addMember($managerUser, 'manager');
+        $manager = Employee::factory()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $managerUser->id,
+            'status' => 'active',
+        ]);
+        $report = Employee::factory()->create([
+            'organization_id' => $organization->id,
+            'reporting_manager_id' => $manager->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($managerUser)->withSession(['current_organization_id' => $organization->id])
+            ->get(route('hrms.attendance.index', [
+                'year' => 2026,
+                'month' => 7,
+                'employee_id' => $report->id,
+            ]))
+            ->assertOk()
+            ->assertSee($report->full_name);
+    }
+
+    public function test_hr_calendar_supports_department_filter(): void
+    {
+        [$organization, $hr] = $this->organizationWithHrUser();
+        $department = \App\Models\Department::factory()->create(['organization_id' => $organization->id]);
+        $employee = Employee::factory()->create([
+            'organization_id' => $organization->id,
+            'department_id' => $department->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($hr)->withSession(['current_organization_id' => $organization->id])
+            ->get(route('hrms.attendance.index', [
+                'year' => 2026,
+                'month' => 7,
+                'department_id' => $department->id,
+                'employee_id' => $employee->id,
+            ]))
+            ->assertOk()
+            ->assertSee($department->name)
             ->assertSee($employee->full_name);
     }
 

@@ -248,6 +248,7 @@ use App\Models\SavedFilter;
 use App\Models\StatutoryComplianceError;
 use App\Models\StatutoryRuleSet;
 use App\Models\Task;
+use App\Models\Sprint;
 use App\Models\TaskAttachment;
 use App\Models\TaskChecklist;
 use App\Models\TaskComment;
@@ -360,6 +361,7 @@ use App\Policies\TaskChecklistPolicy;
 use App\Policies\TaskCommentPolicy;
 use App\Policies\TaskDependencyPolicy;
 use App\Policies\TaskPolicy;
+use App\Policies\SprintPolicy;
 use App\Policies\TaskPriorityPolicy;
 use App\Policies\TaskRecurrencePolicy;
 use App\Policies\TaskStatusPolicy;
@@ -420,6 +422,7 @@ use App\Services\Bulk\Providers\LeadAssignOwnerBulkAction;
 use App\Services\Bulk\Providers\LeadChangeStatusBulkAction;
 use App\Services\Bulk\Providers\ProjectChangeStatusBulkAction;
 use App\Services\Bulk\Providers\TaskChangePriorityBulkAction;
+use App\Services\Bulk\Providers\TaskAssignBulkAction;
 use App\Services\Bulk\Providers\UserAccountBulkAction;
 use App\Services\Identity\UserAccountService;
 use App\Services\Identity\UserInvitationService;
@@ -502,6 +505,7 @@ class AppServiceProvider extends ServiceProvider
         Quotation::class => QuotationPolicy::class,
         SavedFilter::class => SavedFilterPolicy::class,
         Task::class => TaskPolicy::class,
+        Sprint::class => SprintPolicy::class,
         TaskStatus::class => TaskStatusPolicy::class,
         TaskPriority::class => TaskPriorityPolicy::class,
         TaskDependency::class => TaskDependencyPolicy::class,
@@ -877,6 +881,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(SavedFilter::class, SavedFilterPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
+        Gate::policy(Sprint::class, SprintPolicy::class);
         Gate::policy(TaskStatus::class, TaskStatusPolicy::class);
         Gate::policy(TaskPriority::class, TaskPriorityPolicy::class);
         Gate::policy(TaskDependency::class, TaskDependencyPolicy::class);
@@ -1030,6 +1035,7 @@ class AppServiceProvider extends ServiceProvider
             EmployeeGenerateLoginBulkAction::class,
             ProjectChangeStatusBulkAction::class,
             TaskChangePriorityBulkAction::class,
+            TaskAssignBulkAction::class,
         ] as $actionClass) {
             $registry->register($this->app->make($actionClass));
         }

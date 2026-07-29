@@ -7,8 +7,8 @@ use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Services\Hrms\AttendanceCalendarService;
 use App\Services\Hrms\EssContext;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class AttendanceCalendarController extends Controller
@@ -27,14 +27,19 @@ class AttendanceCalendarController extends Controller
         [$year, $month] = array_values($this->calendar->normalizeYearMonth($year, $month));
         $view = $request->input('view', 'my');
         $employeeId = $request->integer('employee_id') ?: null;
+        $departmentId = $request->integer('department_id') ?: null;
 
-        $employee = $this->resolveEmployee($request, $employeeId);
         $canViewTeam = $request->user()?->hasPermission('manager.dashboard') ?? false;
         $canFilterEmployees = $request->user()?->hasPermission('attendance.view') ?? false;
+        $manager = $this->essContext->employeeFor($request->user());
         $navigation = $this->calendar->navigationConfig();
 
+        $employees = $this->resolveFilterEmployees($canFilterEmployees, $canViewTeam, $manager);
+        $departments = $canFilterEmployees ? $this->calendar->filterableDepartments() : collect();
+
+        $employee = $this->resolveEmployee($request, $employeeId, $employees, $canFilterEmployees, $canViewTeam, $manager, $departmentId);
+
         if ($view === 'team' && $canViewTeam) {
-            $manager = $this->essContext->employeeFor($request->user());
             abort_unless($manager !== null, 403);
 
             return view('hrms.attendance.calendar', [
@@ -44,9 +49,9 @@ class AttendanceCalendarController extends Controller
                 'month' => $month,
                 'view' => $view,
                 'employee' => $employee,
-                'employees' => $canFilterEmployees
-                    ? Employee::query()->whereIn('status', config('hrms.clockable_employee_statuses', []))->orderBy('first_name')->get()
-                    : collect(),
+                'employees' => $employees,
+                'departments' => $departments,
+                'departmentId' => $departmentId,
                 'canViewTeam' => $canViewTeam,
                 'canFilterEmployees' => $canFilterEmployees,
                 'navigation' => $navigation,
@@ -61,9 +66,9 @@ class AttendanceCalendarController extends Controller
             'month' => $month,
             'view' => $view,
             'employee' => $employee,
-            'employees' => $canFilterEmployees
-                ? Employee::query()->whereIn('status', config('hrms.clockable_employee_statuses', []))->orderBy('first_name')->get()
-                : collect(),
+            'employees' => $employees,
+            'departments' => $departments,
+            'departmentId' => $departmentId,
             'canViewTeam' => $canViewTeam,
             'canFilterEmployees' => $canFilterEmployees,
             'navigation' => $navigation,
@@ -71,18 +76,73 @@ class AttendanceCalendarController extends Controller
         ]);
     }
 
-    protected function resolveEmployee(Request $request, ?int $employeeId): Employee
-    {
-        if ($employeeId !== null && $request->user()?->hasPermission('attendance.view')) {
-            return Employee::query()->findOrFail($employeeId);
+    /**
+     * @return Collection<int, Employee>
+     */
+    protected function resolveFilterEmployees(
+        bool $canFilterEmployees,
+        bool $canViewTeam,
+        ?Employee $manager,
+    ): Collection {
+        if ($canFilterEmployees) {
+            return $this->calendar->filterableEmployees();
         }
 
-        $employee = $this->essContext->employeeFor($request->user());
-        if ($employee !== null) {
-            return $employee;
+        if ($canViewTeam && $manager !== null) {
+            return $this->calendar->teamEmployeesForManager($manager);
         }
 
-        if ($request->user()?->hasPermission('attendance.view')) {
+        return collect();
+    }
+
+    /**
+     * @param  Collection<int, Employee>  $employees
+     */
+    protected function resolveEmployee(
+        Request $request,
+        ?int $employeeId,
+        Collection $employees,
+        bool $canFilterEmployees,
+        bool $canViewTeam,
+        ?Employee $manager,
+        ?int $departmentId = null,
+    ): Employee {
+        $scoped = $departmentId !== null
+            ? $employees->where('department_id', $departmentId)->values()
+            : $employees;
+
+        if ($employeeId !== null) {
+            if ($canFilterEmployees) {
+                return Employee::query()->findOrFail($employeeId);
+            }
+
+            if ($canViewTeam && $manager !== null) {
+                $report = $employees->firstWhere('id', $employeeId)
+                    ?? Employee::query()
+                        ->where('id', $employeeId)
+                        ->where('reporting_manager_id', $manager->id)
+                        ->first();
+
+                abort_unless($report !== null, 403);
+
+                return $report;
+            }
+        }
+
+        $self = $this->essContext->employeeFor($request->user());
+        if ($self !== null && ($departmentId === null || (int) $self->department_id === $departmentId)) {
+            return $self;
+        }
+
+        if ($scoped->isNotEmpty()) {
+            return $scoped->first();
+        }
+
+        if ($employees->isNotEmpty()) {
+            return $employees->first();
+        }
+
+        if ($canFilterEmployees) {
             return Employee::query()
                 ->whereIn('status', config('hrms.clockable_employee_statuses', []))
                 ->orderBy('first_name')

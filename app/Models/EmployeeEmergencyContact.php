@@ -17,9 +17,16 @@ class EmployeeEmergencyContact extends Model
         'name',
         'relationship',
         'phone',
+        'alternate_mobile',
         'email',
+        'address',
         'is_primary',
     ];
+
+    public function getMobileAttribute(): ?string
+    {
+        return $this->phone;
+    }
 
     protected function casts(): array
     {

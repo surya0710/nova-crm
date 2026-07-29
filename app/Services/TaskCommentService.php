@@ -113,9 +113,11 @@ class TaskCommentService
 
     public function delete(TaskComment $comment, User $actor): void
     {
-        if ($comment->user_id !== $actor->id) {
+        $canModerate = app(TaskAuthorizationService::class)->canDeleteComment($actor, $comment);
+
+        if (! $canModerate) {
             throw ValidationException::withMessages([
-                'comment' => __('You can only delete your own comments.'),
+                'comment' => __('You are not allowed to delete this comment.'),
             ]);
         }
 

@@ -52,11 +52,17 @@ class ResourcePlannerController extends Controller
         $this->authorize('viewAny', WorkloadSnapshot::class);
 
         $organization = $tenant->get();
-        $from = Carbon::parse($request->input('from', now()->startOfWeek()->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->endOfWeek()->toDateString()))->startOfDay();
+        $period = $request->string('period')->toString() ?: 'weekly';
+        [$from, $to] = $this->resolvePeriod($period, $request);
 
-        $team = collect($this->workload->calculateTeam($organization, $from, $to))
-            ->keyBy('employee_id');
+        $filters = [
+            'project_id' => $request->integer('project_id') ?: null,
+            'department_id' => $request->integer('department_id') ?: null,
+            'branch_id' => $request->integer('branch_id') ?: null,
+        ];
+
+        $charts = $this->workload->teamWorkloadCharts($organization, $from, $to, $filters);
+        $team = collect($charts['rows'])->keyBy('employee_id');
 
         $employees = Employee::query()
             ->whereIn('id', $team->keys())
@@ -68,8 +74,12 @@ class ResourcePlannerController extends Controller
             'organization' => $organization,
             'team' => $team,
             'employees' => $employees,
+            'charts' => $charts,
+            'period' => $period,
             'from' => $from,
             'to' => $to,
+            'filters' => $filters,
+            'projects' => Project::query()->where('is_archived', false)->orderBy('name')->limit(200)->get(['id', 'name']),
         ]);
     }
 
@@ -82,6 +92,7 @@ class ResourcePlannerController extends Controller
         $to = Carbon::parse($request->input('to', now()->endOfMonth()->toDateString()))->startOfDay();
 
         $workload = $this->workload->calculateForEmployee($employee, $from, $to);
+        $timeline = $this->workload->employeeTimeline($employee, $from, $to);
         $allocations = ResourceAllocation::query()
             ->with(['project', 'task'])
             ->where('employee_id', $employee->id)
@@ -93,6 +104,7 @@ class ResourcePlannerController extends Controller
         return view('resources.workload', [
             'employee' => $employee,
             'workload' => $workload,
+            'timeline' => $timeline,
             'allocations' => $allocations,
             'from' => $from,
             'to' => $to,
@@ -103,28 +115,61 @@ class ResourcePlannerController extends Controller
     {
         $this->authorize('viewAny', ResourceAllocation::class);
 
+        $organization = $tenant->get();
         $from = Carbon::parse($request->input('from', now()->startOfMonth()->toDateString()))->startOfDay();
         $to = Carbon::parse($request->input('to', now()->addMonths(1)->toDateString()))->startOfDay();
+
+        $employeeId = $request->integer('employee_id') ?: null;
+        $timelines = [];
+
+        $employeesQuery = Employee::query()->orderBy('first_name')->limit(50);
+        if ($employeeId) {
+            $employeesQuery->whereKey($employeeId);
+        }
+
+        foreach ($employeesQuery->get() as $employee) {
+            $timelines[] = $this->workload->employeeTimeline($employee, $from, $to);
+        }
 
         $allocations = ResourceAllocation::query()
             ->with(['employee', 'project', 'task'])
             ->whereDate('planned_start_date', '<=', $to->toDateString())
             ->whereDate('planned_end_date', '>=', $from->toDateString())
-            ->when($request->integer('employee_id'), fn ($q, $id) => $q->where('employee_id', $id))
+            ->when($employeeId, fn ($q) => $q->where('employee_id', $employeeId))
             ->when($request->integer('project_id'), fn ($q, $id) => $q->where('project_id', $id))
             ->orderBy('planned_start_date')
             ->paginate(30)
             ->withQueryString();
 
         return view('resources.timeline', [
-            'organization' => $tenant->get(),
+            'organization' => $organization,
             'allocations' => $allocations,
+            'timelines' => $timelines,
             'employees' => Employee::query()->orderBy('first_name')->limit(200)->get(),
             'projects' => Project::query()->where('is_archived', false)->orderBy('name')->limit(200)->get(),
             'from' => $from,
             'to' => $to,
             'filters' => $request->only(['employee_id', 'project_id', 'from', 'to']),
         ]);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    protected function resolvePeriod(string $period, Request $request): array
+    {
+        if ($request->filled('from') && $request->filled('to')) {
+            return [
+                Carbon::parse($request->input('from'))->startOfDay(),
+                Carbon::parse($request->input('to'))->startOfDay(),
+            ];
+        }
+
+        return match ($period) {
+            'daily' => [now()->startOfDay(), now()->startOfDay()],
+            'monthly' => [now()->startOfMonth(), now()->endOfMonth()->startOfDay()],
+            default => [now()->startOfWeek(), now()->endOfWeek()->startOfDay()],
+        };
     }
 
     public function forecast(Request $request, TenantContext $tenant): View

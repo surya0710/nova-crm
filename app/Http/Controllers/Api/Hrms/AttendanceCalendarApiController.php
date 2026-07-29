@@ -29,15 +29,7 @@ class AttendanceCalendarApiController extends Controller
         [$year, $month] = array_values($this->calendar->normalizeYearMonth($year, $month));
         $employeeId = $request->integer('employee_id') ?: null;
 
-        if ($employeeId !== null && $request->user()?->hasPermission('attendance.view')) {
-            $employee = Employee::query()->findOrFail($employeeId);
-        } else {
-            $employee = $this->essContext->requireEmployee($request->user());
-        }
-
         $this->authorize('viewAny', AttendanceRecord::class);
-
-        $data = $this->calendar->monthForEmployee($employee, $year, $month);
 
         if ($request->boolean('team') && $request->user()?->hasPermission('manager.dashboard')) {
             $manager = $this->essContext->requireEmployee($request->user());
@@ -49,8 +41,40 @@ class AttendanceCalendarApiController extends Controller
             ]);
         }
 
+        $employee = $this->resolveEmployee($request, $employeeId);
+
         return response()->json([
-            'data' => $this->calendar->appendNavigation($data),
+            'data' => $this->calendar->appendNavigation(
+                $this->calendar->monthForEmployee($employee, $year, $month)
+            ),
         ]);
+    }
+
+    protected function resolveEmployee(Request $request, ?int $employeeId): Employee
+    {
+        if ($employeeId === null) {
+            return $this->essContext->requireEmployee($request->user());
+        }
+
+        if ($request->user()?->hasPermission('attendance.view')) {
+            return Employee::query()->findOrFail($employeeId);
+        }
+
+        if ($request->user()?->hasPermission('manager.dashboard')) {
+            $manager = $this->essContext->requireEmployee($request->user());
+            $report = Employee::query()
+                ->where('id', $employeeId)
+                ->where('reporting_manager_id', $manager->id)
+                ->first();
+
+            abort_unless($report !== null, 403);
+
+            return $report;
+        }
+
+        $self = $this->essContext->requireEmployee($request->user());
+        abort_unless($self->id === $employeeId, 403);
+
+        return $self;
     }
 }

@@ -47,12 +47,15 @@
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('#') }}</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Milestone') }}</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Due Date') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Progress') }}</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Tasks') }}</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Status') }}</th>
                             <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($milestones as $milestone)
+                            @php $progress = ($milestoneProgress ?? collect())->get($milestone->id); @endphp
                             <tr class="hover:bg-slate-50/50">
                                 <td class="px-6 py-4 text-sm text-slate-500">{{ $milestone->sequence }}</td>
                                 <td class="px-6 py-4">
@@ -61,7 +64,24 @@
                                         <p class="text-xs text-slate-500 mt-0.5">{{ Str::limit($milestone->description, 80) }}</p>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $milestone->due_date?->format('M j, Y') ?? '—' }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600">
+                                    {{ $milestone->due_date?->format('M j, Y') ?? '—' }}
+                                    @if ($progress['is_overdue'] ?? false)
+                                        <span class="ml-1 inline-flex text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800">{{ __('Overdue') }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2 min-w-[8rem]">
+                                        <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                                            <div class="h-full bg-primary-600 rounded-full" style="width: {{ min(100, $progress['progress_percentage'] ?? 0) }}%"></div>
+                                        </div>
+                                        <span class="text-xs tabular-nums text-slate-600">{{ $progress['progress_percentage'] ?? 0 }}%</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-slate-600">
+                                    {{ $progress['tasks_completed'] ?? 0 }}/{{ $progress['tasks_total'] ?? 0 }}
+                                    <span class="text-xs text-slate-400">({{ $progress['remaining_tasks'] ?? 0 }} {{ __('remaining') }})</span>
+                                </td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex text-xs font-medium px-2 py-0.5 rounded-full {{ $milestoneStatusColors[$milestone->status] ?? 'bg-slate-100 text-slate-600' }}">
                                         {{ $milestone->status_label }}

@@ -62,6 +62,19 @@
             <a href="{{ route('projects.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition">
                 {{ __('Browse Projects') }}
             </a>
+            <a href="{{ route('projects.calendar') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition">
+                {{ __('Project Calendar') }}
+            </a>
+            @if (Route::has('resources.capacity'))
+                <a href="{{ route('resources.capacity') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition">
+                    {{ __('Resource Capacity') }}
+                </a>
+            @endif
+            @if (Route::has('projects.planning.reports.index'))
+                <a href="{{ route('projects.planning.reports.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition">
+                    {{ __('Planning Reports') }}
+                </a>
+            @endif
             @can('create', App\Models\Project::class)
                 <a href="{{ route('projects.create') }}" class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition">
                     {{ __('Create Project') }}

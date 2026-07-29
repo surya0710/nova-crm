@@ -66,6 +66,42 @@ class TaskTimeLogController extends Controller
         return new TaskTimeLogResource($log);
     }
 
+    public function pause(Task $task, Request $request): TaskTimeLogResource|JsonResponse
+    {
+        $this->authorize('timeLog', $task);
+
+        try {
+            $log = $this->timeTracking->pauseTimer($task, $request->user());
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => __('The given data was invalid.'),
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $log->load('user');
+
+        return new TaskTimeLogResource($log);
+    }
+
+    public function resume(Task $task, Request $request): TaskTimeLogResource|JsonResponse
+    {
+        $this->authorize('timeLog', $task);
+
+        try {
+            $log = $this->timeTracking->resumeTimer($task, $request->user());
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => __('The given data was invalid.'),
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $log->load('user');
+
+        return new TaskTimeLogResource($log);
+    }
+
     public function stop(Task $task, Request $request): TaskTimeLogResource|JsonResponse
     {
         $this->authorize('timeLog', $task);

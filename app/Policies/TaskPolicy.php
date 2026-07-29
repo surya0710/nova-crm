@@ -4,9 +4,12 @@ namespace App\Policies;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\TaskAuthorizationService;
 
 class TaskPolicy
 {
+    public function __construct(protected TaskAuthorizationService $auth) {}
+
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('tasks.view');
@@ -14,7 +17,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.view', $task->organization);
+        return $this->auth->canView($user, $task);
     }
 
     public function create(User $user): bool
@@ -24,8 +27,12 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.edit', $task->organization)
-            || $user->hasPermission('tasks.update', $task->organization);
+        return $this->auth->canFullyUpdate($user, $task);
+    }
+
+    public function updateOwnWork(User $user, Task $task): bool
+    {
+        return $this->auth->canUpdateOwnWork($user, $task);
     }
 
     public function delete(User $user, Task $task): bool
@@ -50,17 +57,17 @@ class TaskPolicy
 
     public function comment(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.comment', $task->organization);
+        return $this->auth->canComment($user, $task);
     }
 
     public function attachments(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.attachments', $task->organization);
+        return $this->auth->canManageAttachments($user, $task);
     }
 
     public function timeLog(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.time-log', $task->organization);
+        return $this->auth->canLogTime($user, $task);
     }
 
     public function manageStatus(User $user): bool
@@ -80,7 +87,7 @@ class TaskPolicy
 
     public function manageChecklists(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.manage-checklists', $task->organization);
+        return $this->auth->canManageChecklists($user, $task);
     }
 
     public function export(User $user): bool

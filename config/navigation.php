@@ -444,6 +444,38 @@ return [
                 'match' => ['hrms.attendance.*'],
                 'icon' => 'hr',
                 'permission' => 'attendance.view',
+                'children' => [
+                    [
+                        'label' => 'Calendar',
+                        'route' => 'hrms.attendance.index',
+                        'match' => ['hrms.attendance.index'],
+                        'permission' => 'attendance.view',
+                    ],
+                    [
+                        'label' => 'Records',
+                        'route' => 'hrms.attendance.records',
+                        'match' => ['hrms.attendance.records', 'hrms.attendance.show'],
+                        'permission' => 'attendance.view',
+                    ],
+                    [
+                        'label' => 'Daily Summary',
+                        'route' => 'hrms.attendance.summary',
+                        'match' => ['hrms.attendance.summary'],
+                        'permission' => 'attendance.view',
+                    ],
+                    [
+                        'label' => 'Reports',
+                        'route' => 'hrms.attendance.reports.index',
+                        'match' => ['hrms.attendance.reports.*'],
+                        'permission' => 'attendance.view',
+                    ],
+                    [
+                        'label' => 'Corrections',
+                        'route' => 'hrms.attendance.corrections.index',
+                        'match' => ['hrms.attendance.corrections.*'],
+                        'permission' => 'attendance.view',
+                    ],
+                ],
             ],
             [
                 'label' => 'Leave',

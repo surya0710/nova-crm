@@ -19,14 +19,19 @@ class TaskDependencyController extends Controller
         $this->authorize('view', $task);
 
         $task->load([
-            'predecessorDependencies.predecessor',
+            'predecessorDependencies.predecessor.assignee',
+            'predecessorDependencies.predecessor.taskStatus',
             'successorDependencies.successor',
+            'assignee',
+            'taskStatus',
         ]);
 
         return view('tasks.dependencies.index', [
             'task' => $task,
             'predecessors' => $task->predecessorDependencies,
             'successors' => $task->successorDependencies,
+            'blockedBy' => $this->dependencyService->blockedBySummary($task),
+            'chain' => $this->dependencyService->dependencyChain($task),
             'dependencyTypes' => config('tasks.dependency_types'),
         ]);
     }

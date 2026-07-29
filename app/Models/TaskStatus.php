@@ -22,6 +22,7 @@ class TaskStatus extends Model
         'is_default',
         'is_closed',
         'sort_order',
+        'wip_limit',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class TaskStatus extends Model
         return [
             'is_default' => 'boolean',
             'is_closed' => 'boolean',
+            'wip_limit' => 'integer',
         ];
     }
 

@@ -54,6 +54,12 @@ class ProjectsReportsController extends Controller
                 'permission' => ['resources.view'],
             ],
             [
+                'label' => __('Planning reports'),
+                'description' => __('Resource allocation, workload, progress, and milestone exports.'),
+                'href' => Route::has('projects.planning.reports.index') ? route('projects.planning.reports.index') : null,
+                'permission' => ['resources.view', 'projects.view'],
+            ],
+            [
                 'label' => __('Resource forecast'),
                 'description' => __('Forward-looking resource demand and supply.'),
                 'href' => Route::has('resources.forecast') ? route('resources.forecast') : null,

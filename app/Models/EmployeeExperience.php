@@ -16,10 +16,22 @@ class EmployeeExperience extends Model
         'employee_id',
         'company',
         'title',
+        'employment_type',
         'start_date',
         'end_date',
+        'technologies',
         'description',
     ];
+
+    public function getDesignationAttribute(): ?string
+    {
+        return $this->title;
+    }
+
+    public function getResponsibilitiesAttribute(): ?string
+    {
+        return $this->description;
+    }
 
     protected function casts(): array
     {

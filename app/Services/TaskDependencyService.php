@@ -7,8 +7,10 @@ use App\Events\DependencyRemoved;
 use App\Models\Task;
 use App\Models\TaskDependency;
 use App\Models\User;
+use App\Notifications\CrmNotification;
 use App\Workflow\WorkflowRuntimeContext;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 
 class TaskDependencyService
@@ -69,7 +71,43 @@ class TaskDependencyService
             depth: $runtime->causationId ? $runtime->depth + 1 : 0,
         ));
 
-        return $dependency->fresh(['predecessor', 'successor']);
+        $dependency = $dependency->fresh(['predecessor', 'successor.project.manager', 'successor.project.owner', 'successor.assignee']);
+        $this->notifyBlockedDependency($predecessor, $successor->fresh(['assignee', 'project.manager', 'project.owner']), $actor, $type);
+
+        return $dependency;
+    }
+
+    protected function notifyBlockedDependency(Task $predecessor, Task $successor, User $actor, string $type): void
+    {
+        if (! $predecessor->isOpen()) {
+            return;
+        }
+
+        $blockingTypes = config('tasks.blocking_dependency_types', ['finish_to_start']);
+
+        if (! in_array($type, $blockingTypes, true)) {
+            return;
+        }
+
+        $recipients = collect([$successor->assignee, $successor->project?->manager, $successor->project?->owner])
+            ->filter()
+            ->unique('id');
+
+        foreach ($recipients as $recipient) {
+            if ($recipient->id === $actor->id) {
+                continue;
+            }
+
+            $recipient->notify(new CrmNotification(
+                title: __('Task blocked by dependency'),
+                message: __(':task is blocked by :blocker.', [
+                    'task' => $successor->title,
+                    'blocker' => $predecessor->title,
+                ]),
+                actionUrl: Route::has('tasks.show') ? route('tasks.show', $successor) : null,
+                organizationId: (int) $successor->organization_id,
+            ));
+        }
     }
 
     public function delete(TaskDependency $dependency, User $actor): void
@@ -175,6 +213,103 @@ class TaskDependencyService
         }
 
         return $map;
+    }
+
+    /**
+     * Incomplete predecessors that currently block this task (finish-to-start by default).
+     *
+     * @return Collection<int, Task>
+     */
+    public function blockingPredecessors(Task $task): Collection
+    {
+        $blockingTypes = config('tasks.blocking_dependency_types', ['finish_to_start']);
+
+        return TaskDependency::query()
+            ->where('organization_id', $task->organization_id)
+            ->where('successor_task_id', $task->id)
+            ->whereIn('dependency_type', $blockingTypes)
+            ->with(['predecessor.assignee', 'predecessor.taskStatus'])
+            ->get()
+            ->map(fn (TaskDependency $dep) => $dep->predecessor)
+            ->filter(fn (?Task $predecessor) => $predecessor && $predecessor->isOpen())
+            ->values();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function blockedBySummary(Task $task): array
+    {
+        return $this->blockingPredecessors($task)
+            ->map(fn (Task $blocker) => [
+                'task_id' => $blocker->id,
+                'title' => $blocker->title,
+                'assigned_to' => $blocker->assignee?->name,
+                'status' => $blocker->taskStatus?->name ?? $blocker->status,
+                'url' => route('tasks.show', $blocker),
+            ])
+            ->all();
+    }
+
+    /**
+     * Visual chain: Task A → Blocks → Task B → Blocks → Task C
+     *
+     * @return list<array{task_id: int, title: string, status: string|null}>
+     */
+    public function dependencyChain(Task $task, int $maxDepth = 8): array
+    {
+        $chain = [[
+            'task_id' => $task->id,
+            'title' => $task->title,
+            'status' => $task->taskStatus?->name ?? $task->status,
+        ]];
+
+        $cursor = $task;
+        $guard = 0;
+
+        while ($guard < $maxDepth) {
+            $next = TaskDependency::query()
+                ->where('organization_id', $cursor->organization_id)
+                ->where('predecessor_task_id', $cursor->id)
+                ->with('successor.taskStatus')
+                ->orderBy('id')
+                ->first();
+
+            if (! $next?->successor) {
+                break;
+            }
+
+            $cursor = $next->successor;
+            $chain[] = [
+                'task_id' => $cursor->id,
+                'title' => $cursor->title,
+                'status' => $cursor->taskStatus?->name ?? $cursor->status,
+            ];
+            $guard++;
+        }
+
+        return $chain;
+    }
+
+    public function assertCanComplete(Task $task): void
+    {
+        if (! config('tasks.enforce_dependency_blocking', true)) {
+            return;
+        }
+
+        $blockers = $this->blockingPredecessors($task);
+
+        if ($blockers->isEmpty()) {
+            return;
+        }
+
+        $names = $blockers->pluck('title')->implode(', ');
+
+        throw ValidationException::withMessages([
+            'status' => __('This task is blocked by incomplete dependencies: :tasks', [
+                'tasks' => $names,
+            ]),
+        ]);
     }
 
     protected function validateType(string $type): void

@@ -21,9 +21,13 @@ class ProjectMilestoneController extends Controller
 
         $project->load(['milestones' => fn ($q) => $q->orderBy('sequence')->orderBy('id')]);
 
+        $progress = collect(app(\App\Services\MilestoneProgressService::class)->forProject($project))
+            ->keyBy('milestone_id');
+
         return view('projects.milestones.index', [
             'project' => $project,
             'milestones' => $project->milestones,
+            'milestoneProgress' => $progress,
             'milestoneStatuses' => config('projects.milestone_statuses'),
         ]);
     }

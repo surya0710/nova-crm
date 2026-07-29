@@ -9,6 +9,10 @@ class StoreTaskAttachmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if (! config('attachments.task_attachments_enabled', true)) {
+            return false;
+        }
+
         $task = $this->route('task');
 
         return $task instanceof Task

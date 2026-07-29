@@ -262,6 +262,8 @@ class TaskController extends Controller
 
     public function destroy(Task $task): RedirectResponse
     {
+        $this->authorize('delete', $task);
+
         $task->delete();
 
         return redirect()
@@ -271,7 +273,7 @@ class TaskController extends Controller
 
     public function complete(Request $request, Task $task): RedirectResponse
     {
-        $this->authorize('update', $task);
+        $this->authorize('updateOwnWork', $task);
 
         $this->taskService->complete($task, $request->user());
 

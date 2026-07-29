@@ -34,6 +34,60 @@
         </form>
     </div>
 
+    @if (! empty($timelines))
+        <div class="space-y-4 mb-6">
+            @foreach ($timelines as $timeline)
+                <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">{{ $timeline['employee_name'] }}</h3>
+                            <p class="text-xs text-slate-500">
+                                {{ __('Free capacity') }}: {{ number_format($timeline['free_capacity_hours'], 1) }}h ·
+                                {{ $timeline['display_status'] }} ({{ number_format($timeline['capacity_percentage'], 0) }}%)
+                            </p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{{ __('Current tasks') }}</p>
+                            <ul class="space-y-1">
+                                @forelse ($timeline['current_tasks'] as $task)
+                                    <li><a href="{{ $task['url'] }}" class="text-primary-600 hover:text-primary-700">{{ $task['title'] }}</a></li>
+                                @empty
+                                    <li class="text-slate-400">{{ __('None') }}</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{{ __('Future tasks') }}</p>
+                            <ul class="space-y-1">
+                                @forelse ($timeline['future_tasks'] as $task)
+                                    <li><a href="{{ $task['url'] }}" class="text-primary-600 hover:text-primary-700">{{ $task['title'] }}</a></li>
+                                @empty
+                                    <li class="text-slate-400">{{ __('None') }}</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{{ __('Leave') }}</p>
+                            <ul class="space-y-1">
+                                @forelse ($timeline['leave'] as $leave)
+                                    <li class="text-slate-600">{{ $leave['type'] ?? __('Leave') }} · {{ $leave['start_date'] }} → {{ $leave['end_date'] }}</li>
+                                @empty
+                                    <li class="text-slate-400">{{ __('None') }}</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{{ __('Free capacity') }}</p>
+                            <p class="text-2xl font-semibold text-slate-900">{{ number_format($timeline['free_capacity_hours'], 1) }}h</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
         @if ($allocations->isEmpty())
             <div class="p-12 text-center text-sm text-slate-500">{{ __('No allocations found.') }}</div>

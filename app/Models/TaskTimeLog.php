@@ -49,6 +49,11 @@ class TaskTimeLog extends Model
         return $this->end_time === null && $this->source === 'timer';
     }
 
+    public function isPaused(): bool
+    {
+        return $this->end_time === null && $this->source === 'paused';
+    }
+
     public function getSourceLabelAttribute(): string
     {
         return config('tasks.time_log_sources.'.$this->source, ucfirst($this->source));

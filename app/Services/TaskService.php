@@ -287,6 +287,13 @@ class TaskService
                     ? $this->statusIsClosed((int) $data['status_id'])
                     : in_array($data['status'] ?? '', ['completed', 'cancelled'], true);
 
+                $completing = ($data['status'] ?? null) === 'completed'
+                    || (isset($data['status_id']) && $this->statusIsCompleted((int) $data['status_id']));
+
+                if ($completing) {
+                    app(TaskDependencyService::class)->assertCanComplete($task);
+                }
+
                 if ($closed && ! $task->completed_at) {
                     $data['completed_at'] = now();
                 } elseif (! $closed && array_key_exists('status_id', $data)) {
@@ -413,6 +420,7 @@ class TaskService
     {
         $this->assertWritable($task);
         $this->ensureDefaults($task->organization);
+        app(TaskDependencyService::class)->assertCanComplete($task);
 
         $completedStatus = TaskStatus::query()
             ->where('organization_id', $task->organization_id)
@@ -632,6 +640,15 @@ class TaskService
         }
 
         return (bool) TaskStatus::query()->whereKey($statusId)->value('is_closed');
+    }
+
+    protected function statusIsCompleted(int $statusId): bool
+    {
+        if ($statusId <= 0) {
+            return false;
+        }
+
+        return TaskStatus::query()->whereKey($statusId)->value('slug') === 'completed';
     }
 
     /**

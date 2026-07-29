@@ -35,7 +35,9 @@
     <div class="mb-4 flex flex-wrap gap-2">
         <a href="{{ route('tasks.checklists.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Checklists') }}</a>
         <a href="{{ route('tasks.comments.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Comments') }}</a>
-        <a href="{{ route('tasks.attachments.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Attachments') }}</a>
+        @if (config('attachments.task_attachments_enabled', true))
+            <a href="{{ route('tasks.attachments.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Attachments') }}</a>
+        @endif
         <a href="{{ route('tasks.dependencies.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Dependencies') }}</a>
         <a href="{{ route('tasks.time-logs.index', $task) }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ __('Time Logs') }}</a>
     </div>

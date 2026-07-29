@@ -61,16 +61,18 @@ class TimeTrackingService
     {
         $this->assertTrackable($task);
 
-        $running = TaskTimeLog::query()
+        $open = TaskTimeLog::query()
             ->where('task_id', $task->id)
             ->where('user_id', $actor->id)
-            ->where('source', 'timer')
+            ->whereIn('source', ['timer', 'paused'])
             ->whereNull('end_time')
             ->first();
 
-        if ($running) {
+        if ($open) {
             throw ValidationException::withMessages([
-                'timer' => __('A timer is already running for this task.'),
+                'timer' => $open->source === 'paused'
+                    ? __('A paused timer already exists for this task. Resume it instead.')
+                    : __('A timer is already running for this task.'),
             ]);
         }
 
@@ -93,7 +95,7 @@ class TimeTrackingService
         $running = TaskTimeLog::query()
             ->where('task_id', $task->id)
             ->where('user_id', $actor->id)
-            ->where('source', 'timer')
+            ->whereIn('source', ['timer', 'paused'])
             ->whereNull('end_time')
             ->first();
 
@@ -104,11 +106,14 @@ class TimeTrackingService
         }
 
         $end = now();
-        $duration = $this->calculateDurationMinutes($running->start_time, $end);
+        $duration = $running->source === 'paused'
+            ? (int) $running->duration_minutes
+            : $this->calculateDurationMinutes($running->start_time, $end);
 
         $running->update([
             'end_time' => $end,
             'duration_minutes' => $duration,
+            'source' => 'timer',
         ]);
 
         $running = $running->fresh();
@@ -116,6 +121,59 @@ class TimeTrackingService
         $this->dispatchLogged($running, $actor);
 
         return $running;
+    }
+
+    public function pauseTimer(Task $task, User $actor): TaskTimeLog
+    {
+        $this->assertTrackable($task);
+
+        $running = TaskTimeLog::query()
+            ->where('task_id', $task->id)
+            ->where('user_id', $actor->id)
+            ->where('source', 'timer')
+            ->whereNull('end_time')
+            ->first();
+
+        if (! $running) {
+            throw ValidationException::withMessages([
+                'timer' => __('No running timer found for this task.'),
+            ]);
+        }
+
+        $duration = $this->calculateDurationMinutes($running->start_time, now());
+
+        $running->update([
+            'source' => 'paused',
+            'duration_minutes' => $duration,
+        ]);
+
+        return $running->fresh();
+    }
+
+    public function resumeTimer(Task $task, User $actor): TaskTimeLog
+    {
+        $this->assertTrackable($task);
+
+        $paused = TaskTimeLog::query()
+            ->where('task_id', $task->id)
+            ->where('user_id', $actor->id)
+            ->where('source', 'paused')
+            ->whereNull('end_time')
+            ->first();
+
+        if (! $paused) {
+            throw ValidationException::withMessages([
+                'timer' => __('No paused timer found for this task.'),
+            ]);
+        }
+
+        $paused->update([
+            'source' => 'timer',
+            'start_time' => now()->subMinutes((int) $paused->duration_minutes),
+            'duration_minutes' => 0,
+        ]);
+
+        return $paused->fresh();
     }
 
     public function calculateDurationMinutes(CarbonInterface $start, CarbonInterface $end): int

@@ -34,6 +34,7 @@ class StoreTaskStatusRequest extends FormRequest
             'is_default' => ['nullable', 'boolean'],
             'is_closed' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
+            'wip_limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
         ];
     }
 }

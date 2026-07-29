@@ -2,8 +2,8 @@
     <x-flash-messages />
 
     <x-layouts.entity-listing
-        :title="__('Attendance Calendar')"
-        :subtitle="$calendar['month_label'] ?? \Carbon\Carbon::create($year, $month, 1)->format('F Y')"
+        :title="__('Attendance')"
+        :subtitle="null"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
@@ -15,6 +15,7 @@
         <x-slot:actions>
             <x-ui.button :href="route('hrms.attendance.records')" variant="secondary" size="sm">{{ __('Records') }}</x-ui.button>
             <x-ui.button :href="route('hrms.attendance.summary')" variant="secondary" size="sm">{{ __('Daily Summary') }}</x-ui.button>
+            <x-ui.button :href="route('hrms.attendance.reports.index')" variant="secondary" size="sm">{{ __('Reports') }}</x-ui.button>
         </x-slot:actions>
 
         <x-attendance.calendar-app
@@ -25,6 +26,8 @@
             :view="$view ?? 'my'"
             :employee-id="$employee?->id"
             :employees="$employees ?? collect()"
+            :departments="$departments ?? collect()"
+            :department-id="$departmentId ?? null"
             :can-view-team="$canViewTeam ?? false"
             :can-filter-employees="$canFilterEmployees ?? false"
             :navigation="$navigation ?? []"

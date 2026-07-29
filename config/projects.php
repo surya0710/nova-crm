@@ -47,6 +47,19 @@ return [
         'archived' => 'Archived',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Manager-facing health labels (Release 1.2.2)
+    |--------------------------------------------------------------------------
+    */
+    'health_display' => [
+        'on_track' => ['label' => 'Healthy', 'indicator' => 'green'],
+        'at_risk' => ['label' => 'At Risk', 'indicator' => 'amber'],
+        'delayed' => ['label' => 'Critical', 'indicator' => 'red'],
+        'completed' => ['label' => 'Completed', 'indicator' => 'indigo'],
+        'archived' => ['label' => 'Archived', 'indicator' => 'slate'],
+    ],
+
     'health_thresholds' => [
         'overdue_tasks_at_risk' => 1,
         'overdue_tasks_delayed' => 3,
@@ -55,13 +68,19 @@ return [
         'schedule_variance_at_risk_days' => 3,
         'schedule_variance_delayed_days' => 7,
         'completion_trend_decline_at_risk' => -5,
+        'team_capacity_at_risk' => 100,
+        'team_capacity_critical' => 125,
     ],
 
     'report_types' => [
         'summary' => 'Project Summary',
         'task_progress' => 'Task Progress',
         'resource_utilization' => 'Resource Utilization',
+        'resource_allocation' => 'Resource Allocation',
+        'project_progress' => 'Project Progress',
+        'workload' => 'Workload',
         'milestone_status' => 'Milestone Status',
+        'milestone_report' => 'Milestone Report',
         'time_tracking' => 'Time Tracking',
         'timeline' => 'Project Timeline',
         'executive' => 'Executive Summary',
@@ -71,6 +90,20 @@ return [
         'pdf' => 'PDF',
         'excel' => 'Excel',
         'csv' => 'CSV',
+    ],
+
+    'planning_reports' => [
+        'types' => [
+            'resource_allocation' => 'Resource Allocation Report',
+            'project_progress' => 'Project Progress Report',
+            'workload' => 'Workload Report',
+            'milestone_report' => 'Milestone Report',
+        ],
+        'export_formats' => [
+            'csv' => 'CSV',
+            'xlsx' => 'Excel',
+            'pdf' => 'PDF',
+        ],
     ],
 
     'default_categories' => [

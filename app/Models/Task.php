@@ -24,6 +24,7 @@ class Task extends Model
         'project_id',
         'parent_task_id',
         'milestone_id',
+        'sprint_id',
         'status_id',
         'priority_id',
         'task_number',
@@ -101,6 +102,11 @@ class Task extends Model
     public function milestone(): BelongsTo
     {
         return $this->belongsTo(ProjectMilestone::class, 'milestone_id');
+    }
+
+    public function sprint(): BelongsTo
+    {
+        return $this->belongsTo(Sprint::class);
     }
 
     public function taskStatus(): BelongsTo

@@ -45,9 +45,20 @@ class ProjectHealthSnapshot extends Model
 
     public function getHealthStatusLabelAttribute(): string
     {
+        $display = config('projects.health_display.'.$this->health_status);
+
+        if (is_array($display) && ! empty($display['label'])) {
+            return $display['label'];
+        }
+
         return config(
             'projects.health_statuses.'.$this->health_status,
             ucfirst(str_replace('_', ' ', (string) $this->health_status))
         );
+    }
+
+    public function getHealthIndicatorAttribute(): string
+    {
+        return config('projects.health_display.'.$this->health_status.'.indicator', 'slate');
     }
 }

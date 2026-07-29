@@ -58,6 +58,7 @@ use App\Http\Controllers\Hrms\AppraisalSessionController as HrmsAppraisalSession
 use App\Http\Controllers\Hrms\AssetController as HrmsAssetController;
 use App\Http\Controllers\Hrms\AttendanceCalendarController as HrmsAttendanceCalendarController;
 use App\Http\Controllers\Hrms\AttendanceController as HrmsAttendanceController;
+use App\Http\Controllers\Hrms\AttendanceReportController as HrmsAttendanceReportController;
 use App\Http\Controllers\Hrms\BranchController as HrmsBranchController;
 use App\Http\Controllers\Hrms\CompetencyCategoryController as HrmsCompetencyCategoryController;
 use App\Http\Controllers\Hrms\CompetencyController as HrmsCompetencyController;
@@ -65,6 +66,7 @@ use App\Http\Controllers\Hrms\DepartmentController as HrmsDepartmentController;
 use App\Http\Controllers\Hrms\DesignationController as HrmsDesignationController;
 use App\Http\Controllers\Hrms\EmployeeAppraisalController as HrmsEmployeeAppraisalController;
 use App\Http\Controllers\Hrms\EmployeeController as HrmsEmployeeController;
+use App\Http\Controllers\Hrms\EmployeeCareerController as HrmsEmployeeCareerController;
 use App\Http\Controllers\Hrms\EmployeeDirectoryController;
 use App\Http\Controllers\Hrms\EmployeeDocumentController as HrmsEmployeeDocumentController;
 use App\Http\Controllers\Hrms\EmployeeExitController as HrmsEmployeeExitController;
@@ -172,6 +174,7 @@ use App\Http\Controllers\ProjectMentionController;
 use App\Http\Controllers\ProjectProgressController;
 use App\Http\Controllers\ProjectProgressDashboardController;
 use App\Http\Controllers\ProjectReportController;
+use App\Http\Controllers\PlanningReportController;
 use App\Http\Controllers\ProjectRiskController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\ResourceAllocationController;
@@ -192,6 +195,9 @@ use App\Http\Controllers\TaskAttachmentController;
 use App\Http\Controllers\TaskChecklistController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskBoardController;
+use App\Http\Controllers\BacklogController;
+use App\Http\Controllers\SprintController;
 use App\Http\Controllers\TaskDependencyController;
 use App\Http\Controllers\TaskPriorityController;
 use App\Http\Controllers\TaskRecurrenceController;
@@ -387,6 +393,41 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->name('hrms.employees.password-reset');
 
         Route::prefix('hrms/employees/{employee}')->scopeBindings()->group(function () {
+            Route::post('skills', [HrmsEmployeeCareerController::class, 'storeSkill'])
+                ->name('hrms.employees.skills.store');
+            Route::put('skills/{skill}', [HrmsEmployeeCareerController::class, 'updateSkill'])
+                ->name('hrms.employees.skills.update');
+            Route::delete('skills/{skill}', [HrmsEmployeeCareerController::class, 'destroySkill'])
+                ->name('hrms.employees.skills.destroy');
+
+            Route::post('certifications', [HrmsEmployeeCareerController::class, 'storeCertification'])
+                ->name('hrms.employees.certifications.store');
+            Route::put('certifications/{certification}', [HrmsEmployeeCareerController::class, 'updateCertification'])
+                ->name('hrms.employees.certifications.update');
+            Route::delete('certifications/{certification}', [HrmsEmployeeCareerController::class, 'destroyCertification'])
+                ->name('hrms.employees.certifications.destroy');
+
+            Route::post('educations', [HrmsEmployeeCareerController::class, 'storeEducation'])
+                ->name('hrms.employees.educations.store');
+            Route::put('educations/{education}', [HrmsEmployeeCareerController::class, 'updateEducation'])
+                ->name('hrms.employees.educations.update');
+            Route::delete('educations/{education}', [HrmsEmployeeCareerController::class, 'destroyEducation'])
+                ->name('hrms.employees.educations.destroy');
+
+            Route::post('experiences', [HrmsEmployeeCareerController::class, 'storeExperience'])
+                ->name('hrms.employees.experiences.store');
+            Route::put('experiences/{experience}', [HrmsEmployeeCareerController::class, 'updateExperience'])
+                ->name('hrms.employees.experiences.update');
+            Route::delete('experiences/{experience}', [HrmsEmployeeCareerController::class, 'destroyExperience'])
+                ->name('hrms.employees.experiences.destroy');
+
+            Route::post('emergency-contacts', [HrmsEmployeeCareerController::class, 'storeEmergencyContact'])
+                ->name('hrms.employees.emergency-contacts.store');
+            Route::put('emergency-contacts/{emergency_contact}', [HrmsEmployeeCareerController::class, 'updateEmergencyContact'])
+                ->name('hrms.employees.emergency-contacts.update');
+            Route::delete('emergency-contacts/{emergency_contact}', [HrmsEmployeeCareerController::class, 'destroyEmergencyContact'])
+                ->name('hrms.employees.emergency-contacts.destroy');
+
             Route::get('documents', [HrmsEmployeeDocumentController::class, 'index'])
                 ->middleware('permission:hrms.view')
                 ->name('hrms.employees.documents.index');
@@ -437,6 +478,12 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::get('/summary', [HrmsAttendanceController::class, 'summary'])
                 ->middleware('permission:attendance.view')
                 ->name('hrms.attendance.summary');
+            Route::get('/reports', [HrmsAttendanceReportController::class, 'index'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.reports.index');
+            Route::get('/reports/export', [HrmsAttendanceReportController::class, 'export'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.reports.export');
             Route::post('/clock-in', [HrmsAttendanceController::class, 'clockIn'])
                 ->middleware('permission:attendance.manage')
                 ->name('hrms.attendance.clock-in');
@@ -1251,7 +1298,21 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::get('reports/finance/export/revenue', [ReportController::class, 'exportRevenue'])->name('reports.export.revenue');
         Route::get('customers/{customer}/statement/export', [ReportController::class, 'exportCustomerStatement'])->name('customers.statement.export');
 
-        Route::get('tasks/board', [TaskController::class, 'board'])->name('tasks.board');
+        Route::get('tasks/board', [TaskBoardController::class, 'board'])->name('tasks.board');
+        Route::post('tasks/board/preferences', [TaskBoardController::class, 'preferences'])->name('tasks.board.preferences');
+        Route::post('tasks/{task}/board/move', [TaskBoardController::class, 'move'])->name('tasks.board.move');
+        Route::post('tasks/{task}/board/quick-action', [TaskBoardController::class, 'quickAction'])->name('tasks.board.quick-action');
+
+        Route::get('tasks/backlog', [BacklogController::class, 'index'])->name('tasks.backlog');
+        Route::post('tasks/backlog/reorder', [BacklogController::class, 'reorder'])->name('tasks.backlog.reorder');
+        Route::post('tasks/backlog/bulk', [BacklogController::class, 'bulk'])->name('tasks.backlog.bulk');
+        Route::post('tasks/{task}/backlog/move', [BacklogController::class, 'move'])->name('tasks.backlog.move');
+
+        Route::get('sprints', [SprintController::class, 'index'])->name('sprints.index');
+        Route::post('sprints', [SprintController::class, 'store'])->name('sprints.store');
+        Route::patch('sprints/{sprint}', [SprintController::class, 'update'])->name('sprints.update');
+        Route::delete('sprints/{sprint}', [SprintController::class, 'destroy'])->name('sprints.destroy');
+
         Route::get('tasks/list', [TaskController::class, 'list'])->name('tasks.list');
         Route::get('tasks/timeline', [TaskController::class, 'timeline'])->name('tasks.timeline');
         Route::get('projects/{project}/tasks', [TaskController::class, 'projectIndex'])->name('projects.tasks.index');
@@ -1284,6 +1345,8 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::get('tasks/{task}/time-logs', [TaskTimeLogController::class, 'index'])->name('tasks.time-logs.index');
         Route::post('tasks/{task}/time-logs', [TaskTimeLogController::class, 'store'])->name('tasks.time-logs.store');
         Route::post('tasks/{task}/time-logs/start', [TaskTimeLogController::class, 'start'])->name('tasks.time-logs.start');
+        Route::post('tasks/{task}/time-logs/pause', [TaskTimeLogController::class, 'pause'])->name('tasks.time-logs.pause');
+        Route::post('tasks/{task}/time-logs/resume', [TaskTimeLogController::class, 'resume'])->name('tasks.time-logs.resume');
         Route::post('tasks/{task}/time-logs/stop', [TaskTimeLogController::class, 'stop'])->name('tasks.time-logs.stop');
         Route::delete('tasks/{task}/time-logs/{time_log}', [TaskTimeLogController::class, 'destroy'])->name('tasks.time-logs.destroy');
 
@@ -1306,6 +1369,8 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::get('projects/milestones', ProjectsMilestonesHubController::class)->name('projects.milestones.hub');
         Route::get('projects/budgets', ProjectsBudgetsHubController::class)->name('projects.budgets.hub');
         Route::get('projects/reports-hub', ProjectsReportsController::class)->name('projects.reports.hub');
+        Route::get('projects/planning/reports', [PlanningReportController::class, 'index'])->name('projects.planning.reports.index');
+        Route::get('projects/planning/reports/export', [PlanningReportController::class, 'export'])->name('projects.planning.reports.export');
         Route::get('projects/dashboard', [ProjectController::class, 'dashboard'])->name('projects.dashboard');
         Route::get('projects/executive', [ProjectExecutiveDashboardController::class, 'index'])->name('projects.executive');
         Route::get('projects/watching', [ProjectWatcherController::class, 'index'])->name('projects.watching');

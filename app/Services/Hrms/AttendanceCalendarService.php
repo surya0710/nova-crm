@@ -3,6 +3,7 @@
 namespace App\Services\Hrms;
 
 use App\Models\AttendanceRecord;
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\LeaveApplication;
@@ -107,11 +108,52 @@ class AttendanceCalendarService
             ['key' => 'leave_pending', 'label' => __('Pending Leave'), 'color' => 'purple', 'symbol' => '🟣'],
             ['key' => 'holiday', 'label' => __('Public Holiday'), 'color' => 'orange', 'symbol' => '🟠'],
             ['key' => 'weekend', 'label' => __('Weekend'), 'color' => 'slate', 'symbol' => '⚪'],
-            ['key' => 'half_day', 'label' => __('Half Day'), 'color' => 'amber', 'symbol' => '🌓'],
-            ['key' => 'remote', 'label' => __('Remote Work'), 'color' => 'cyan', 'symbol' => '🏠'],
+            ['key' => 'half_day', 'label' => __('Half Day'), 'color' => 'amber', 'symbol' => '🟡'],
+            ['key' => 'remote', 'label' => __('WFH'), 'color' => 'cyan', 'symbol' => '🏠'],
             ['key' => 'late', 'label' => __('Late'), 'color' => 'yellow', 'symbol' => '🟡'],
             ['key' => 'missing_checkout', 'label' => __('Missing Checkout'), 'color' => 'neutral', 'symbol' => '⚫'],
         ];
+    }
+
+    /**
+     * @return Collection<int, Employee>
+     */
+    public function filterableEmployees(?int $departmentId = null): Collection
+    {
+        $query = Employee::query()
+            ->whereIn('status', config('hrms.clockable_employee_statuses', []))
+            ->orderBy('first_name')
+            ->orderBy('last_name');
+
+        if ($departmentId !== null) {
+            $query->where('department_id', $departmentId);
+        }
+
+        return $query->get(['id', 'first_name', 'last_name', 'employee_code', 'department_id']);
+    }
+
+    /**
+     * @return Collection<int, Employee>
+     */
+    public function teamEmployeesForManager(Employee $manager): Collection
+    {
+        return Employee::query()
+            ->where('reporting_manager_id', $manager->id)
+            ->whereIn('status', config('hrms.clockable_employee_statuses', []))
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'employee_code', 'department_id']);
+    }
+
+    /**
+     * @return Collection<int, Department>
+     */
+    public function filterableDepartments(): Collection
+    {
+        return Department::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
     }
 
     /** @return Collection<string, AttendanceRecord> */
@@ -229,7 +271,105 @@ class AttendanceCalendarService
                 'end_time' => $shift->end_time,
             ] : null,
             'indicator' => $indicator,
+            'timeline' => $this->buildDayTimeline($date, $record, $holiday, $leave, $shift, $indicator, $visual),
         ];
+    }
+
+    /**
+     * @return list<array{time: string|null, label: string, type: string}>
+     */
+    protected function buildDayTimeline(
+        Carbon $date,
+        ?AttendanceRecord $record,
+        ?Holiday $holiday,
+        ?array $leave,
+        mixed $shift,
+        ?array $indicator,
+        array $visual,
+    ): array {
+        $entries = [];
+
+        if ($holiday !== null) {
+            $entries[] = [
+                'time' => null,
+                'label' => $holiday->name,
+                'type' => 'holiday',
+            ];
+        }
+
+        if ($leave !== null) {
+            $entries[] = [
+                'time' => null,
+                'label' => trim(($leave['type'] ?? __('Leave')).' · '.($leave['status_label'] ?? '')),
+                'type' => 'leave',
+            ];
+        }
+
+        if ($shift !== null) {
+            $entries[] = [
+                'time' => null,
+                'label' => __('Shift').': '.$shift->name,
+                'type' => 'shift',
+            ];
+        }
+
+        if ($record?->clock_in_at !== null) {
+            $entries[] = [
+                'time' => $record->clock_in_at->format('g:i A'),
+                'label' => __('Check In'),
+                'type' => 'check_in',
+            ];
+        }
+
+        if ($indicator !== null && $indicator['key'] === 'late') {
+            $entries[] = [
+                'time' => $record?->clock_in_at?->format('g:i A'),
+                'label' => $indicator['label'] ?? __('Late'),
+                'type' => 'late',
+            ];
+        }
+
+        if ($record?->clock_out_at !== null) {
+            $entries[] = [
+                'time' => $record->clock_out_at->format('g:i A'),
+                'label' => __('Check Out'),
+                'type' => 'check_out',
+            ];
+        }
+
+        if ($indicator !== null && $indicator['key'] === 'missing_checkout') {
+            $entries[] = [
+                'time' => null,
+                'label' => $indicator['label'] ?? __('Missing Checkout'),
+                'type' => 'missing_checkout',
+            ];
+        }
+
+        if ($visual['key'] === 'weekend' && $record === null) {
+            $entries[] = [
+                'time' => null,
+                'label' => __('Weekend'),
+                'type' => 'weekend',
+            ];
+        }
+
+        if ($visual['key'] === 'absent') {
+            $entries[] = [
+                'time' => null,
+                'label' => __('Absent'),
+                'type' => 'absent',
+            ];
+        }
+
+        if ($visual['key'] === 'remote' && $record?->clock_in_at !== null) {
+            $entries[] = [
+                'time' => null,
+                'label' => __('WFH / Remote Work'),
+                'type' => 'remote',
+            ];
+        }
+
+        return $entries;
     }
 
     /**
@@ -306,7 +446,7 @@ class AttendanceCalendarService
             if (in_array($record->source, ['mobile', 'api'], true)) {
                 return [
                     'key' => 'remote',
-                    'label' => __('Remote Work'),
+                    'label' => __('WFH'),
                     'color' => 'cyan',
                     'dots' => $dots,
                     'border' => null,

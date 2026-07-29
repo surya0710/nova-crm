@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\Organization;
+use App\Models\ProjectMember;
 use App\Models\ResourceAllocation;
+use App\Models\Task;
+use App\Models\TaskTimeLog;
 use App\Models\WorkloadSnapshot;
 use App\Services\Hrms\LeaveService;
 use Carbon\Carbon;
@@ -182,6 +185,250 @@ class WorkloadService
         }
 
         return 'optimal';
+    }
+
+    /**
+     * Manager-facing resource allocation dashboard rows (Release 1.2.2).
+     *
+     * @param  array{project_id?: int|null, department_id?: int|null, branch_id?: int|null}  $filters
+     * @return list<array<string, mixed>>
+     */
+    public function allocationDashboard(Organization $organization, Carbon $from, Carbon $to, array $filters = []): array
+    {
+        $employees = $this->activeEmployees($organization);
+
+        if (! empty($filters['department_id'])) {
+            $employees = $employees->where('department_id', (int) $filters['department_id'])->values();
+        }
+
+        if (! empty($filters['branch_id'])) {
+            $employees = $employees->where('branch_id', (int) $filters['branch_id'])->values();
+        }
+
+        $userIds = $employees->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
+        $projectFilter = ! empty($filters['project_id']) ? (int) $filters['project_id'] : null;
+
+        $activeProjectsByUser = ProjectMember::query()
+            ->where('organization_id', $organization->id)
+            ->where('is_active', true)
+            ->whereIn('user_id', $userIds)
+            ->when($projectFilter, fn ($q) => $q->where('project_id', $projectFilter))
+            ->selectRaw('user_id, COUNT(DISTINCT project_id) as project_count')
+            ->groupBy('user_id')
+            ->pluck('project_count', 'user_id');
+
+        $openTasks = Task::query()
+            ->where('organization_id', $organization->id)
+            ->where('is_archived', false)
+            ->whereIn('assigned_to', $userIds)
+            ->when($projectFilter, fn ($q) => $q->where('project_id', $projectFilter))
+            ->with('taskStatus')
+            ->get()
+            ->filter(fn (Task $task) => $task->isOpen())
+            ->groupBy('assigned_to');
+
+        $loggedMinutesByUser = TaskTimeLog::query()
+            ->where('organization_id', $organization->id)
+            ->whereIn('user_id', $userIds)
+            ->whereNotNull('duration_minutes')
+            ->whereBetween('start_time', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->selectRaw('user_id, SUM(duration_minutes) as minutes')
+            ->groupBy('user_id')
+            ->pluck('minutes', 'user_id');
+
+        $rows = [];
+
+        foreach ($employees as $employee) {
+            $workload = $this->calculateForEmployee($employee, $from, $to);
+            $userId = $employee->user_id ? (int) $employee->user_id : null;
+            $tasks = $userId ? ($openTasks->get($userId) ?? collect()) : collect();
+
+            if ($projectFilter && $userId && ! $activeProjectsByUser->has($userId) && $tasks->isEmpty()) {
+                continue;
+            }
+
+            $estimated = round((float) $tasks->sum(fn (Task $t) => (float) ($t->estimated_hours ?? 0)), 2);
+            $loggedFromTasks = round((float) $tasks->sum(fn (Task $t) => (float) ($t->actual_hours ?? 0)), 2);
+            $loggedFromLogs = $userId
+                ? round(((float) ($loggedMinutesByUser[$userId] ?? 0)) / 60, 2)
+                : 0.0;
+            $logged = max($loggedFromTasks, $loggedFromLogs);
+            $remaining = round(max(0, $estimated - $logged), 2);
+            $status = $workload['status'];
+
+            $rows[] = [
+                ...$workload,
+                'employee_id' => (int) $employee->id,
+                'employee_name' => $employee->full_name,
+                'user_id' => $userId,
+                'department_id' => $employee->department_id,
+                'branch_id' => $employee->branch_id ?? null,
+                'active_projects' => $userId ? (int) ($activeProjectsByUser[$userId] ?? 0) : 0,
+                'active_tasks' => $tasks->count(),
+                'estimated_hours' => $estimated,
+                'logged_hours' => $logged,
+                'remaining_hours' => $remaining,
+                'capacity_percentage' => $workload['utilization'],
+                'overallocated' => $status === 'overallocated',
+                'display_status' => $this->displayStatusLabel($status),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Per-employee workload timeline: current/future tasks, leave, free capacity.
+     *
+     * @return array<string, mixed>
+     */
+    public function employeeTimeline(Employee $employee, Carbon $from, Carbon $to): array
+    {
+        $workload = $this->calculateForEmployee($employee, $from, $to);
+        $userId = $employee->user_id ? (int) $employee->user_id : null;
+        $today = now()->startOfDay();
+
+        $tasks = $userId
+            ? Task::query()
+                ->where('organization_id', $employee->organization_id)
+                ->where('assigned_to', $userId)
+                ->where('is_archived', false)
+                ->with(['project:id,name', 'taskStatus'])
+                ->orderBy('due_date')
+                ->get()
+                ->filter(fn (Task $task) => $task->isOpen())
+                ->values()
+            : collect();
+
+        $current = $tasks->filter(function (Task $task) use ($today) {
+            $due = $task->due_date ?? $task->due_at;
+            $start = $task->start_date;
+
+            if ($start && $start->gt($today)) {
+                return false;
+            }
+
+            if ($due === null) {
+                return true;
+            }
+
+            $dueDay = $due instanceof \Carbon\CarbonInterface
+                ? $due->copy()->startOfDay()
+                : Carbon::parse($due)->startOfDay();
+
+            return $dueDay->lte($today->copy()->addDays(7));
+        })->values();
+
+        $future = $tasks->filter(function (Task $task) use ($current) {
+            return ! $current->contains('id', $task->id);
+        })->values();
+
+        $leave = $this->leaveService->getApprovedLeaveForDateRange($employee, $from, $to)
+            ->map(fn ($leave) => [
+                'id' => $leave->id,
+                'start_date' => $leave->start_date->toDateString(),
+                'end_date' => $leave->end_date->toDateString(),
+                'type' => $leave->leaveType?->name,
+                'is_half_day' => (bool) $leave->is_half_day,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'employee_id' => (int) $employee->id,
+            'employee_name' => $employee->full_name,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'capacity_percentage' => $workload['utilization'],
+            'available_hours' => $workload['available'],
+            'allocated_hours' => $workload['allocated'],
+            'free_capacity_hours' => round(max(0, $workload['available'] - $workload['allocated']), 2),
+            'status' => $workload['status'],
+            'display_status' => $this->displayStatusLabel($workload['status']),
+            'current_tasks' => $current->map(fn (Task $t) => $this->taskTimelineRow($t))->all(),
+            'future_tasks' => $future->map(fn (Task $t) => $this->taskTimelineRow($t))->all(),
+            'leave' => $leave,
+            'days' => $workload['days'],
+        ];
+    }
+
+    /**
+     * Team charts for daily/weekly/monthly workload views.
+     *
+     * @param  array{project_id?: int|null, department_id?: int|null, branch_id?: int|null}  $filters
+     * @return array<string, mixed>
+     */
+    public function teamWorkloadCharts(Organization $organization, Carbon $from, Carbon $to, array $filters = []): array
+    {
+        $rows = $this->allocationDashboard($organization, $from, $to, $filters);
+
+        $upcomingDeadlines = Task::query()
+            ->where('organization_id', $organization->id)
+            ->where('is_archived', false)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [$from->toDateString(), $to->toDateString()])
+            ->with('taskStatus')
+            ->get()
+            ->filter(fn (Task $task) => $task->isOpen())
+            ->take(20)
+            ->map(fn (Task $task) => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'due_date' => $task->due_date?->toDateString(),
+                'assignee_id' => $task->assigned_to,
+                'project_id' => $task->project_id,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'period' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+            ],
+            'tasks_per_employee' => collect($rows)->map(fn ($r) => [
+                'employee' => $r['employee_name'],
+                'tasks' => $r['active_tasks'],
+            ])->all(),
+            'hours_per_employee' => collect($rows)->map(fn ($r) => [
+                'employee' => $r['employee_name'],
+                'estimated' => $r['estimated_hours'],
+                'logged' => $r['logged_hours'],
+                'allocated' => $r['allocated'],
+            ])->all(),
+            'remaining_workload' => collect($rows)->map(fn ($r) => [
+                'employee' => $r['employee_name'],
+                'remaining_hours' => $r['remaining_hours'],
+                'free_capacity' => round(max(0, $r['available'] - $r['allocated']), 2),
+            ])->all(),
+            'upcoming_deadlines' => $upcomingDeadlines,
+            'rows' => $rows,
+        ];
+    }
+
+    public function displayStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'overallocated' => __('Overallocated'),
+            'underutilized' => __('Available'),
+            default => __('Healthy'),
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function taskTimelineRow(Task $task): array
+    {
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'project' => $task->project?->name,
+            'due_date' => $task->due_date?->toDateString() ?? $task->due_at?->toDateString(),
+            'estimated_hours' => (float) ($task->estimated_hours ?? 0),
+            'status' => $task->taskStatus?->name ?? $task->status,
+            'url' => route('tasks.show', $task),
+        ];
     }
 
     /**

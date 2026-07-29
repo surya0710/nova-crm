@@ -35,8 +35,8 @@ return [
     'underutilization_threshold' => 50,
 
     'utilization_statuses' => [
-        'underutilized' => 'Underutilized',
-        'optimal' => 'Optimal',
+        'underutilized' => 'Available',
+        'optimal' => 'Healthy',
         'overallocated' => 'Overallocated',
     ],
 
