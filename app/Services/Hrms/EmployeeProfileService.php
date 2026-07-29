@@ -103,7 +103,7 @@ class EmployeeProfileService
             ->where('user_id', $userId)
             ->where('is_active', true)
             ->whereNull('left_at')
-            ->with('project:id,name,status')
+            ->with('project:id,name')
             ->latest('joined_at')
             ->limit(10)
             ->get();
