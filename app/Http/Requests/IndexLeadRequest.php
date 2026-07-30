@@ -2,13 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Http\Requests\Concerns\ValidatesApiMetadataQuery;
 use App\Http\Requests\Concerns\ValidatesGeographicFilters;
 use Illuminate\Foundation\Http\FormRequest;
 
-class IndexApiLeadRequest extends FormRequest
+class IndexLeadRequest extends FormRequest
 {
-    use ValidatesApiMetadataQuery;
     use ValidatesGeographicFilters;
 
     public function authorize(): bool
@@ -21,9 +19,8 @@ class IndexApiLeadRequest extends FormRequest
      */
     public function rules(): array
     {
-        return array_merge($this->metadataQueryRules(), $this->geographicFilterRules(), [
-            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'status' => ['sometimes', 'string', 'max:50'],
+        return array_merge($this->geographicFilterRules(), [
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
     }
 }

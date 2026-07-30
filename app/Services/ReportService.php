@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -17,8 +18,9 @@ class ReportService
 {
     public function __construct(protected RevenueService $revenue) {}
 
-    public function compile(Organization $organization, ?Carbon $from = null): array
+    public function compile(Organization $organization, ?Carbon $from = null, string $groupBy = 'state'): array
     {
+        $groupBy = in_array($groupBy, ['state', 'country'], true) ? $groupBy : 'state';
         $filters = [
             'date_from' => $from,
             'date_to' => null,
@@ -94,6 +96,58 @@ class ReportService
             'count' => (int) $row->won_count,
         ]);
 
+        $leadGeography = Lead::query()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select($groupBy, DB::raw('count(*) as count'))
+            ->groupBy($groupBy)
+            ->orderByDesc('count')
+            ->get();
+
+        $customerGeography = Customer::query()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select($groupBy, DB::raw('count(*) as count'))
+            ->groupBy($groupBy)
+            ->orderByDesc('count')
+            ->get();
+
+        $revenueGeography = (clone $paymentQuery)
+            ->join('customers', 'customers.id', '=', 'payments.customer_id')
+            ->where('customers.organization_id', $organization->id)
+            ->whereNotNull('customers.'.$groupBy)
+            ->where('customers.'.$groupBy, '!=', '')
+            ->select(
+                'customers.'.$groupBy.' as geography',
+                DB::raw('sum(payments.amount) as total'),
+            )
+            ->groupBy('customers.'.$groupBy)
+            ->orderByDesc('total')
+            ->get();
+
+        $conversionGeography = Lead::query()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select(
+                $groupBy,
+                DB::raw('count(*) as total'),
+                DB::raw("sum(case when status = 'converted' or converted_at is not null then 1 else 0 end) as converted"),
+            )
+            ->groupBy($groupBy)
+            ->orderByDesc('converted')
+            ->get()
+            ->map(function ($row) use ($groupBy) {
+                $total = (int) $row->total;
+                $converted = (int) $row->converted;
+
+                return [
+                    'geography' => (string) $row->{$groupBy},
+                    'total' => $total,
+                    'converted' => $converted,
+                    'rate' => $total > 0 ? round(($converted / $total) * 100, 1) : 0.0,
+                ];
+            });
+
         return [
             'currency' => $organization->currency,
             'revenue_collected' => $revenueCollected,
@@ -109,6 +163,11 @@ class ReportService
             'monthly_revenue' => $this->monthlyRevenue(),
             'payments_by_method' => $paymentsByMethod,
             'top_performers' => $topPerformers,
+            'geographic_group' => $groupBy,
+            'leads_by_geography' => $leadGeography,
+            'customers_by_geography' => $customerGeography,
+            'revenue_by_geography' => $revenueGeography,
+            'lead_conversion_by_geography' => $conversionGeography,
         ];
     }
 

@@ -20,9 +20,16 @@ class StoreApiLeadRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'company' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'source' => ['required', 'string', 'max:50'],
+            'industry' => ['nullable', 'string', 'max:100'],
+            'address_line_1' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
             'form_type' => ['nullable', 'string', 'max:100'],
             'source_url' => ['nullable', 'string', 'url', 'max:2048'],
             'service_interest' => ['nullable', 'string', 'max:255'],
@@ -41,11 +48,16 @@ class StoreApiLeadRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $fields = ['name', 'email', 'phone', 'source', 'form_type', 'source_url', 'service_interest', 'message'];
+        $fields = [
+            'name', 'company', 'email', 'phone', 'source', 'industry',
+            'address_line_1', 'city', 'state', 'country', 'postal_code',
+            'form_type', 'source_url', 'service_interest', 'message',
+        ];
 
         foreach ($fields as $field) {
-            if ($this->has($field) && is_string($this->input($field)) && trim($this->input($field)) === '') {
-                $this->merge([$field => null]);
+            if ($this->has($field) && is_string($this->input($field))) {
+                $value = trim($this->input($field));
+                $this->merge([$field => $value === '' ? null : $value]);
             }
         }
     }

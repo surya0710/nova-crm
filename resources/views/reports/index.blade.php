@@ -25,6 +25,10 @@
                     <option value="365" @selected($period === '365')>{{ __('Last 12 months') }}</option>
                     <option value="all" @selected($period === 'all')>{{ __('All time') }}</option>
                 </x-forms.select>
+                <x-forms.select name="group_by" onchange="this.form.submit()" class="!w-auto min-w-[10rem]" aria-label="{{ __('Group geographic reports by') }}">
+                    <option value="state" @selected($groupBy === 'state')>{{ __('Group by state') }}</option>
+                    <option value="country" @selected($groupBy === 'country')>{{ __('Group by country') }}</option>
+                </x-forms.select>
                 @if (auth()->user()->hasPermission('reports.view') || auth()->user()->hasPermission('finance.view'))
                     <x-ui.button :href="route('reports.finance')" variant="secondary" size="sm">{{ __('Finance reports') }}</x-ui.button>
                 @endif
@@ -148,6 +152,60 @@
                     @else
                         <p class="text-sm text-ink-muted">{{ __('No pipeline data yet.') }}</p>
                     @endif
+                </x-entity.section>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <x-entity.section :title="__('Leads by :group', ['group' => $groupBy])">
+                    <div class="space-y-2">
+                        @forelse ($data['leads_by_geography'] as $row)
+                            <div class="flex justify-between text-sm">
+                                <span class="text-ink-muted">{{ $row->{$groupBy} }}</span>
+                                <span class="font-medium text-ink-heading">{{ number_format((int) $row->count) }}</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-ink-muted">{{ __('No geographic lead data yet.') }}</p>
+                        @endforelse
+                    </div>
+                </x-entity.section>
+
+                <x-entity.section :title="__('Customers by :group', ['group' => $groupBy])">
+                    <div class="space-y-2">
+                        @forelse ($data['customers_by_geography'] as $row)
+                            <div class="flex justify-between text-sm">
+                                <span class="text-ink-muted">{{ $row->{$groupBy} }}</span>
+                                <span class="font-medium text-ink-heading">{{ number_format((int) $row->count) }}</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-ink-muted">{{ __('No geographic customer data yet.') }}</p>
+                        @endforelse
+                    </div>
+                </x-entity.section>
+
+                <x-entity.section :title="__('Revenue by :group', ['group' => $groupBy])">
+                    <div class="space-y-2">
+                        @forelse ($data['revenue_by_geography'] as $row)
+                            <div class="flex justify-between text-sm">
+                                <span class="text-ink-muted">{{ $row->geography }}</span>
+                                <span class="font-medium text-ink-heading">{{ $formatMoney((float) $row->total) }}</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-ink-muted">{{ __('No geographic revenue data yet.') }}</p>
+                        @endforelse
+                    </div>
+                </x-entity.section>
+
+                <x-entity.section :title="__('Lead conversion by :group', ['group' => $groupBy])">
+                    <div class="space-y-2">
+                        @forelse ($data['lead_conversion_by_geography'] as $row)
+                            <div class="flex justify-between gap-4 text-sm">
+                                <span class="text-ink-muted">{{ $row['geography'] }}</span>
+                                <span class="font-medium text-ink-heading">{{ $row['converted'] }}/{{ $row['total'] }} · {{ $row['rate'] }}%</span>
+                            </div>
+                        @empty
+                            <p class="text-sm text-ink-muted">{{ __('No geographic conversion data yet.') }}</p>
+                        @endforelse
+                    </div>
                 </x-entity.section>
             </div>
 

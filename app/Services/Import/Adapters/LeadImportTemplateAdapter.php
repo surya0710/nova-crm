@@ -57,6 +57,11 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
             'email' => 'john@example.com',
             'phone' => '+919876543210',
             'company' => 'ABC Pvt Ltd',
+            'address_line_1' => '12 Connaught Place',
+            'city' => 'New Delhi',
+            'state' => 'Delhi',
+            'country' => 'India',
+            'postal_code' => '110001',
             'status' => 'New',
             'source' => 'Website',
             'owner' => $ownerSample,
@@ -66,6 +71,10 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
             /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
+            if ($this->isReservedStandardKey($definition->key)) {
+                continue;
+            }
+
             $samples[$definition->key] = $this->sampleForMetadataDefinition($definition);
         }
 
@@ -98,6 +107,10 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
             /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
+            if ($this->isReservedStandardKey($definition->key)) {
+                continue;
+            }
+
             $type = (string) $definition->type;
 
             if ($definition->isOptionBacked()) {
@@ -160,7 +173,7 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         return [
             'Download this template, fill in your lead rows, then upload it from Import Leads.',
             'Required: provide a name using First Name and/or Last Name (or a Full Name column if you add one).',
-            'Optional standard fields: Email, Phone, Company, Status, Source, Owner, Notes.',
+            'Optional standard fields: Email, Phone, Company, Address, City, State, Country, Postal Code, Status, Source, Owner, Notes.',
             'Email and Phone should be unique within the file and against existing open leads in your organization.',
             'Duplicate emails or phones are reported in preview and are skipped on import (not merged).',
             'Owner matching: use an organization member email or exact full name.',
@@ -186,6 +199,11 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
             new ImportTemplateColumn(key: 'email', label: 'Email'),
             new ImportTemplateColumn(key: 'phone', label: 'Phone'),
             new ImportTemplateColumn(key: 'company', label: 'Company'),
+            new ImportTemplateColumn(key: 'address_line_1', label: 'Address'),
+            new ImportTemplateColumn(key: 'city', label: 'City'),
+            new ImportTemplateColumn(key: 'state', label: 'State'),
+            new ImportTemplateColumn(key: 'country', label: 'Country'),
+            new ImportTemplateColumn(key: 'postal_code', label: 'Postal Code'),
             new ImportTemplateColumn(key: 'status', label: 'Status'),
             new ImportTemplateColumn(key: 'source', label: 'Source'),
             new ImportTemplateColumn(key: 'owner', label: 'Owner'),
@@ -203,6 +221,9 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
             /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
+            if ($this->isReservedStandardKey($definition->key)) {
+                continue;
+            }
 
             $columns[] = new ImportTemplateColumn(
                 key: $definition->key,
@@ -214,6 +235,15 @@ class LeadImportTemplateAdapter implements ImportTemplateProviderInterface
         }
 
         return $columns;
+    }
+
+    protected function isReservedStandardKey(string $key): bool
+    {
+        return in_array($key, [
+            'first_name', 'last_name', 'full_name', 'email', 'phone', 'company',
+            'address_line_1', 'city', 'state', 'country', 'postal_code',
+            'source', 'status', 'owner', 'priority', 'industry', 'budget', 'notes',
+        ], true);
     }
 
     protected function sampleForMetadataDefinition(MetadataFieldDefinition $definition): string

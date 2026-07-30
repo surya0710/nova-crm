@@ -28,11 +28,14 @@ class ReportController extends Controller
             'all' => null,
             default => Carbon::now()->subDays(30),
         };
+        $groupBy = $request->string('group_by', 'state')->toString();
+        $groupBy = in_array($groupBy, ['state', 'country'], true) ? $groupBy : 'state';
 
         return view('reports.index', [
             'organization' => $organization,
-            'data' => $reports->compile($organization, $from),
+            'data' => $reports->compile($organization, $from, $groupBy),
             'period' => in_array($period, ['30', '90', '365', 'all'], true) ? $period : '30',
+            'groupBy' => $groupBy,
         ]);
     }
 

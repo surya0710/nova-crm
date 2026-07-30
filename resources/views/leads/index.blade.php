@@ -64,10 +64,10 @@
         </x-slot:actions>
 
         <x-slot:filters>
-            <form method="GET" action="{{ route('leads.index') }}" id="leads-index-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <form method="GET" action="{{ route('leads.index') }}" id="leads-index-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-8">
                 <div class="lg:col-span-2">
                     <label for="leads-search" class="sr-only">{{ __('Search leads') }}</label>
-                    <x-forms.input id="leads-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, company, email…') }}" />
+                    <x-forms.input id="leads-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search by customer, mobile, email or company...') }}" />
                 </div>
                 <x-forms.select name="status" aria-label="{{ __('Status') }}">
                     <option value="">{{ __('All statuses') }}</option>
@@ -85,6 +85,18 @@
                     <option value="">{{ __('All priorities') }}</option>
                     @foreach (config('leads.priorities') as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['priority'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-forms.select>
+                <x-forms.select name="state" aria-label="{{ __('State') }}">
+                    <option value="">{{ __('All states') }}</option>
+                    @foreach ($stateOptions as $state)
+                        <option value="{{ $state }}" @selected(in_array($state, \Illuminate\Support\Arr::wrap($filters['state'] ?? []), true))>{{ $state }}</option>
+                    @endforeach
+                </x-forms.select>
+                <x-forms.select name="country" aria-label="{{ __('Country') }}">
+                    <option value="">{{ __('All countries') }}</option>
+                    @foreach ($countryOptions as $country)
+                        <option value="{{ $country }}" @selected(in_array($country, \Illuminate\Support\Arr::wrap($filters['country'] ?? []), true))>{{ $country }}</option>
                     @endforeach
                 </x-forms.select>
                 <div class="flex gap-2">

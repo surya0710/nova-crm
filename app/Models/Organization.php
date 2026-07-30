@@ -88,7 +88,7 @@ class Organization extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-            ->withPivot(['role', 'role_id', 'is_owner'])
+            ->withPivot(['id', 'role', 'role_id', 'is_owner', 'is_active'])
             ->withTimestamps();
     }
 
@@ -186,6 +186,7 @@ class Organization extends Model
             'role_id' => $role->id,
             'role' => $roleSlug,
             'is_owner' => $roleSlug === 'organization-owner',
+            'is_active' => true,
         ]);
     }
 

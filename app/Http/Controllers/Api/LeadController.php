@@ -6,9 +6,11 @@ use App\Exceptions\DuplicateLeadException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexApiLeadRequest;
 use App\Http\Requests\StoreApiLeadRequest;
+use App\Http\Requests\UpdateApiLeadRequest;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Services\LeadService;
+use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
 use App\Services\TenantContext;
@@ -22,6 +24,7 @@ class LeadController extends Controller
 {
     public function __construct(
         protected LeadService $leadService,
+        protected MetadataEntityFormService $metadataForms,
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
     ) {}
@@ -30,6 +33,13 @@ class LeadController extends Controller
     {
         $organization = $tenant->get();
         $query = Lead::query()->with('assignee');
+
+        $this->leadService->searchQuery($query, $request->validated('search'));
+        $this->leadService->geographicFilterQuery(
+            $query,
+            $request->validated('state'),
+            $request->validated('country'),
+        );
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -47,7 +57,7 @@ class LeadController extends Controller
         }
 
         return LeadResource::collection(
-            $query->paginate($request->perPage())
+            $query->paginate($request->perPage())->withQueryString()
         );
     }
 
@@ -55,6 +65,29 @@ class LeadController extends Controller
     {
         $this->authorize('view', $lead);
 
+        $lead->load(['assignee', 'creator']);
+
+        return new LeadResource($lead);
+    }
+
+    public function update(UpdateApiLeadRequest $request, Lead $lead, TenantContext $tenant): LeadResource
+    {
+        $data = $request->validated();
+        $customFields = $data['custom_fields'] ?? [];
+        unset($data['custom_fields']);
+
+        $metadataValues = $request->has('custom_fields')
+            ? $this->metadataForms->validatedValues(
+                $lead,
+                $tenant->get(),
+                'lead',
+                $customFields,
+                allowUnknown: true,
+                context: 'edit',
+            )
+            : [];
+
+        $lead = $this->leadService->update($lead, $data, $request->user(), $metadataValues);
         $lead->load(['assignee', 'creator']);
 
         return new LeadResource($lead);
@@ -100,6 +133,7 @@ class LeadController extends Controller
         return response()->json([
             'success' => true,
             'lead_id' => $lead->id,
+            'data' => (new LeadResource($lead->load(['assignee', 'creator'])))->resolve($request),
             'message' => __('Lead created successfully.'),
         ], 201);
     }

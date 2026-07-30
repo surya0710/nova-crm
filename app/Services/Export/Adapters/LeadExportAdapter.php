@@ -4,12 +4,15 @@ namespace App\Services\Export\Adapters;
 
 use App\Models\Lead;
 use App\Services\Export\ExportColumnDefinition;
+use App\Services\LeadService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 
 class LeadExportAdapter extends AbstractExportAdapter
 {
+    public function __construct(protected LeadService $leadService) {}
+
     public function entityType(): string
     {
         return 'lead';
@@ -43,6 +46,8 @@ class LeadExportAdapter extends AbstractExportAdapter
             new ExportColumnDefinition('company', 'Company'),
             new ExportColumnDefinition('email', 'Email'),
             new ExportColumnDefinition('phone', 'Phone'),
+            new ExportColumnDefinition('state', 'State'),
+            new ExportColumnDefinition('country', 'Country'),
             new ExportColumnDefinition('source', 'Source'),
             new ExportColumnDefinition('industry', 'Industry', default: false),
             new ExportColumnDefinition('budget', 'Budget', ExportColumnDefinition::TYPE_NUMBER, default: false),
@@ -75,13 +80,14 @@ class LeadExportAdapter extends AbstractExportAdapter
         parent::applyFilters($query, $filters);
 
         if ($search = Arr::get($filters, 'search')) {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
+            $this->leadService->searchQuery($query, (string) $search);
         }
+
+        $this->leadService->geographicFilterQuery(
+            $query,
+            Arr::get($filters, 'state'),
+            Arr::get($filters, 'country'),
+        );
 
         if ($assigned = Arr::get($filters, 'assigned_to')) {
             $query->where('assigned_to', (int) $assigned);

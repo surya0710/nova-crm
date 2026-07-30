@@ -24,6 +24,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cache Store
+    |--------------------------------------------------------------------------
+    |
+    | Documentation indexes can contain the full Markdown corpus and may be
+    | too large for a single database-cache row. Use a file or Redis store.
+    |
+    */
+
+    'cache_store' => env('DOCUMENTATION_CACHE_STORE', 'file'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Search
     |--------------------------------------------------------------------------
     */

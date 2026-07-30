@@ -86,6 +86,34 @@ class LeadImportAdapter implements ImportableEntityInterface
                 aliases: ['Organization', 'Company Name', 'Organisation'],
             ),
             new ImportFieldDefinition(
+                key: 'address_line_1',
+                label: 'Address',
+                required: false,
+                aliases: ['Street Address', 'Address Line 1'],
+            ),
+            new ImportFieldDefinition(
+                key: 'city',
+                label: 'City',
+                required: false,
+            ),
+            new ImportFieldDefinition(
+                key: 'state',
+                label: 'State',
+                required: false,
+                aliases: ['State / Province', 'Province'],
+            ),
+            new ImportFieldDefinition(
+                key: 'country',
+                label: 'Country',
+                required: false,
+            ),
+            new ImportFieldDefinition(
+                key: 'postal_code',
+                label: 'Postal Code',
+                required: false,
+                aliases: ['ZIP', 'ZIP Code', 'Pin Code'],
+            ),
+            new ImportFieldDefinition(
                 key: 'source',
                 label: 'Source',
                 required: false,
@@ -152,6 +180,13 @@ class LeadImportAdapter implements ImportableEntityInterface
             $name = $this->composeName($values);
             if ($name === null) {
                 $errors[] = $this->error($rowNumber, 'full_name', 'Full Name (or First Name / Last Name) is required.', $values['full_name'] ?? null);
+            }
+
+            foreach (['state' => 'State', 'country' => 'Country'] as $field => $label) {
+                $value = $this->stringOrNull($values[$field] ?? null);
+                if ($value !== null && mb_strlen($value) > 255) {
+                    $errors[] = $this->error($rowNumber, $field, "{$label} may not exceed 255 characters.", $value);
+                }
             }
 
             $email = $this->normalizeEmail($values['email'] ?? null);
@@ -280,6 +315,11 @@ class LeadImportAdapter implements ImportableEntityInterface
                 'company' => $this->stringOrNull($mappedRow['company'] ?? null),
                 'email' => $email,
                 'phone' => $phone,
+                'address_line_1' => $this->stringOrNull($mappedRow['address_line_1'] ?? null),
+                'city' => $this->stringOrNull($mappedRow['city'] ?? null),
+                'state' => $this->stringOrNull($mappedRow['state'] ?? null),
+                'country' => $this->stringOrNull($mappedRow['country'] ?? null),
+                'postal_code' => $this->stringOrNull($mappedRow['postal_code'] ?? null),
                 'source' => $source,
                 'status' => $status,
                 'priority' => $priority,
@@ -332,10 +372,19 @@ class LeadImportAdapter implements ImportableEntityInterface
         }
 
         $fields = [];
+        $reservedKeys = [
+            'first_name', 'last_name', 'full_name', 'email', 'phone', 'company',
+            'address_line_1', 'city', 'state', 'country', 'postal_code',
+            'source', 'status', 'owner', 'priority', 'industry', 'budget', 'notes',
+        ];
 
         foreach ($this->metadataForms->fieldsFor($organization, 'lead', 'create') as $item) {
             /** @var MetadataFieldDefinition $definition */
             $definition = $item['field'];
+
+            if (in_array($definition->key, $reservedKeys, true)) {
+                continue;
+            }
 
             $fields[] = new ImportFieldDefinition(
                 key: $definition->key,

@@ -5,12 +5,16 @@ namespace App\Services\Search;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\LeadService;
 use App\Services\MetadataSearchService;
 use Illuminate\Support\Collection;
 
 class CrmLeadSearchProvider implements SearchProviderInterface
 {
-    public function __construct(protected MetadataSearchService $metadataSearch) {}
+    public function __construct(
+        protected MetadataSearchService $metadataSearch,
+        protected LeadService $leadService,
+    ) {}
 
     public function key(): string
     {
@@ -34,12 +38,10 @@ class CrmLeadSearchProvider implements SearchProviderInterface
         }
 
         return Lead::query()
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('company', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%");
-
-                $this->metadataSearch->applySearchConstraint($q, 'lead', $query);
+            ->where('leads.organization_id', $organization->id)
+            ->where(function ($q) use ($query, $organization) {
+                $this->leadService->searchQuery($q, $query);
+                $this->metadataSearch->applySearchConstraint($q, 'lead', $query, $organization->id);
             })
             ->limit($limit)
             ->get()

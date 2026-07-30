@@ -60,8 +60,17 @@ class User extends Authenticatable
     public function organizations(): BelongsToMany
     {
         return $this->belongsToMany(Organization::class)
-            ->withPivot(['role', 'role_id', 'is_owner'])
+            ->withPivot(['id', 'role', 'role_id', 'is_owner', 'is_active'])
             ->withTimestamps();
+    }
+
+    public function activeOrganizations(): BelongsToMany
+    {
+        return $this->organizations()
+            ->wherePivot('is_active', true)
+            ->where('organizations.is_active', true)
+            ->where('organizations.status', 'active')
+            ->whereNull('organizations.archived_at');
     }
 
     public function invitations(): HasMany
@@ -120,6 +129,17 @@ class User extends Authenticatable
             : $organization;
 
         return $this->organizations()
+            ->where('organizations.id', $organizationId)
+            ->exists();
+    }
+
+    public function belongsToActiveOrganization(Organization|int $organization): bool
+    {
+        $organizationId = $organization instanceof Organization
+            ? $organization->id
+            : $organization;
+
+        return $this->activeOrganizations()
             ->where('organizations.id', $organizationId)
             ->exists();
     }

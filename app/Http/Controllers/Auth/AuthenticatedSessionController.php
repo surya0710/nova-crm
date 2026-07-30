@@ -31,7 +31,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        $organization = $user instanceof User ? $user->organizations()->first() : null;
+        $organization = $user instanceof User ? $user->activeOrganizations()->first() : null;
 
         // Tenant context before login audit — User has no organization_id column.
         if ($organization) {

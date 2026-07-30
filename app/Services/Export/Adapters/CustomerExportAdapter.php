@@ -3,6 +3,7 @@
 namespace App\Services\Export\Adapters;
 
 use App\Models\Customer;
+use App\Services\CustomerService;
 use App\Services\Export\ExportColumnDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Support\Arr;
 
 class CustomerExportAdapter extends AbstractExportAdapter
 {
+    public function __construct(protected CustomerService $customerService) {}
+
     public function entityType(): string
     {
         return 'customer';
@@ -43,6 +46,8 @@ class CustomerExportAdapter extends AbstractExportAdapter
             new ExportColumnDefinition('company', 'Company', default: false),
             new ExportColumnDefinition('email', 'Email'),
             new ExportColumnDefinition('phone', 'Phone'),
+            new ExportColumnDefinition('state', 'State'),
+            new ExportColumnDefinition('country', 'Country'),
             new ExportColumnDefinition('status', 'Status'),
             new ExportColumnDefinition('assigned_owner', 'Assigned Owner', ExportColumnDefinition::TYPE_RELATIONSHIP, eager: ['assignee']),
             new ExportColumnDefinition('industry', 'Industry', default: false),
@@ -66,11 +71,13 @@ class CustomerExportAdapter extends AbstractExportAdapter
         parent::applyFilters($query, $filters);
 
         if ($search = Arr::get($filters, 'search')) {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%");
-            });
+            $this->customerService->searchQuery($query, (string) $search);
         }
+
+        $this->customerService->geographicFilterQuery(
+            $query,
+            Arr::get($filters, 'state'),
+            Arr::get($filters, 'country'),
+        );
     }
 }

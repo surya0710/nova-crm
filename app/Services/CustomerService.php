@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\User;
 use App\Workflow\WorkflowRuntimeContext;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Write authority for Customer create operations used by import and future callers.
@@ -15,6 +16,84 @@ use App\Workflow\WorkflowRuntimeContext;
 class CustomerService
 {
     public function __construct(protected MetadataEntityFormService $metadataForms) {}
+
+    /**
+     * @param  Builder<Customer>  $query
+     * @return Builder<Customer>
+     */
+    public function searchQuery(Builder $query, ?string $search): Builder
+    {
+        $search = trim((string) $search);
+        if ($search === '') {
+            return $query;
+        }
+
+        $textLike = '%'.strtolower($search).'%';
+        $phoneDigits = preg_match('/^[\d\s+().\/-]+$/', $search)
+            ? (preg_replace('/\D+/', '', $search) ?? '')
+            : '';
+
+        return $query->where(function (Builder $searchQuery) use ($textLike, $phoneDigits) {
+            foreach (['customers.name', 'customers.company', 'customers.email', 'customers.state', 'customers.country'] as $column) {
+                $searchQuery->orWhereRaw("LOWER({$column}) LIKE ?", [$textLike]);
+            }
+
+            if ($phoneDigits !== '') {
+                $phoneColumn = 'customers.phone';
+                foreach ([' ', '+', '-', '(', ')', '.', '/'] as $character) {
+                    $phoneColumn = "REPLACE({$phoneColumn}, '{$character}', '')";
+                }
+
+                $searchQuery->orWhereRaw("{$phoneColumn} LIKE ?", ['%'.$phoneDigits.'%']);
+                if (strlen($phoneDigits) > 10) {
+                    $searchQuery->orWhereRaw("{$phoneColumn} LIKE ?", ['%'.substr($phoneDigits, -10).'%']);
+                }
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<Customer>  $query
+     * @return Builder<Customer>
+     */
+    public function geographicFilterQuery(Builder $query, mixed $states, mixed $countries): Builder
+    {
+        $states = $this->normalizeFilterValues($states);
+        $countries = $this->normalizeFilterValues($countries);
+
+        if ($states !== []) {
+            $query->whereIn('customers.state', $states);
+        }
+
+        if ($countries !== []) {
+            $query->whereIn('customers.country', $countries);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array{states: array<int, string>, countries: array<int, string>}
+     */
+    public function geographicOptions(): array
+    {
+        return [
+            'states' => Customer::query()
+                ->whereNotNull('state')
+                ->where('state', '!=', '')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state')
+                ->all(),
+            'countries' => Customer::query()
+                ->whereNotNull('country')
+                ->where('country', '!=', '')
+                ->distinct()
+                ->orderBy('country')
+                ->pluck('country')
+                ->all(),
+        ];
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -96,5 +175,18 @@ class CustomerService
         }
 
         return ($hasPlus ? '+' : '').$digits;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function normalizeFilterValues(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => trim((string) $item), $values),
+            static fn (string $item): bool => $item !== '',
+        )));
     }
 }

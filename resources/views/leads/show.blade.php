@@ -85,6 +85,18 @@
             </x-entity.definition-list>
         </x-entity.section>
 
+        @if ($lead->address_line_1 || $lead->city || $lead->state || $lead->country || $lead->postal_code)
+            <x-entity.section :title="__('Address Information')">
+                <address class="text-sm not-italic leading-6 text-ink">
+                    @if ($lead->address_line_1){{ $lead->address_line_1 }}<br>@endif
+                    @if ($lead->city || $lead->state || $lead->postal_code)
+                        {{ collect([$lead->city, $lead->state, $lead->postal_code])->filter()->join(', ') }}<br>
+                    @endif
+                    @if ($lead->country){{ $lead->country }}@endif
+                </address>
+            </x-entity.section>
+        @endif
+
         @include('metadata-fields._runtime_detail', [
             'metadataFields' => $metadataFields ?? collect(),
             'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),

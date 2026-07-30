@@ -5,12 +5,16 @@ namespace App\Services\Search;
 use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\CustomerService;
 use App\Services\MetadataSearchService;
 use Illuminate\Support\Collection;
 
 class CrmCustomerSearchProvider implements SearchProviderInterface
 {
-    public function __construct(protected MetadataSearchService $metadataSearch) {}
+    public function __construct(
+        protected MetadataSearchService $metadataSearch,
+        protected CustomerService $customerService,
+    ) {}
 
     public function key(): string
     {
@@ -34,12 +38,10 @@ class CrmCustomerSearchProvider implements SearchProviderInterface
         }
 
         return Customer::query()
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('company', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%");
-
-                $this->metadataSearch->applySearchConstraint($q, 'customer', $query);
+            ->where('customers.organization_id', $organization->id)
+            ->where(function ($q) use ($query, $organization) {
+                $this->customerService->searchQuery($q, $query);
+                $this->metadataSearch->applySearchConstraint($q, 'customer', $query, $organization->id);
             })
             ->limit($limit)
             ->get()

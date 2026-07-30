@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -198,7 +199,7 @@ class DocumentationService
 
     public function getDocumentMetadata(string $slug, ?array $document = null): array
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->metadataCacheKey($slug),
             now()->addSeconds($this->cacheTtl()),
             function () use ($slug, $document): array {
@@ -486,7 +487,7 @@ class DocumentationService
      */
     private function resolveRouteMapping(string $routeName): ?array
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->routeMappingsCacheKey().':'.$routeName,
             now()->addSeconds($this->cacheTtl()),
             function () use ($routeName): ?array {
@@ -657,7 +658,7 @@ class DocumentationService
 
     private function buildSearchIndex(): Collection
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->searchIndexCacheKey(),
             now()->addSeconds($this->cacheTtl()),
             function (): Collection {
@@ -782,7 +783,7 @@ class DocumentationService
 
     private function discoverModules(): Collection
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->modulesCacheKey(),
             now()->addSeconds($this->cacheTtl()),
             function (): Collection {
@@ -814,7 +815,7 @@ class DocumentationService
 
     private function discoverDocuments(): Collection
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->documentsCacheKey(),
             now()->addSeconds($this->cacheTtl()),
             function (): Collection {
@@ -893,7 +894,7 @@ class DocumentationService
 
     private function renderMarkdown(string $content, string $path, int $mtime): string
     {
-        return Cache::remember(
+        return $this->cache()->remember(
             $this->renderCacheKey($path, $mtime),
             now()->addSeconds($this->cacheTtl()),
             fn (): string => Str::markdown($content, [
@@ -1125,6 +1126,13 @@ class DocumentationService
     private function cacheTtl(): int
     {
         return max(1, (int) config('documentation.cache_ttl', 3600));
+    }
+
+    private function cache(): Repository
+    {
+        $store = (string) config('documentation.cache_store', 'file');
+
+        return Cache::store($store !== '' ? $store : 'file');
     }
 
     private function modulesCacheKey(): string

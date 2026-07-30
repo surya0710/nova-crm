@@ -24,6 +24,7 @@
     $nav = is_array($shellNav) ? $shellNav : [];
     $currentOrganization = $currentOrganization ?? app(\App\Services\TenantContext::class)->get();
     $user = Auth::user();
+    $userOrganizations = $user?->activeOrganizations()->get() ?? collect();
     // Width is controlled by Alpine shell store on the parent; labels hide via Alpine.
     $menu = collect($nav['menu'] ?? []);
     $favorites = collect($nav['favorites'] ?? []);
@@ -52,7 +53,7 @@
             </div>
 
             <div class="mt-3" x-show="! $store.shell.sidebarCollapsed" x-cloak>
-                @if ($user->organizations->count() > 1)
+                @if ($userOrganizations->count() > 1)
                     <form
                         id="org-switch-form"
                         method="POST"
@@ -64,9 +65,9 @@
                             class="w-full rounded-lg border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-300 focus:border-primary-500 focus:ring-primary-500"
                             aria-label="{{ __('Switch organization') }}"
                             data-current="{{ $currentOrganization->id }}"
-                            onchange="window.NovaOrgSwitch && window.NovaOrgSwitch.submit(this)"
+                            onchange="this.form.action = this.selectedOptions[0].dataset.url; this.form.submit()"
                         >
-                            @foreach ($user->organizations as $org)
+                            @foreach ($userOrganizations as $org)
                                 <option
                                     value="{{ $org->id }}"
                                     data-url="{{ route('organization.switch', $org) }}"

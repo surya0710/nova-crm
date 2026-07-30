@@ -1,7 +1,7 @@
 @php
     $currentOrganization = app(\App\Services\TenantContext::class)->get();
     $user = Auth::user();
-    $userOrganizations = $user->organizations;
+    $userOrganizations = $user->activeOrganizations()->get();
     $currentRole = $currentOrganization ? $user->getRoleNameInOrganization($currentOrganization) : null;
 
     $can = fn (string $permission) => $user->hasPermission($permission, $currentOrganization);
@@ -46,7 +46,7 @@
                         class="w-full text-xs bg-slate-800 border-slate-700 text-slate-300 rounded-lg py-1.5 px-2 focus:ring-indigo-500 focus:border-indigo-500"
                         data-current="{{ $currentOrganization->id }}"
                         aria-label="{{ __('Switch organization') }}"
-                        onchange="window.NovaOrgSwitch && window.NovaOrgSwitch.submit(this)"
+                        onchange="this.form.action = this.selectedOptions[0].dataset.url; this.form.submit()"
                     >
                         @foreach ($userOrganizations as $org)
                             <option

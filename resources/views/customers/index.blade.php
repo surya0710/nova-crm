@@ -38,7 +38,7 @@
         </x-slot:actions>
 
         <x-slot:filters>
-            <form method="GET" action="{{ route('customers.index') }}" id="customers-index-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <form method="GET" action="{{ route('customers.index') }}" id="customers-index-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
                 <div class="lg:col-span-2">
                     <label for="customers-search" class="sr-only">{{ __('Search customers') }}</label>
                     <x-forms.input id="customers-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, company, email…') }}" />
@@ -50,6 +50,18 @@
                     @endforeach
                 </x-forms.select>
                 <x-forms.input name="industry" :value="$filters['industry'] ?? ''" placeholder="{{ __('Industry') }}" aria-label="{{ __('Industry') }}" />
+                <x-forms.select name="state" aria-label="{{ __('State') }}">
+                    <option value="">{{ __('All states') }}</option>
+                    @foreach ($stateOptions as $state)
+                        <option value="{{ $state }}" @selected(in_array($state, \Illuminate\Support\Arr::wrap($filters['state'] ?? []), true))>{{ $state }}</option>
+                    @endforeach
+                </x-forms.select>
+                <x-forms.select name="country" aria-label="{{ __('Country') }}">
+                    <option value="">{{ __('All countries') }}</option>
+                    @foreach ($countryOptions as $country)
+                        <option value="{{ $country }}" @selected(in_array($country, \Illuminate\Support\Arr::wrap($filters['country'] ?? []), true))>{{ $country }}</option>
+                    @endforeach
+                </x-forms.select>
                 <div class="flex gap-2">
                     <x-forms.select name="assigned_to" class="flex-1" aria-label="{{ __('Assignee') }}">
                         <option value="">{{ __('Anyone') }}</option>

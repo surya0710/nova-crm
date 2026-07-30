@@ -23,7 +23,7 @@ class AuthorizationService
 
         $organization = $this->resolveOrganization($user, $organization);
 
-        if (! $organization || ! $user->belongsToOrganization($organization)) {
+        if (! $organization || ! $user->belongsToActiveOrganization($organization)) {
             return false;
         }
 

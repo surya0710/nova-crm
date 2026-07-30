@@ -1,10 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\CapacityForecastController as ApiCapacityForecastController;
 use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
-use App\Http\Controllers\Api\LeadController as ApiLeadController;
-use App\Http\Controllers\Api\OpportunityController as ApiOpportunityController;
-use App\Http\Controllers\Api\NotificationPreferenceController as ApiNotificationPreferenceController;
 use App\Http\Controllers\Api\ExecutiveDashboardController as ApiExecutiveDashboardController;
+use App\Http\Controllers\Api\LeadController as ApiLeadController;
+use App\Http\Controllers\Api\NotificationPreferenceController as ApiNotificationPreferenceController;
+use App\Http\Controllers\Api\OpportunityController as ApiOpportunityController;
 use App\Http\Controllers\Api\PortfolioController as ApiPortfolioController;
 use App\Http\Controllers\Api\PortfolioForecastController as ApiPortfolioForecastController;
 use App\Http\Controllers\Api\PortfolioReportController as ApiPortfolioReportController;
@@ -14,16 +15,17 @@ use App\Http\Controllers\Api\ProjectAutomationController as ApiProjectAutomation
 use App\Http\Controllers\Api\ProjectBaselineController as ApiProjectBaselineController;
 use App\Http\Controllers\Api\ProjectBudgetController as ApiProjectBudgetController;
 use App\Http\Controllers\Api\ProjectCalendarController as ApiProjectCalendarController;
+use App\Http\Controllers\Api\ProjectCategoryController as ApiProjectCategoryController;
 use App\Http\Controllers\Api\ProjectCollaborationController as ApiProjectCollaborationController;
 use App\Http\Controllers\Api\ProjectController as ApiProjectController;
 use App\Http\Controllers\Api\ProjectDependencyController as ApiProjectDependencyController;
+use App\Http\Controllers\Api\ProjectExecutiveController as ApiProjectExecutiveController;
+use App\Http\Controllers\Api\ProjectHealthController as ApiProjectHealthController;
 use App\Http\Controllers\Api\ProjectIssueController as ApiProjectIssueController;
 use App\Http\Controllers\Api\ProjectLabelController as ApiProjectLabelController;
 use App\Http\Controllers\Api\ProjectLifecycleStageController as ApiProjectLifecycleStageController;
 use App\Http\Controllers\Api\ProjectMemberController as ApiProjectMemberController;
 use App\Http\Controllers\Api\ProjectMentionController as ApiProjectMentionController;
-use App\Http\Controllers\Api\ProjectExecutiveController as ApiProjectExecutiveController;
-use App\Http\Controllers\Api\ProjectHealthController as ApiProjectHealthController;
 use App\Http\Controllers\Api\ProjectMilestoneController as ApiProjectMilestoneController;
 use App\Http\Controllers\Api\ProjectMilestoneProgressController as ApiProjectMilestoneProgressController;
 use App\Http\Controllers\Api\ProjectProgressController as ApiProjectProgressController;
@@ -35,12 +37,9 @@ use App\Http\Controllers\Api\ProjectTemplateController as ApiProjectTemplateCont
 use App\Http\Controllers\Api\ProjectTimelineController as ApiProjectTimelineController;
 use App\Http\Controllers\Api\ProjectTypeController as ApiProjectTypeController;
 use App\Http\Controllers\Api\ProjectWatcherController as ApiProjectWatcherController;
-use App\Http\Controllers\Api\ProjectCategoryController as ApiProjectCategoryController;
-use App\Http\Controllers\Api\CapacityForecastController as ApiCapacityForecastController;
 use App\Http\Controllers\Api\Recruitment\RecruitmentApiController;
 use App\Http\Controllers\Api\ResourceAllocationController as ApiResourceAllocationController;
 use App\Http\Controllers\Api\ResourceCalendarController as ApiResourceCalendarController;
-use App\Http\Controllers\Api\WorkloadController as ApiWorkloadController;
 use App\Http\Controllers\Api\TaskAttachmentController as ApiTaskAttachmentController;
 use App\Http\Controllers\Api\TaskChecklistController as ApiTaskChecklistController;
 use App\Http\Controllers\Api\TaskCommentController as ApiTaskCommentController;
@@ -51,6 +50,7 @@ use App\Http\Controllers\Api\TaskRecurrenceController as ApiTaskRecurrenceContro
 use App\Http\Controllers\Api\TaskStatusController as ApiTaskStatusController;
 use App\Http\Controllers\Api\TaskTimeLogController as ApiTaskTimeLogController;
 use App\Http\Controllers\Api\TaskWatcherController as ApiTaskWatcherController;
+use App\Http\Controllers\Api\WorkloadController as ApiWorkloadController;
 use App\Http\Controllers\Dashboard\DashboardApiController;
 use App\Http\Controllers\Dashboard\DashboardPreferenceController;
 use App\Http\Controllers\Dashboard\DashboardWidgetController;
@@ -93,9 +93,14 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
         Route::post('leads', [ApiLeadController::class, 'store'])
             ->middleware('throttle:api-lead-intake');
         Route::get('leads/{lead}', [ApiLeadController::class, 'show']);
+        Route::put('leads/{lead}', [ApiLeadController::class, 'update']);
+        Route::patch('leads/{lead}', [ApiLeadController::class, 'update']);
 
         Route::get('customers', [ApiCustomerController::class, 'index']);
+        Route::post('customers', [ApiCustomerController::class, 'store']);
         Route::get('customers/{customer}', [ApiCustomerController::class, 'show']);
+        Route::put('customers/{customer}', [ApiCustomerController::class, 'update']);
+        Route::patch('customers/{customer}', [ApiCustomerController::class, 'update']);
 
         Route::get('opportunities', [ApiOpportunityController::class, 'index']);
         Route::get('opportunities/{opportunity}', [ApiOpportunityController::class, 'show']);

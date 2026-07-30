@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\DuplicateCustomerException;
 use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
 use App\Http\Requests\ConvertLeadRequest;
+use App\Http\Requests\IndexLeadRequest;
 use App\Http\Requests\StoreLeadNoteRequest;
 use App\Http\Requests\StoreLeadRequest;
 use App\Http\Requests\UpdateLeadFollowUpRequest;
@@ -50,23 +51,20 @@ class LeadController extends Controller
         $this->authorizeResource(Lead::class, 'lead');
     }
 
-    public function index(Request $request, TenantContext $tenant): View
+    public function index(IndexLeadRequest $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
         $saved = $this->resolveSavedIndexFilters($request, $tenant, 'lead', $this->savedFilters);
         $filterInput = $saved['input'];
 
-        $query = Lead::query()
-            ->with(['assignee', 'creator']);
+        $query = Lead::query()->with('assignee');
 
-        if ($search = ($filterInput['search'] ?? '')) {
-            $search = trim((string) $search);
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+        $this->leadService->searchQuery($query, $filterInput['search'] ?? null);
+        $this->leadService->geographicFilterQuery(
+            $query,
+            $filterInput['state'] ?? null,
+            $filterInput['country'] ?? null,
+        );
 
         if ($status = ($filterInput['status'] ?? '')) {
             $query->where('status', $status);
@@ -92,14 +90,17 @@ class LeadController extends Controller
         }
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'lead');
-        $filters = collect($filterInput)->only(['search', 'status', 'source', 'priority', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $filters = collect($filterInput)->only(['search', 'status', 'source', 'priority', 'assigned_to', 'state', 'country', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
         $leads = $query->paginate(15)->withQueryString();
+        $geographicOptions = $this->leadService->geographicOptions();
 
         return view('leads.index', [
             'leads' => $leads,
             'organization' => $organization,
             'assignees' => $this->organizationMembers($organization),
             'filters' => $filters,
+            'stateOptions' => $geographicOptions['states'],
+            'countryOptions' => $geographicOptions['countries'],
             'metadataFilterFields' => $metadataFields['filterable'],
             'metadataSortFields' => $metadataFields['sortable'],
             'savedFilters' => $saved['savedFilters'],

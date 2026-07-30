@@ -17,6 +17,7 @@ use App\Services\Assignment\AssignmentContext;
 use App\Services\Assignment\AssignmentResult;
 use App\Services\Assignment\AssignmentService;
 use App\Workflow\WorkflowRuntimeContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -30,6 +31,152 @@ class LeadService
         protected MarketingConversionService $conversions,
         protected AssignmentService $assignment,
     ) {}
+
+    /**
+     * Apply the shared web/API lead search.
+     *
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
+     */
+    public function searchQuery(Builder $query, ?string $search): Builder
+    {
+        $search = trim((string) $search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $textLike = '%'.strtolower($search).'%';
+        $phoneTerms = $this->phoneSearchTerms($search);
+
+        return $query->where(function (Builder $searchQuery) use ($textLike, $phoneTerms) {
+            $this->applySearchFields(
+                $searchQuery,
+                ['leads.name', 'leads.company', 'leads.email', 'leads.state', 'leads.country'],
+                'leads.phone',
+                $textLike,
+                $phoneTerms,
+            );
+
+            $searchQuery->orWhereHas('customer', function (Builder $customerQuery) use ($textLike, $phoneTerms) {
+                $this->applySearchFields(
+                    $customerQuery,
+                    ['customers.name', 'customers.company', 'customers.email', 'customers.state', 'customers.country'],
+                    'customers.phone',
+                    $textLike,
+                    $phoneTerms,
+                );
+            });
+        });
+    }
+
+    /**
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
+     */
+    public function geographicFilterQuery(Builder $query, mixed $states, mixed $countries): Builder
+    {
+        $states = $this->normalizeFilterValues($states);
+        $countries = $this->normalizeFilterValues($countries);
+
+        if ($states !== []) {
+            $query->whereIn('leads.state', $states);
+        }
+
+        if ($countries !== []) {
+            $query->whereIn('leads.country', $countries);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array{states: array<int, string>, countries: array<int, string>}
+     */
+    public function geographicOptions(): array
+    {
+        return [
+            'states' => Lead::query()
+                ->whereNotNull('state')
+                ->where('state', '!=', '')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state')
+                ->all(),
+            'countries' => Lead::query()
+                ->whereNotNull('country')
+                ->where('country', '!=', '')
+                ->distinct()
+                ->orderBy('country')
+                ->pluck('country')
+                ->all(),
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $textColumns
+     * @param  array<int, string>  $phoneTerms
+     */
+    protected function applySearchFields(
+        Builder $query,
+        array $textColumns,
+        string $phoneColumn,
+        string $textLike,
+        array $phoneTerms,
+    ): void {
+        foreach ($textColumns as $column) {
+            $query->orWhereRaw("LOWER({$column}) LIKE ?", [$textLike]);
+        }
+
+        $normalizedPhoneColumn = $this->normalizedPhoneSql($phoneColumn);
+        foreach ($phoneTerms as $phoneTerm) {
+            $query->orWhereRaw("{$normalizedPhoneColumn} LIKE ?", ['%'.$phoneTerm.'%']);
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function phoneSearchTerms(string $search): array
+    {
+        if (! preg_match('/^[\d\s+().\/-]+$/', $search)) {
+            return [];
+        }
+
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+        if ($digits === '') {
+            return [];
+        }
+
+        $terms = [$digits];
+        if (strlen($digits) > 10) {
+            $terms[] = substr($digits, -10);
+        }
+
+        return array_values(array_unique($terms));
+    }
+
+    protected function normalizedPhoneSql(string $column): string
+    {
+        foreach ([' ', '+', '-', '(', ')', '.', '/'] as $character) {
+            $column = "REPLACE({$column}, '{$character}', '')";
+        }
+
+        return $column;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function normalizeFilterValues(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => trim((string) $item), $values),
+            static fn (string $item): bool => $item !== '',
+        )));
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -133,18 +280,21 @@ class LeadService
             $leadPayload = [
                 'organization_id' => $organization->id,
                 'name' => $data['name'],
+                'company' => $data['company'] ?? null,
                 'email' => $data['email'] ?? null,
                 'phone' => $data['phone'] ?? null,
+                'industry' => $data['industry'] ?? null,
+                'address_line_1' => $data['address_line_1'] ?? null,
+                'city' => $data['city'] ?? null,
+                'state' => $data['state'] ?? null,
+                'country' => $data['country'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null,
                 'source' => $data['source'] ?? 'api',
                 'status' => 'new',
                 'priority' => $data['priority'] ?? 'medium',
                 'assigned_to' => $data['assigned_to'] ?? null,
                 'custom_fields' => $data['custom_fields'] ?? [],
             ];
-
-            if (isset($payload['country'])) {
-                $leadPayload['country'] = $payload['country'];
-            }
 
             $assignmentResult = null;
             $usedAutoAssignment = false;
@@ -156,7 +306,7 @@ class LeadService
                 $usedAutoAssignment = true;
             }
 
-            unset($leadPayload['country'], $leadPayload['custom_fields']);
+            unset($leadPayload['custom_fields']);
 
             $lead = Lead::query()->create([
                 ...$leadPayload,

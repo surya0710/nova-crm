@@ -127,7 +127,7 @@
             </x-entity.section>
         @endif
 
-        @if ($customer->address_line_1 || $customer->city || $customer->country)
+        @if ($customer->address_line_1 || $customer->address_line_2 || $customer->city || $customer->state || $customer->country || $customer->postal_code)
             <x-entity.section :title="__('Address')">
                 <div class="text-sm leading-relaxed text-ink">
                     @if ($customer->address_line_1){{ $customer->address_line_1 }}<br>@endif

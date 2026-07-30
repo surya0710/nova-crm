@@ -28,7 +28,7 @@
         </div>
     </x-forms.section>
 
-    <x-forms.section :title="__('Address & Tax')">
+    <x-forms.section :title="__('Address Information')">
         <div class="sm:col-span-2">
             <x-forms.field :label="__('Address Line 1')" name="address_line_1">
                 <x-forms.input id="address_line_1" type="text" name="address_line_1" :value="old('address_line_1', $customer->address_line_1)" />
@@ -42,14 +42,14 @@
         <x-forms.field :label="__('City')" name="city">
             <x-forms.input id="city" type="text" name="city" :value="old('city', $customer->city)" />
         </x-forms.field>
-        <x-forms.field :label="__('State / Province')" name="state">
+        <x-forms.field :label="__('State')" name="state">
             <x-forms.input id="state" type="text" name="state" :value="old('state', $customer->state)" />
-        </x-forms.field>
-        <x-forms.field :label="__('Postal Code')" name="postal_code">
-            <x-forms.input id="postal_code" type="text" name="postal_code" :value="old('postal_code', $customer->postal_code)" />
         </x-forms.field>
         <x-forms.field :label="__('Country')" name="country">
             <x-forms.input id="country" type="text" name="country" :value="old('country', $customer->country)" />
+        </x-forms.field>
+        <x-forms.field :label="__('Postal Code')" name="postal_code">
+            <x-forms.input id="postal_code" type="text" name="postal_code" :value="old('postal_code', $customer->postal_code)" />
         </x-forms.field>
         <x-forms.field :label="__('Tax Number')" name="tax_number">
             <x-forms.input id="tax_number" type="text" name="tax_number" :value="old('tax_number', $customer->tax_number)" />

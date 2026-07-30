@@ -27,6 +27,26 @@
         </x-forms.field>
     </x-forms.section>
 
+    <x-forms.section :title="__('Address Information')">
+        <div class="sm:col-span-2">
+            <x-forms.field :label="__('Address')" name="address_line_1">
+                <x-forms.input id="address_line_1" type="text" name="address_line_1" :value="old('address_line_1', $lead->address_line_1)" />
+            </x-forms.field>
+        </div>
+        <x-forms.field :label="__('City')" name="city">
+            <x-forms.input id="city" type="text" name="city" :value="old('city', $lead->city)" />
+        </x-forms.field>
+        <x-forms.field :label="__('State')" name="state">
+            <x-forms.input id="state" type="text" name="state" :value="old('state', $lead->state)" />
+        </x-forms.field>
+        <x-forms.field :label="__('Country')" name="country">
+            <x-forms.input id="country" type="text" name="country" :value="old('country', $lead->country)" />
+        </x-forms.field>
+        <x-forms.field :label="__('Postal Code')" name="postal_code">
+            <x-forms.input id="postal_code" type="text" name="postal_code" :value="old('postal_code', $lead->postal_code)" />
+        </x-forms.field>
+    </x-forms.section>
+
     <x-forms.section :title="__('Pipeline')" :subtitle="__('Status, source, and ownership')">
         <x-forms.field :label="__('Source')" name="source" required>
             <x-forms.select id="source" name="source" required>
