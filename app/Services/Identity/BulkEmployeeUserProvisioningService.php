@@ -10,6 +10,7 @@ use App\Models\UserProvisioningBatch;
 use App\Services\AuditLogger;
 use App\Services\Hrms\EmployeeProvisioningService;
 use App\Services\TenantContext;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 
 class BulkEmployeeUserProvisioningService
@@ -19,6 +20,48 @@ class BulkEmployeeUserProvisioningService
         protected TenantContext $tenantContext,
         protected AuditLogger $auditLogger,
     ) {}
+
+    public function failStale(DateTimeInterface $before): int
+    {
+        $count = 0;
+        UserProvisioningBatch::query()
+            ->withoutGlobalScopes()
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('updated_at', '<', $before)
+            ->eachById(function (UserProvisioningBatch $batch) use (&$count): void {
+                $errors = $batch->errors ?? [];
+                $errors[] = [
+                    'employee_id' => null,
+                    'error' => 'Employee provisioning exceeded the stale queue work threshold.',
+                ];
+                $batch->update([
+                    'status' => 'failed',
+                    'finished_at' => now(),
+                    'errors' => $errors,
+                ]);
+                $count++;
+            });
+
+        return $count;
+    }
+
+    public function reconcileCounters(): int
+    {
+        $count = 0;
+        UserProvisioningBatch::query()->withoutGlobalScopes()->eachById(function (UserProvisioningBatch $batch) use (&$count): void {
+            $processed = min(
+                (int) $batch->total,
+                (int) $batch->succeeded + (int) $batch->failed + (int) $batch->skipped,
+            );
+
+            if ((int) $batch->processed !== $processed) {
+                $batch->forceFill(['processed' => $processed])->save();
+                $count++;
+            }
+        });
+
+        return $count;
+    }
 
     /**
      * @param  array<int, int>  $employeeIds
@@ -55,7 +98,7 @@ class BulkEmployeeUserProvisioningService
         if ($batch->total <= $threshold) {
             $this->process($batch);
         } else {
-            BulkProvisionEmployeeUsersJob::dispatch($batch->id);
+            BulkProvisionEmployeeUsersJob::dispatch($batch->id)->afterCommit();
         }
 
         return $batch->fresh();
@@ -95,11 +138,13 @@ class BulkEmployeeUserProvisioningService
                 if (! $employee) {
                     $batch->incrementCounters('failed');
                     $errors[] = ['employee_id' => $employeeId, 'error' => 'not_found'];
+
                     continue;
                 }
 
                 if ($employee->user_id) {
                     $batch->incrementCounters('skipped');
+
                     continue;
                 }
 
@@ -107,6 +152,7 @@ class BulkEmployeeUserProvisioningService
                 if ($email === '') {
                     $batch->incrementCounters('failed');
                     $errors[] = ['employee_id' => $employeeId, 'error' => 'missing_email'];
+
                     continue;
                 }
 

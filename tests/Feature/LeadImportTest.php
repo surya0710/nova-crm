@@ -108,8 +108,8 @@ class LeadImportTest extends TestCase
 
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getActiveSheet()->fromArray([
-            ['First Name', 'Last Name', 'Email Address', 'Source'],
-            ['Grace', 'Hopper', 'grace@example.com', 'Referral'],
+            ['First Name', 'Last Name', 'Email Address', 'Phone', 'Source'],
+            ['Grace', 'Hopper', 'grace@example.com', '+15550100020', 'Referral'],
         ]);
         (new Xlsx($spreadsheet))->save($xlsxPath);
         $spreadsheet->disconnectWorksheets();
@@ -155,8 +155,8 @@ class LeadImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'meta.csv',
-            "Full Name,Email,Visa Interest\n".
-            "Meta User,meta@example.com,Student Visa\n"
+            "Full Name,Email,Phone,Visa Interest\n".
+            "Meta User,meta@example.com,+15550100021,Student Visa\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -180,9 +180,9 @@ class LeadImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'owners.csv',
-            "Full Name,Email,Owner\n".
-            "Named Lead,named@example.com,Casey Agent\n".
-            "Bad Owner,badowner@example.com,Nobody Here\n"
+            "Full Name,Email,Phone,Owner\n".
+            "Named Lead,named@example.com,+15550100022,Casey Agent\n".
+            "Bad Owner,badowner@example.com,+15550100023,Nobody Here\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -208,10 +208,10 @@ class LeadImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'lookups.csv',
-            "Full Name,Email,Source,Status\n".
-            "Ok Lead,oklookup@example.com,Google Ads,Contacted\n".
-            "Bad Source,badsource@example.com,Television,New\n".
-            "Bad Status,badstatus@example.com,Website,Not A Stage\n"
+            "Full Name,Email,Phone,Source,Status\n".
+            "Ok Lead,oklookup@example.com,+15550100024,Google Ads,Contacted\n".
+            "Bad Source,badsource@example.com,+15550100025,Television,New\n".
+            "Bad Status,badstatus@example.com,+15550100026,Website,Not A Stage\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -296,7 +296,7 @@ class LeadImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'tenant.csv',
-            "Full Name,Email\nShared,shared@example.com\n"
+            "Full Name,Email,Phone\nShared,shared@example.com,+15550100027\n"
         );
 
         $sessionA = $this->imports->upload($orgA, 'lead', $file, $userA);
@@ -325,7 +325,7 @@ class LeadImportTest extends TestCase
 
         $csv = UploadedFile::fake()->createWithContent(
             'http.csv',
-            "Full Name,Email\nHttp Lead,http@example.com\n"
+            "Full Name,Email,Phone\nHttp Lead,http@example.com,+15550100028\n"
         );
 
         $response = $this->actingAs($owner)
@@ -373,8 +373,8 @@ class LeadImportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'company.csv',
-            "Full Name,Email,Organization\n".
-            "Org Lead,orglead@example.com,Nova Corp\n"
+            "Full Name,Email,Phone,Organization\n".
+            "Org Lead,orglead@example.com,+15550100029,Nova Corp\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);

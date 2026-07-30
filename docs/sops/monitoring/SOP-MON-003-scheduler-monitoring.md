@@ -38,13 +38,17 @@ Confirm the scheduler heartbeat and critical scheduled jobs run as expected.
 
 ### 1. Verify
 
-1. Confirm schedule heartbeat recent.
-2. Confirm critical jobs succeeded in last cycle.
-3. Escalate misses via SOP-DEP-005 recovery / incident path.
+1. Confirm cache key `platform.scheduler.last_run` is recent in Platform Monitoring.
+2. The heartbeat is stale when older than `SCHEDULER_STALE_AFTER` (default 180 seconds).
+3. Review the dedicated `schedule:run` cron log and confirm critical jobs succeeded in their expected cycle.
+4. If stale, run `php artisan schedule:heartbeat` once to test cache writes, then repair the separate OS `schedule:run` cron; a manual heartbeat is not a scheduler substitute.
+5. Escalate misses via SOP-DEP-005 recovery / incident path.
 
 ## Validation Checklist
 
 - [ ] Heartbeat fresh
+- [ ] Heartbeat source/key verified as `platform.scheduler.last_run`
+- [ ] Scheduler cron log reviewed
 - [ ] Critical jobs OK or ticketed
 - [ ] Evidence logged
 - [ ] Evidence attached to the controlling ticket / change record

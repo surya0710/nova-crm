@@ -50,9 +50,11 @@ php artisan up
 | Process | Requirement |
 |---------|-------------|
 | PHP-FPM / Apache | Serve `public/` |
-| Queue worker | `php artisan queue:work --sleep=1 --tries=3 --timeout=360` (workflows may be long) |
-| Scheduler | Cron every minute: `php /path/to/artisan schedule:run` |
+| Queue worker | Supervisor: four workers on `default,imports,exports,bulk,provisioning,mail`; shared hosting: locked, bounded direct worker cron |
+| Scheduler | Separate, overlap-protected `schedule:run` cron every minute |
 | Vite assets | Built at deploy time (`npm run build`); do not rely on `npm run dev` in prod |
+
+Canonical setup, templates, recovery, and canary checks: [Queues and Scheduler — Release 1.2.x](queues-and-scheduler.md).
 
 Scheduled jobs (current):
 
@@ -75,6 +77,9 @@ Scheduled jobs (current):
 | `SESSION_SAME_SITE` | `lax` (or `strict` if compatible) |
 | `SANCTUM_STATEFUL_DOMAINS` | Your SPA/API hostnames |
 | `QUEUE_CONNECTION` | `database` or `redis` |
+| `DB_QUEUE_RETRY_AFTER` / `REDIS_QUEUE_RETRY_AFTER` | `390` (greater than the 360-second worker timeout) |
+| `QUEUE_FAILED_DRIVER` | `database-uuids` |
+| `SCHEDULER_STALE_AFTER` | `180` seconds |
 | `CACHE_STORE` | `redis` or `database` |
 | `ENTERPRISE_SHELL` | `true` unless rolling back UI |
 
@@ -88,6 +93,7 @@ Also configure mail, filesystem/S3, marketing OAuth platform credentials, and SS
 - [ ] Login tenant + platform (isolation)
 - [ ] Run [smoke checklist](../release/smoke.md)
 - [ ] Check Platform → Monitoring / `queue:failed`
+- [ ] Run the queue canary and confirm scheduler cache key `platform.scheduler.last_run` remains fresh
 - [ ] Confirm mail delivery (test notification or `organization.test-mail` where permitted)
 
 ---

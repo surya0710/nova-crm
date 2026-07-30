@@ -4,6 +4,7 @@ namespace App\Services\Marketing\Providers;
 
 use App\Models\MarketingProviderWebhookEvent;
 use App\Services\MarketingProviderService;
+use DateTimeInterface;
 use Throwable;
 
 /**
@@ -20,6 +21,19 @@ class MetaWebhookProcessor
     public function __construct(
         protected MarketingProviderService $providers,
     ) {}
+
+    public function recoverStaleProcessing(DateTimeInterface $before): int
+    {
+        return MarketingProviderWebhookEvent::query()
+            ->where('provider', 'meta')
+            ->where('processing_status', MarketingProviderWebhookEvent::STATUS_PROCESSING)
+            ->where('updated_at', '<', $before)
+            ->update([
+                'processing_status' => MarketingProviderWebhookEvent::STATUS_RECEIVED,
+                'failure_reason' => 'Recovered after the previous processing lease expired.',
+                'updated_at' => now(),
+            ]);
+    }
 
     /**
      * Process pending (received) webhook events for a provider slug.

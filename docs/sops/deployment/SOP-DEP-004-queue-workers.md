@@ -38,18 +38,24 @@ Run and supervise queue workers so asynchronous jobs process reliably.
 
 ### 1. Configure worker
 
-1. Process example: `php artisan queue:work --sleep=1 --tries=3 --timeout=360`
-2. Supervise with Supervisor / Windows service / systemd so workers auto-restart.
+1. Development uses `QUEUE_CONNECTION=database`; run `php artisan queue:work database --queue=default --sleep=1 --tries=3 --timeout=360`.
+2. On Linux/VPS, install [`deploy/supervisor/nova-crm-worker.conf.example`](../../../deploy/supervisor/nova-crm-worker.conf.example). It runs four processes across `default,imports,exports,bulk,provisioning,mail` with `autostart`, `autorestart`, TERM shutdown, and a 390-second graceful stop window.
+3. On cPanel/Plesk without Supervisor, install the bounded direct worker from [`deploy/cron/cpanel-plesk.cron.example`](../../../deploy/cron/cpanel-plesk.cron.example). It runs every minute with absolute paths, a non-blocking `flock`, `--stop-when-empty`, `--max-time=50`, and dedicated logging.
+4. Keep `DB_QUEUE_RETRY_AFTER` or `REDIS_QUEUE_RETRY_AFTER` at 390 or otherwise safely above the 360-second worker timeout.
 
 ### 2. Operate
 
-1. After every deploy: `php artisan queue:restart`
-2. Monitor depth via Platform → Monitoring and SOP-MON-002.
+1. After every deploy run `php artisan queue:restart`; long-lived workers finish their current job, exit gracefully, and are replaced by Supervisor.
+2. Confirm every Supervisor process returns to `RUNNING`, or confirm bounded cron invocations exit cleanly.
+3. Run the queue canary and health checks in [Queues and Scheduler — Release 1.2.x](../../deployment/queues-and-scheduler.md).
+4. Monitor pending depth, oldest age, failures, and worker logs via Platform → Monitoring and SOP-MON-002.
 
 ## Validation Checklist
 
 - [ ] Worker process running under supervisor
+- [ ] All configured queues have worker coverage
 - [ ] Jobs processing (depth not monotonically growing)
+- [ ] Queue canary processed without a new failed job
 - [ ] Restart performed after deploy
 - [ ] Evidence attached to the controlling ticket / change record
 
@@ -83,7 +89,7 @@ Record the following for every execution:
 | **Previous SOP** | [SOP-DEP-003 — Environment Configuration](SOP-DEP-003-environment-configuration.md) |
 | **Next SOP** | [SOP-DEP-005 — Scheduler](SOP-DEP-005-scheduler.md) |
 | **Related SOPs** | [SOP-MON-002](../monitoring/SOP-MON-002-queue-monitoring.md), [SOP-MNT-007](../maintenance/SOP-MNT-007-queue-recovery.md) |
-| **Related Documents** | [Technical Operations (legacy family)](../technical-operations.md), [Deployment overview](../../deployment/overview.md) |
+| **Related Documents** | [Queues and Scheduler](../../deployment/queues-and-scheduler.md), [Technical Operations (legacy family)](../technical-operations.md), [Deployment overview](../../deployment/overview.md) |
 | **Required Forms** | Worker change ticket |
 | **Required Checklists** | Queue worker health checklist |
 

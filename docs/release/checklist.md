@@ -1,6 +1,6 @@
 # Release Checklist — Operators
 
-Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [production-readiness.md](./production-readiness.md) and [smoke.md](./smoke.md).
+Pre- and post-release checklist for NovaCRM Release 1.2.x deployments. Pair with [production-readiness.md](./production-readiness.md), [smoke.md](./smoke.md), and the [queue/scheduler runbook](../deployment/queues-and-scheduler.md).
 
 **Related:** [Deployment overview](../deployment/overview.md) · [UPGRADE.md](../../UPGRADE.md)
 
@@ -10,7 +10,7 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 
 | Field | Value |
 |-------|-------|
-| Phase / version | 14.9 |
+| Phase / version | 1.2.x |
 | Release date | |
 | Environment | ☐ Staging ☐ Production |
 | Deploy owner | |
@@ -23,7 +23,7 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 ### Communication
 
 - [ ] Release window communicated to stakeholders
-- [ ] Breaking changes documented (expect **none** for 14.9)
+- [ ] Breaking changes documented
 - [ ] Support team briefed on [troubleshooting](../troubleshooting/overview.md) updates
 
 ### Code & build
@@ -54,8 +54,8 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 ### Infrastructure
 
 - [ ] SSL certificate valid
-- [ ] Queue worker supervisor config ready
-- [ ] Cron entry for `schedule:run` every minute
+- [ ] Multiple-worker Supervisor config ready, or bounded overlap-protected shared-host queue cron installed
+- [ ] Separate overlap-protected `schedule:run` cron uses absolute paths and dedicated logging
 - [ ] Disk space adequate for logs and uploads
 - [ ] PHP 8.2+ and required extensions on target server
 
@@ -72,6 +72,7 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 - [ ] `php artisan route:cache`
 - [ ] `php artisan view:cache`
 - [ ] `php artisan queue:restart`
+- [ ] Supervisor workers return to `RUNNING` (or bounded cron workers exit normally)
 - [ ] Reload PHP-FPM / web server if required
 - [ ] `php artisan up` (if maintenance was enabled)
 
@@ -87,6 +88,7 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 - [ ] One workspace home per [smoke.md](./smoke.md) loads
 - [ ] No 500 errors in `laravel.log`
 - [ ] `php artisan queue:failed` — review new failures
+- [ ] Benign queue canary writes a recent `queue.canary.last_run` timestamp
 
 ### Smoke (within 1 hour)
 
@@ -99,7 +101,7 @@ Pre- and post-release checklist for NovaCRM Phase 14.9 deployments. Pair with [p
 
 - [ ] Queue depth stable (Platform Monitoring or `jobs` table count)
 - [ ] Failed job count not increasing
-- [ ] Scheduler heartbeat recorded (`schedule:heartbeat` in cron)
+- [ ] Scheduler heartbeat key `platform.scheduler.last_run` stays fresh via OS `schedule:run`
 - [ ] Error rate in logs normal
 - [ ] Mail delivery confirmed (test or payslip job)
 

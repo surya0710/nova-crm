@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
+use DateTimeInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +36,19 @@ class ImportPlatformService
         protected ImportErrorReportGenerator $errorReportGenerator,
         protected AuditLogger $auditLogger,
     ) {}
+
+    public function failStale(DateTimeInterface $before): int
+    {
+        return ImportSession::query()
+            ->withoutGlobalScopes()
+            ->whereIn('status', [ImportSession::STATUS_QUEUED, ImportSession::STATUS_IMPORTING])
+            ->where('updated_at', '<', $before)
+            ->update([
+                'status' => ImportSession::STATUS_FAILED,
+                'last_error' => 'Import exceeded the stale queue work threshold.',
+                'completed_at' => now(),
+            ]);
+    }
 
     public function registry(): ImportEntityRegistry
     {
@@ -351,7 +365,7 @@ class ImportPlatformService
             $this->transition($session, ImportSession::STATUS_QUEUED);
 
             try {
-                ProcessImportSessionJob::dispatch($session->id, $user?->id);
+                ProcessImportSessionJob::dispatch($session->id, $user?->id)->afterCommit();
             } catch (Throwable $e) {
                 $this->transition($session, ImportSession::STATUS_FAILED, [
                     'last_error' => 'Import could not be queued: '.$e->getMessage(),

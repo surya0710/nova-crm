@@ -965,9 +965,33 @@ class MarketingProviderService
             ];
         }
 
-        $this->transitionWebhookEvent($event, MarketingProviderWebhookEvent::STATUS_PROCESSING, [
-            'processing_attempts' => $event->processing_attempts + 1,
-        ]);
+        $claimed = MarketingProviderWebhookEvent::query()
+            ->whereKey($event->id)
+            ->whereIn('processing_status', [
+                MarketingProviderWebhookEvent::STATUS_RECEIVED,
+                MarketingProviderWebhookEvent::STATUS_FAILED,
+            ])
+            ->update([
+                'processing_status' => MarketingProviderWebhookEvent::STATUS_PROCESSING,
+                'processing_attempts' => DB::raw('processing_attempts + 1'),
+                'updated_at' => now(),
+            ]);
+
+        if ($claimed !== 1) {
+            $event->refresh();
+
+            return [
+                'ok' => true,
+                'status' => $event->processing_status,
+                'imported' => 0,
+                'skipped' => 0,
+                'failed' => 0,
+                'organization_id' => $event->organization_id,
+                'message' => 'Event is already being processed.',
+            ];
+        }
+
+        $event->refresh();
 
         if ($event->event_type === MarketingProviderWebhookEvent::EVENT_VERIFICATION) {
             $this->transitionWebhookEvent($event, MarketingProviderWebhookEvent::STATUS_IGNORED, [

@@ -282,7 +282,7 @@ class PayrollPublicationService
             return false;
         }
 
-        SendPayslipEmailJob::dispatch($payslip->id, $actor?->id);
+        SendPayslipEmailJob::dispatch($payslip->id, $actor?->id)->afterCommit();
 
         return true;
     }

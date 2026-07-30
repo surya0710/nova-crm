@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Dashboard\ModuleSubscriptionService;
 use App\Services\TenantContext;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -24,6 +25,37 @@ class BulkOperationsService
         protected AuditLogger $auditLogger,
         protected ModuleSubscriptionService $modules,
     ) {}
+
+    public function failStale(DateTimeInterface $before): int
+    {
+        return BulkOperation::query()
+            ->withoutGlobalScopes()
+            ->whereIn('status', [BulkOperation::STATUS_QUEUED, BulkOperation::STATUS_RUNNING])
+            ->where('updated_at', '<', $before)
+            ->update([
+                'status' => BulkOperation::STATUS_FAILED,
+                'last_error' => 'Bulk operation exceeded the stale queue work threshold.',
+                'completed_at' => now(),
+            ]);
+    }
+
+    public function reconcileCounters(): int
+    {
+        $count = 0;
+        BulkOperation::query()->withoutGlobalScopes()->eachById(function (BulkOperation $operation) use (&$count): void {
+            $processed = min(
+                (int) $operation->total_count,
+                (int) $operation->success_count + (int) $operation->failed_count + (int) $operation->skipped_count,
+            );
+
+            if ((int) $operation->processed_count !== $processed) {
+                $operation->forceFill(['processed_count' => $processed])->save();
+                $count++;
+            }
+        });
+
+        return $count;
+    }
 
     /**
      * @param  array{mode?: string, ids?: list<int>, filters?: array<string, mixed>}  $selection
@@ -94,7 +126,7 @@ class BulkOperationsService
 
         if ($action->supportsQueue() && $operation->total_count > $threshold) {
             $operation->forceFill(['status' => BulkOperation::STATUS_QUEUED])->save();
-            ProcessBulkOperationJob::dispatch($operation->id);
+            ProcessBulkOperationJob::dispatch($operation->id)->afterCommit();
 
             $this->auditLogger->log($operation, 'bulk_queued', [
                 'total_count' => $operation->total_count,

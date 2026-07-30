@@ -44,8 +44,8 @@ Expected: all tests pass, 0 failures. Skips only if a route is not registered (s
 | 1.1 | `curl -fsS "$APP_URL/up"` | HTTP 200, body indicates healthy |
 | 1.2 | Confirm `public/build/manifest.json` exists on server | Vite assets compiled |
 | 1.3 | Load any page; verify CSS/JS (no unstyled HTML) | Enterprise shell styled |
-| 1.4 | `php artisan queue:work` running (or supervisor) | Process active |
-| 1.5 | Trigger scheduler or wait 1 min; check heartbeat | `php artisan schedule:heartbeat` succeeds; Platform Monitoring shows scheduler note |
+| 1.4 | Check Supervisor/bounded cron, then run the [queue canary](../deployment/queues-and-scheduler.md#health-validation-and-canary) | Canary drains; no new failed job; configured queues have worker coverage |
+| 1.5 | Wait up to 2 min for OS `schedule:run`; check heartbeat | Platform Monitoring shows fresh cache key `platform.scheduler.last_run` |
 
 ---
 

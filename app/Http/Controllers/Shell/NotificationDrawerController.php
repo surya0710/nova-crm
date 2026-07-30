@@ -26,7 +26,7 @@ class NotificationDrawerController extends Controller
                     'id' => $notification->id,
                     'title' => $data['title'] ?? $data['message'] ?? __('Notification'),
                     'body' => $data['body'] ?? $data['message'] ?? null,
-                    'url' => $data['url'] ?? route('notifications.index'),
+                    'url' => $data['action_url'] ?? $data['url'] ?? route('notifications.index'),
                     'category' => $data['category'] ?? 'general',
                     'priority' => $data['priority'] ?? 'normal',
                     'workspace' => $data['workspace'] ?? null,

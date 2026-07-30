@@ -2,6 +2,8 @@
 
 namespace App\Services\Platform;
 
+use App\Services\Queue\QueueHealthService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -11,10 +13,14 @@ use Throwable;
 
 class PlatformMonitoringService
 {
+    public function __construct(private readonly QueueHealthService $queueHealth) {}
+
     public function snapshot(): array
     {
+        $queue = $this->queueStatus();
+
         return [
-            'queue' => $this->queueStatus(),
+            'queue' => $queue,
             'failed_jobs' => $this->failedJobs(10),
             'scheduler' => $this->schedulerStatus(),
             'cache' => $this->cacheStatus(),
@@ -22,21 +28,13 @@ class PlatformMonitoringService
             'database' => $this->databaseStatus(),
             'storage' => $this->storageStatus(),
             'logs' => $this->recentLogTail(),
-            'system' => $this->systemHealth(),
+            'system' => $this->systemHealth($queue),
         ];
     }
 
     public function queueStatus(): array
     {
-        $pending = Schema::hasTable('jobs') ? (int) DB::table('jobs')->count() : 0;
-        $failed = Schema::hasTable('failed_jobs') ? (int) DB::table('failed_jobs')->count() : 0;
-
-        return [
-            'driver' => config('queue.default'),
-            'pending' => $pending,
-            'failed' => $failed,
-            'status' => $failed > 0 ? 'degraded' : ($pending > 100 ? 'busy' : 'healthy'),
-        ];
+        return $this->queueHealth->snapshot();
     }
 
     public function failedJobs(int $limit = 25): array
@@ -61,10 +59,20 @@ class PlatformMonitoringService
 
     public function schedulerStatus(): array
     {
-        $last = Cache::get('platform.scheduler.last_run');
+        try {
+            $last = Cache::get('platform.scheduler.last_run');
+            $lastRun = is_string($last) && $last !== '' ? Carbon::parse($last) : null;
+            $staleAfter = max(1, (int) config('queue-monitoring.scheduler_stale_after_seconds', 180));
+            $status = $lastRun === null
+                ? 'unknown'
+                : ($lastRun->lt(now()->subSeconds($staleAfter)) ? 'stale' : 'ok');
+        } catch (Throwable) {
+            $last = null;
+            $status = 'unknown';
+        }
 
         return [
-            'status' => $last ? 'ok' : 'unknown',
+            'status' => $status,
             'last_run' => $last,
             'note' => __('Updated by schedule:heartbeat every minute when the OS scheduler is configured.'),
         ];
@@ -157,12 +165,10 @@ class PlatformMonitoringService
         return array_slice($lines, -30);
     }
 
-    public function systemHealth(): array
+    public function systemHealth(?array $queue = null): array
     {
-        Cache::put('platform.scheduler.last_run', now()->toIso8601String(), 86400);
-
         $parts = [
-            $this->queueStatus()['status'],
+            ($queue ?? $this->queueStatus())['status'],
             $this->cacheStatus()['status'],
             $this->databaseStatus()['status'],
         ];

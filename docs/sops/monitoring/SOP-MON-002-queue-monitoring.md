@@ -38,13 +38,16 @@ Detect and escalate queue depth, age, and failure anomalies.
 
 ### 1. Observe
 
-1. Check depth and oldest job age.
-2. Review failed job rate.
-3. If thresholds exceeded, open ticket and follow SOP-MNT-007 / SOP-SUP-002 as severity warrants.
+1. Check pending depth and oldest job age for every configured queue (`default,imports,exports,bulk,provisioning,mail` in the supplied templates).
+2. Review failed count/rate, worker liveness, Supervisor status or bounded-cron logs, and timeout/duplicate-processing errors.
+3. After deployment, run the benign queue canary in [Queues and Scheduler](../../deployment/queues-and-scheduler.md) and confirm its recent cache timestamp.
+4. Treat a missing canary, monotonically growing backlog, stale worker, or new failed job as unhealthy. If thresholds are exceeded, open a ticket and follow SOP-MNT-007 / SOP-SUP-002 as severity warrants.
 
 ## Validation Checklist
 
 - [ ] Metrics reviewed
+- [ ] Worker liveness and all configured queues reviewed
+- [ ] Post-deploy canary processed
 - [ ] Thresholds documented
 - [ ] Escalations opened when breached
 - [ ] Evidence attached to the controlling ticket / change record

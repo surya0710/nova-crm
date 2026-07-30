@@ -14,6 +14,7 @@ use App\Services\Export\Writers\ExportWriterInterface;
 use App\Services\Export\Writers\PdfExportWriter;
 use App\Services\Export\Writers\XlsxExportWriter;
 use App\Services\TenantContext;
+use DateTimeInterface;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +30,19 @@ class ExportPlatformService
         protected AuditLogger $auditLogger,
         protected ModuleSubscriptionService $modules,
     ) {}
+
+    public function failStale(DateTimeInterface $before): int
+    {
+        return ExportSession::query()
+            ->withoutGlobalScopes()
+            ->whereIn('status', [ExportSession::STATUS_QUEUED, ExportSession::STATUS_RUNNING])
+            ->where('updated_at', '<', $before)
+            ->update([
+                'status' => ExportSession::STATUS_FAILED,
+                'last_error' => 'Export exceeded the stale queue work threshold.',
+                'completed_at' => now(),
+            ]);
+    }
 
     /**
      * @param  array{mode?: string, ids?: list<int>, filters?: array<string, mixed>}  $selection
@@ -119,7 +133,7 @@ class ExportPlatformService
 
         if ($total > $threshold) {
             $session->forceFill(['status' => ExportSession::STATUS_QUEUED])->save();
-            ProcessExportSessionJob::dispatch($session->id);
+            ProcessExportSessionJob::dispatch($session->id)->afterCommit();
 
             $this->auditLogger->log($session, 'export_queued', [
                 'total_count' => $total,
@@ -131,7 +145,7 @@ class ExportPlatformService
         return $this->process($session->fresh());
     }
 
-    public function process(ExportSession $session): ExportSession
+    public function process(ExportSession $session, bool $finalizeFailure = true): ExportSession
     {
         if ($session->isTerminal()) {
             return $session;
@@ -207,14 +221,16 @@ class ExportPlatformService
             ], $actor);
         } catch (Throwable $e) {
             $session->forceFill([
-                'status' => ExportSession::STATUS_FAILED,
+                'status' => $finalizeFailure ? ExportSession::STATUS_FAILED : ExportSession::STATUS_QUEUED,
                 'last_error' => $e->getMessage(),
-                'completed_at' => now(),
+                'completed_at' => $finalizeFailure ? now() : null,
             ])->save();
 
-            $this->auditLogger->log($session, 'export_failed', [
-                'error' => $e->getMessage(),
-            ], $actor);
+            if ($finalizeFailure) {
+                $this->auditLogger->log($session, 'export_failed', [
+                    'error' => $e->getMessage(),
+                ], $actor);
+            }
 
             throw $e;
         }

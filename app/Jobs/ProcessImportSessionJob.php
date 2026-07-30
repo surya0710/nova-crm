@@ -18,7 +18,14 @@ class ProcessImportSessionJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public int $sessionId, public ?int $actorId = null) {}
+    public int $backoff = 60;
+
+    public int $timeout = 3600;
+
+    public function __construct(public int $sessionId, public ?int $actorId = null)
+    {
+        $this->onQueue('imports');
+    }
 
     /**
      * @return array<int, object>

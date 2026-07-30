@@ -1,0 +1,9 @@
+# NovaCRM Release 1.2.x shared-hosting cron template.
+# Replace every path. Confirm `flock`, PHP CLI, lock directory, and log directory exist.
+# cPanel commonly uses /usr/local/bin/php; Plesk commonly exposes a versioned PHP binary.
+
+# Bounded direct queue worker; overlap is prevented by a dedicated non-blocking lock.
+* * * * * /usr/bin/flock -n /home/ACCOUNT/tmp/nova-crm-queue.lock /usr/local/bin/php /home/ACCOUNT/nova-crm/artisan queue:work database --queue=default,imports,exports,bulk,provisioning,mail --stop-when-empty --max-time=50 --sleep=1 --tries=3 --timeout=360 >> /home/ACCOUNT/logs/nova-crm-queue.log 2>&1
+
+# Laravel scheduler; keep separate from the queue worker and use a separate lock/log.
+* * * * * /usr/bin/flock -n /home/ACCOUNT/tmp/nova-crm-schedule.lock /usr/local/bin/php /home/ACCOUNT/nova-crm/artisan schedule:run --no-interaction >> /home/ACCOUNT/logs/nova-crm-schedule.log 2>&1

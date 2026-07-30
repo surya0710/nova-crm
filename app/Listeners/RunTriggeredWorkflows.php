@@ -19,6 +19,7 @@ use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -33,6 +34,8 @@ class RunTriggeredWorkflows implements ShouldQueueAfterCommit
 
     public int $timeout = 330;
 
+    public string $queue = 'workflows';
+
     /** @var array<int, int> */
     public array $backoff = [5, 15, 30];
 
@@ -42,6 +45,18 @@ class RunTriggeredWorkflows implements ShouldQueueAfterCommit
         protected ActionDispatcher $actions,
         protected WorkflowRuntimeContext $runtime,
     ) {}
+
+    /**
+     * @return array<int, object>
+     */
+    public function middleware(WorkflowDomainEvent $event): array
+    {
+        return [
+            (new WithoutOverlapping('workflow-event-'.$event->organizationId.'-'.$event->eventId))
+                ->releaseAfter(5)
+                ->expireAfter($this->timeout + 60),
+        ];
+    }
 
     public function handle(WorkflowDomainEvent $event): void
     {

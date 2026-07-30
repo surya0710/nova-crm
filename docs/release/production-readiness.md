@@ -199,7 +199,7 @@ Queue worker must run in production. Failed jobs: `php artisan queue:failed` or 
 | Failed jobs CLI | `php artisan queue:failed` · `queue:retry {id}` · `queue:flush` (caution) |
 | Application logs | `storage/logs/laravel.log` (`LOG_STACK=daily` in prod) |
 | Audit logs | In-app per module + platform audit |
-| Scheduler liveness | `schedule:heartbeat` → `scheduler.last_heartbeat_at` cache key |
+| Scheduler liveness | scheduled `schedule:heartbeat` → `platform.scheduler.last_run` cache key |
 
 **Not bundled:** Laravel Telescope, Horizon. Use platform monitoring + OS/process supervisor.
 
@@ -254,8 +254,9 @@ See [deployment/overview.md](../deployment/overview.md) for full table. Minimum:
 
 - [ ] `APP_ENV=production` · `APP_DEBUG=false` · `APP_URL` HTTPS
 - [ ] `SESSION_SECURE_COOKIE=true`
-- [ ] `QUEUE_CONNECTION` set; worker supervised
-- [ ] Cron: `* * * * * php /path/to/artisan schedule:run`
+- [ ] `QUEUE_CONNECTION` set; multiple workers supervised, or bounded overlap-protected shared-host worker cron installed
+- [ ] Separate overlap-protected `schedule:run` cron uses absolute paths and dedicated logging
+- [ ] Queue canary drains and scheduler key `platform.scheduler.last_run` stays fresh
 - [ ] `CACHE_STORE` redis or database
 - [ ] Mail driver configured and test message sent
 - [ ] Filesystem/S3 for uploads

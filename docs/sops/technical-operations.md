@@ -59,14 +59,13 @@ php artisan config:clear && php artisan config:cache
 ```
 
 ## 5. Queue workers
-- Process: `php artisan queue:work --sleep=1 --tries=3 --timeout=360`
-- Supervise with Supervisor / Windows service / systemd
-- After deploy: `php artisan queue:restart`
-- Monitor depth via Platform → Monitoring
+- Development: database queue plus `php artisan queue:work database --queue=default --sleep=1 --tries=3 --timeout=360`
+- Production: use the [Supervisor or bounded shared-hosting templates](../deployment/queues-and-scheduler.md) with all configured queues covered
+- After deploy: `php artisan queue:restart`, confirm replacement workers, then run the benign queue canary
+- Monitor depth, oldest age, failed jobs, and worker logs via Platform → Monitoring
 
 ## 6. Scheduler
-Cron: `* * * * * php /path/to/artisan schedule:run`  
-Confirm `schedule:heartbeat` and scheduled jobs appear healthy in monitoring.
+Install `schedule:run` as a separate every-minute cron with absolute paths, overlap protection, and dedicated logging. Confirm cache key `platform.scheduler.last_run` and scheduled jobs appear healthy in monitoring.
 
 ## 7. SSL
 Terminate TLS at reverse proxy; `APP_URL` must be `https://…`; `SESSION_SECURE_COOKIE=true`.

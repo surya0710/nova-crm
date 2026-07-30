@@ -38,19 +38,23 @@ Recover stuck, failed, or flooded queues to restore asynchronous processing.
 
 ### 1. Diagnose
 
-1. Check worker liveness and failed job table/logs.
-2. Identify poison messages vs systemic outage.
+1. Check worker liveness, all configured queue depths/oldest ages, `php artisan queue:failed`, and worker logs.
+2. Identify poison messages, dependency outages, timeout/retry-after mismatch, and systemic failures before retrying.
 
 ### 2. Recover
 
-1. Restart workers (`queue:restart` / supervisor).
-2. Retry failed jobs in batches; flush only with Tech Lead approval.
-3. Confirm depth trending down.
+1. Stop or fix the failing producer/dependency, then run `php artisan queue:restart`.
+2. Retry a reviewed failure with `php artisan queue:retry {uuid-or-id}`; retry larger sets only in observed batches.
+3. Use `queue:forget {uuid-or-id}` only for an unrecoverable job after retaining evidence. `queue:flush` permanently discards all failed-job records and is prohibited as routine recovery.
+4. Run the benign queue canary from [Queues and Scheduler](../../deployment/queues-and-scheduler.md).
+5. Confirm depth and oldest age trend down, failures stop increasing, and affected work completed exactly once.
 
 ## Validation Checklist
 
 - [ ] Workers healthy
 - [ ] Backlog trending down
+- [ ] Failed-job retry outcomes recorded
+- [ ] Canary processed and no new failures created
 - [ ] Customer-impacting jobs unblocked or communicated
 - [ ] Root cause noted
 - [ ] Evidence attached to the controlling ticket / change record

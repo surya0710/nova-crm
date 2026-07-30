@@ -253,9 +253,9 @@ class GeographicInformationTest extends TestCase
 
         $leadFile = UploadedFile::fake()->createWithContent(
             'leads.csv',
-            "Full Name,Email,City,State,Country\n".
-            "Imported Geo Lead,geo-lead@example.test,New Delhi,Delhi,India\n".
-            "Legacy Lead,legacy-lead@example.test,,,\n",
+            "Full Name,Email,Phone,City,State,Country\n".
+            "Imported Geo Lead,geo-lead@example.test,+15550100140,New Delhi,Delhi,India\n".
+            "Legacy Lead,legacy-lead@example.test,+15550100141,,,\n",
         );
         $leadSession = $imports->upload($organization, 'lead', $leadFile, $user);
         $imports->executeImport($imports->validate($leadSession, $user), $user);

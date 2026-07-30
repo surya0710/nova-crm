@@ -228,8 +228,8 @@ class ImportValidationReportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'meta.csv',
-            "Full Name,Email,Age\n".
-            "Meta User,meta@example.com,not-a-number\n"
+            "Full Name,Email,Phone,Age\n".
+            "Meta User,meta@example.com,+15550100150,not-a-number\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -257,8 +257,8 @@ class ImportValidationReportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'dupes.csv',
-            "Full Name,Email\n".
-            "Existing,existing@example.com\n"
+            "Full Name,Email,Phone\n".
+            "Existing,existing@example.com,+15550100151\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -279,8 +279,8 @@ class ImportValidationReportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'valid.csv',
-            "Full Name,Email\n".
-            "Good Lead,good@example.com\n"
+            "Full Name,Email,Phone\n".
+            "Good Lead,good@example.com,+15550100152\n"
         );
 
         $session = $this->imports->upload($organization, 'lead', $file, $user);
@@ -339,7 +339,7 @@ class ImportValidationReportTest extends TestCase
         // Fully valid session -> button hidden.
         $file = UploadedFile::fake()->createWithContent(
             'valid.csv',
-            "Full Name,Email\nGood Lead,good@example.com\n"
+            "Full Name,Email,Phone\nGood Lead,good@example.com,+15550100153\n"
         );
         $validSession = $this->imports->upload($organization, 'lead', $file, $owner);
         $validSession = $this->imports->validate($validSession, $owner);

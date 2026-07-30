@@ -61,7 +61,9 @@ php artisan queue:restart
 ### 3. Verify
 
 1. Hit `GET /up` and critical login paths.
-2. Confirm queue/scheduler healthy (SOP-MON-002 / SOP-MON-003).
+2. Confirm restarted Supervisor workers returned to `RUNNING`, or bounded cron workers exit cleanly.
+3. Run the benign queue canary and verify no new failed jobs.
+4. Confirm scheduler cache key `platform.scheduler.last_run` updates through the separate OS `schedule:run` cron (SOP-MON-002 / SOP-MON-003).
 
 ## Validation Checklist
 
@@ -69,6 +71,7 @@ php artisan queue:restart
 - [ ] Health green (`/up`)
 - [ ] Smoke passed
 - [ ] Queues restarted
+- [ ] Queue canary and scheduler heartbeat passed
 - [ ] No destructive migrate commands used
 - [ ] Evidence attached to the controlling ticket / change record
 

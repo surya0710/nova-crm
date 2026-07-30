@@ -14,7 +14,7 @@ Operational visibility for NovaCRM without Laravel Telescope or Horizon. Use the
 | Health check | `GET /up` | Public (no auth) |
 | Failed jobs CLI | `php artisan queue:failed` | Server shell |
 | Application logs | `storage/logs/laravel.log` | Server shell / log aggregator |
-| Scheduler heartbeat | Cache key `scheduler.last_heartbeat_at` | Set by `schedule:heartbeat` cron |
+| Scheduler heartbeat | Cache key `platform.scheduler.last_run` | Set by scheduled `schedule:heartbeat` command |
 
 Open Monitoring from Platform dashboard widgets (**Queue Health**, **Background Jobs**) or command palette → “Open Monitoring”.
 
@@ -29,7 +29,7 @@ Open Monitoring from Platform dashboard widgets (**Queue Health**, **Background 
 
 | Panel | What it shows |
 |-------|---------------|
-| Queue | Driver, pending job count, failed count, status (`healthy` / `busy` / `degraded`) |
+| Queue | Connection/queue, pending and failed counts, recent success/failure/duration metrics, active/stale workers, status (`healthy` / `busy` / `degraded`) |
 | Failed jobs | Last 10 failures with exception snippet and timestamp |
 | Scheduler | Last recorded scheduler activity |
 | Cache | Driver and read/write ping |
@@ -79,6 +79,7 @@ php artisan queue:work --sleep=1 --tries=3 --timeout=360
 **Do not** `queue:flush` in production unless you accept permanent job loss.
 
 Workflow and payroll jobs may exceed default timeout — `--timeout=360` is recommended.
+Use [Queues and Scheduler — Release 1.2.x](../deployment/queues-and-scheduler.md) for Supervisor/shared-hosting templates, graceful restart, failed-job recovery, and a benign queue canary.
 
 ---
 
@@ -125,14 +126,14 @@ Expect HTTP 200 when application boots and dependencies are reachable.
 Cron (every minute):
 
 ```cron
-* * * * * cd /path/to/nova-crm && php artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/bin/flock -n /home/ACCOUNT/tmp/nova-crm-schedule.lock /usr/local/bin/php /home/ACCOUNT/nova-crm/artisan schedule:run --no-interaction >> /home/ACCOUNT/logs/nova-crm-schedule.log 2>&1
 ```
 
 Registered schedule (`routes/console.php`):
 
 | Command | Frequency | Purpose |
 |---------|-----------|---------|
-| `schedule:heartbeat` | Every minute | Writes `scheduler.last_heartbeat_at` to cache |
+| `schedule:heartbeat` | Every minute | Writes `platform.scheduler.last_run` to cache |
 | `recruitment:process-integration-retries` | Every 5 minutes | Recruitment integration retries |
 | `projects:generate-recurring-tasks` | Hourly | Recurring project tasks |
 
@@ -142,7 +143,7 @@ Manual heartbeat test:
 php artisan schedule:heartbeat
 ```
 
-If scheduler appears “unknown” in Monitoring, cron is not running or cache is unreachable.
+The manual command tests the cache write only. If scheduler appears “unknown” or the heartbeat is older than `SCHEDULER_STALE_AFTER` (default 180 seconds), inspect the separate `schedule:run` cron and its log.
 
 ---
 
@@ -169,12 +170,13 @@ Audit complements application logs for compliance and security investigations �
 
 ## Recommended production setup
 
-1. **Supervisor** — at least one `queue:work` process per queue connection.
-2. **Cron** — `schedule:run` every minute on app server.
-3. **Uptime** — external monitor on `/up`.
-4. **Log retention** — daily rotation, 14–30 day retention minimum.
-5. **Alerts** — notify on `/up` failure, failed job count threshold, disk > 85%.
-6. **Post-deploy** — check Monitoring within 15 minutes ([checklist.md](../release/checklist.md)).
+1. **Supervisor** — multiple worker processes covering every configured queue; use a graceful TERM stop window longer than job timeout.
+2. **Shared-host queue cron** — only when Supervisor is unavailable; bounded and protected against overlap.
+3. **Scheduler cron** — separate overlap-protected `schedule:run` every minute on the app server.
+4. **Uptime** — external monitor on `/up`.
+5. **Log retention** — daily rotation, 14–30 day retention minimum.
+6. **Alerts** — notify on `/up` failure, failed job count threshold, disk > 85%.
+7. **Post-deploy** — restart workers, run the queue canary, and check Monitoring within 15 minutes ([checklist.md](../release/checklist.md)).
 
 ---
 

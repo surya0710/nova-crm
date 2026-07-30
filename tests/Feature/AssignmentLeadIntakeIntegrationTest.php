@@ -52,8 +52,8 @@ class AssignmentLeadIntakeIntegrationTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'leads.csv',
-            "Full Name,Email,Source,Status,Owner\n".
-            "Import Lead,import-blank@example.com,Website,New,\n"
+            "Full Name,Email,Phone,Source,Status,Owner\n".
+            "Import Lead,import-blank@example.com,+15550100130,Website,New,\n"
         );
 
         $imports = app(ImportPlatformService::class);
@@ -83,8 +83,8 @@ class AssignmentLeadIntakeIntegrationTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'leads.csv',
-            "Full Name,Email,Source,Status,Owner\n".
-            "Import Lead,import-owner@example.com,Website,New,explicit@example.com\n"
+            "Full Name,Email,Phone,Source,Status,Owner\n".
+            "Import Lead,import-owner@example.com,+15550100131,Website,New,explicit@example.com\n"
         );
 
         $imports = app(ImportPlatformService::class);
