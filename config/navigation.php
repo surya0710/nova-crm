@@ -120,7 +120,7 @@ return [
             'any_permissions' => [
                 'settings.manage', 'users.view', 'rbac.view', 'workflows.view',
                 'metadata.view', 'metadata.manage', 'integrations.view', 'integrations.manage',
-                'api.tokens', 'audit.view',
+                'api.tokens', 'audit.view', 'assignments.view',
             ],
             'footer' => true,
         ],
@@ -891,7 +891,7 @@ return [
                 'any_permissions' => [
                     'settings.manage', 'users.view', 'rbac.view', 'workflows.view',
                     'metadata.view', 'metadata.manage', 'integrations.view', 'integrations.manage',
-                    'api.tokens', 'audit.view',
+                    'api.tokens', 'audit.view', 'assignments.view',
                 ],
             ],
             [
@@ -914,6 +914,13 @@ return [
                 'match' => ['organization.settings.*', 'organization.edit'],
                 'icon' => 'cog',
                 'permission' => 'settings.manage',
+            ],
+            [
+                'label' => 'Assignment Settings',
+                'route' => 'organization.settings.assignments.index',
+                'match' => ['organization.settings.assignments.*'],
+                'icon' => 'users',
+                'permission' => 'assignments.view',
             ],
             [
                 'label' => 'Modules',

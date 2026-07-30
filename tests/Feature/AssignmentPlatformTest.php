@@ -18,6 +18,7 @@ use App\Services\Assignment\Strategies\ManualQueueStrategy;
 use App\Services\Assignment\Strategies\RoundRobinStrategy;
 use App\Services\Assignment\Strategies\WeightedRoundRobinStrategy;
 use App\Services\LeadService;
+use App\Services\Navigation\NavigationService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -580,6 +581,18 @@ class AssignmentPlatformTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_legacy_assignment_settings_url_redirects_to_organization_settings(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create();
+        $organization->addMember($user, 'manager');
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('assignments.index'))
+            ->assertRedirect(route('organization.settings.assignments.index'));
+    }
+
     public function test_manager_can_view_and_create_pool_via_settings(): void
     {
         $user = User::factory()->create();
@@ -590,9 +603,10 @@ class AssignmentPlatformTest extends TestCase
 
         $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
-            ->get(route('assignments.index'))
+            ->get(route('organization.settings.assignments.index'))
             ->assertOk()
-            ->assertSee('Assignment Settings');
+            ->assertSee('Assignment Settings')
+            ->assertSee('Organization Settings');
 
         $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
@@ -604,7 +618,7 @@ class AssignmentPlatformTest extends TestCase
                     ['user_id' => $member->id, 'weight' => 1, 'is_active' => '1'],
                 ],
             ])
-            ->assertRedirect(route('assignments.index'));
+            ->assertRedirect(route('organization.settings.assignments.index'));
 
         $this->assertDatabaseHas('assignment_pools', [
             'organization_id' => $organization->id,
@@ -615,5 +629,25 @@ class AssignmentPlatformTest extends TestCase
             'event' => 'pool_created',
             'organization_id' => $organization->id,
         ]);
+    }
+
+    public function test_assignment_settings_navigation_is_gated_by_view_permission(): void
+    {
+        $organization = Organization::factory()->create();
+        $manager = User::factory()->create();
+        $employee = User::factory()->create();
+        $organization->addMember($manager, 'manager');
+        $organization->addMember($employee, 'employee');
+
+        $navigation = app(NavigationService::class);
+
+        $this->assertContains(
+            'Assignment Settings',
+            $navigation->menuForWorkspace('administration', $manager, $organization)->pluck('label')->all()
+        );
+        $this->assertNotContains(
+            'Assignment Settings',
+            $navigation->menuForWorkspace('administration', $employee, $organization)->pluck('label')->all()
+        );
     }
 }

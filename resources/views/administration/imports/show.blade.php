@@ -17,7 +17,7 @@
         <div class="mx-auto max-w-3xl space-y-6">
             @include('imports._steps', ['current' => 'summary'])
 
-            @if (session('status') === 'import-started' && $session->status === \App\Models\ImportSession::STATUS_READY)
+            @if ($session->status === \App\Models\ImportSession::STATUS_QUEUED)
                 <x-ui.alert variant="info">
                     {{ __('Large import queued for background processing. Refresh this page to track progress.') }}
                 </x-ui.alert>
@@ -55,7 +55,7 @@
                             {{ __('Download error report') }}
                         </x-ui.button>
                     @endif
-                    @if (in_array($session->status, [\App\Models\ImportSession::STATUS_IMPORTING, \App\Models\ImportSession::STATUS_READY], true))
+                    @if (in_array($session->status, [\App\Models\ImportSession::STATUS_IMPORTING, \App\Models\ImportSession::STATUS_QUEUED], true))
                         <x-ui.button :href="route('administration.imports.show', $session)" variant="secondary">
                             {{ __('Refresh') }}
                         </x-ui.button>

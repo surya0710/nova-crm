@@ -200,6 +200,11 @@
                             {{ __('Organization Settings') }}
                         </x-sidebar-link>
                     @endif
+                    @if ($can('assignments.view'))
+                        <x-sidebar-link :href="route('organization.settings.assignments.index')" :active="request()->routeIs('organization.settings.assignments.*')" :icon="$iconUsers">
+                            {{ __('Assignment Settings') }}
+                        </x-sidebar-link>
+                    @endif
                     @if ($can('integrations.view') || $can('integrations.manage'))
                         <x-sidebar-link :href="route('integrations.index')" :active="request()->routeIs('integrations.*')" :icon="$iconShield">{{ __('Integrations') }}</x-sidebar-link>
                     @endif

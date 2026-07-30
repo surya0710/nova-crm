@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use RuntimeException;
-use Throwable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Import Platform orchestration service.
@@ -157,7 +157,7 @@ class ImportPlatformService
             ], $user);
 
             return $session->fresh();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if ($session->status === ImportSession::STATUS_VALIDATING) {
                 $this->transition($session, ImportSession::STATUS_FAILED, [
                     'last_error' => $e->getMessage(),
@@ -396,18 +396,13 @@ class ImportPlatformService
             );
         }
 
-        $this->transition($session, ImportSession::STATUS_IMPORTING);
+        $this->claimForExecution($session);
 
         $executionStartedAt = microtime(true);
         $memoryAtStart = memory_get_usage(true);
         $leadCountBefore = $session->entity_type === 'lead'
             ? Lead::query()->where('organization_id', $session->organization_id)->count()
             : null;
-
-        $this->auditLogger->log($session, 'import_started', [
-            'entity_type' => $session->entity_type,
-            'total_rows' => $session->total_rows,
-        ], $user);
 
         $created = 0;
         $updated = 0;
@@ -422,6 +417,11 @@ class ImportPlatformService
         $ownerResolutionErrorCount = 0;
 
         try {
+            $this->auditLogger->log($session, 'import_started', [
+                'entity_type' => $session->entity_type,
+                'total_rows' => $session->total_rows,
+            ], $user);
+
             $absolutePath = $this->absolutePath($session);
             $parsed = $this->reader->read($absolutePath, $session->worksheet_name);
             $fields = $entity->fieldDefinitions();
@@ -634,6 +634,27 @@ class ImportPlatformService
         } catch (Throwable $e) {
             $durationMs = (int) round((microtime(true) - $executionStartedAt) * 1000);
             if ($session->status === ImportSession::STATUS_IMPORTING) {
+                $summary = $session->validation_summary ?? [];
+                $summary['execution_errors'] = $rowErrors;
+                $summary['execution_summary'] = [
+                    'rows_processed' => $processed,
+                    'rows_imported' => $created + $updated,
+                    'rows_failed' => $failed,
+                    'rows_skipped' => $skipped,
+                    'validation_errors' => $validationErrorCount,
+                    'database_errors' => $databaseErrorCount,
+                    'owner_resolution_errors' => $ownerResolutionErrorCount,
+                    'processing_time_ms' => $durationMs,
+                    'memory_start_bytes' => $memoryAtStart,
+                    'memory_peak_bytes' => memory_get_peak_usage(true),
+                    'lead_count_before' => $leadCountBefore,
+                    'lead_count_after' => $session->entity_type === 'lead'
+                        ? Lead::query()->where('organization_id', $session->organization_id)->count()
+                        : null,
+                    'created_ids' => $createdIds,
+                    'row_outcomes' => $rowOutcomes,
+                ];
+
                 $this->transition($session, ImportSession::STATUS_FAILED, [
                     'last_error' => $e->getMessage(),
                     'completed_at' => now(),
@@ -642,6 +663,7 @@ class ImportPlatformService
                     'updated_count' => $updated,
                     'skipped_count' => $skipped,
                     'failed_count' => $failed,
+                    'validation_summary' => $summary,
                 ]);
             }
 
@@ -773,6 +795,30 @@ class ImportPlatformService
         $session->forceFill(array_merge($attributes, [
             'status' => $to,
         ]))->save();
+    }
+
+    protected function claimForExecution(ImportSession $session): void
+    {
+        $from = $session->status;
+        ImportSession::assertValidTransition($from, ImportSession::STATUS_IMPORTING);
+
+        $claimed = ImportSession::query()
+            ->withoutGlobalScopes()
+            ->whereKey($session->id)
+            ->where('organization_id', $session->organization_id)
+            ->where('status', $from)
+            ->update([
+                'status' => ImportSession::STATUS_IMPORTING,
+                'updated_at' => now(),
+            ]);
+
+        if ($claimed !== 1) {
+            throw new RuntimeException(
+                "Import session [{$session->id}] could not be claimed; another process already changed its status."
+            );
+        }
+
+        $session->forceFill(['status' => ImportSession::STATUS_IMPORTING])->syncOriginal();
     }
 
     protected function assertRegisteredEntity(string $entityType): ImportableEntityInterface

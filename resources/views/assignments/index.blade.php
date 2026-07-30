@@ -1,14 +1,24 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Assignment Settings') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Pools, rules, and strategies for :org', ['org' => $organization->name]) }}</p>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    <div class="max-w-5xl space-y-10">
+    <x-layouts.settings
+        :title="__('Assignment Settings')"
+        :subtitle="__('Pools, rules, and strategies for :org', ['org' => $organization->name])"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Administration'), 'href' => route('administration.home')],
+                [
+                    'label' => __('Organization Settings'),
+                    'href' => auth()->user()?->hasPermission('settings.manage', $organization)
+                        ? route('organization.settings.hub')
+                        : null,
+                ],
+                ['label' => __('Assignment Settings'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <div class="max-w-5xl space-y-10">
         {{-- Assignment Pools --}}
         <section class="space-y-4">
             <div>
@@ -354,5 +364,6 @@
                 </details>
             @endif
         </section>
-    </div>
+        </div>
+    </x-layouts.settings>
 </x-app-layout>

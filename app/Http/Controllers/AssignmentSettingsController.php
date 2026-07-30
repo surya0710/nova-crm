@@ -68,7 +68,7 @@ class AssignmentSettingsController extends Controller
         $this->configuration->createPool($organization, $validated, $request->user());
 
         return redirect()
-            ->route('assignments.index')
+            ->route('organization.settings.assignments.index')
             ->with('status', __('Assignment pool created.'));
     }
 
@@ -93,7 +93,7 @@ class AssignmentSettingsController extends Controller
         $this->configuration->updatePool($pool, $validated, $request->user());
 
         return redirect()
-            ->route('assignments.index')
+            ->route('organization.settings.assignments.index')
             ->with('status', __('Assignment pool updated.'));
     }
 
@@ -109,7 +109,7 @@ class AssignmentSettingsController extends Controller
         $this->configuration->createRule($organization, $validated, $request->user());
 
         return redirect()
-            ->route('assignments.index')
+            ->route('organization.settings.assignments.index')
             ->with('status', __('Assignment rule created.'));
     }
 
@@ -125,7 +125,7 @@ class AssignmentSettingsController extends Controller
         $this->configuration->updateRule($rule, $validated, $request->user());
 
         return redirect()
-            ->route('assignments.index')
+            ->route('organization.settings.assignments.index')
             ->with('status', __('Assignment rule updated.'));
     }
 

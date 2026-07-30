@@ -168,6 +168,7 @@ class LeadImportAdapter implements ImportableEntityInterface
         $errors = [];
         $seenEmails = [];
         $seenPhones = [];
+        $duplicateStrategy = $this->duplicateStrategy($session);
 
         foreach ($rows as $row) {
             if (! ($row['valid'] ?? true)) {
@@ -202,7 +203,7 @@ class LeadImportAdapter implements ImportableEntityInterface
             );
 
             if ($email !== null) {
-                if (isset($seenEmails[$email])) {
+                if (isset($seenEmails[$email]) && $duplicateStrategy === 'skip') {
                     $errors[] = $this->error($rowNumber, 'email', 'Duplicate email within import file.', $email);
                 } else {
                     $seenEmails[$email] = $rowNumber;
@@ -210,7 +211,7 @@ class LeadImportAdapter implements ImportableEntityInterface
             }
 
             if ($phone !== null) {
-                if (isset($seenPhones[$phone])) {
+                if (isset($seenPhones[$phone]) && $duplicateStrategy === 'skip') {
                     $errors[] = $this->error($rowNumber, 'phone', 'Duplicate phone within import file.', $phone);
                 } else {
                     $seenPhones[$phone] = $rowNumber;
@@ -219,7 +220,7 @@ class LeadImportAdapter implements ImportableEntityInterface
 
             if ($email !== null || $phone !== null) {
                 $duplicate = $this->leads->findDuplicate($organization, $email, $phone);
-                if ($duplicate) {
+                if ($duplicate && $duplicateStrategy === 'skip') {
                     $field = ($email !== null && strcasecmp((string) $duplicate->email, $email) === 0) ? 'email' : 'phone';
                     $errors[] = $this->error(
                         $rowNumber,
@@ -281,7 +282,10 @@ class LeadImportAdapter implements ImportableEntityInterface
             isset($mappedRow['phone']) ? (string) $mappedRow['phone'] : null
         );
 
-        if ($this->leads->findDuplicate($organization, $email, $phone)) {
+        $duplicate = $this->leads->findDuplicate($organization, $email, $phone);
+        $duplicateStrategy = $this->duplicateStrategy($session);
+
+        if ($duplicate && $duplicateStrategy === 'skip') {
             return ['action' => 'skipped', 'id' => null];
         }
 
@@ -330,6 +334,8 @@ class LeadImportAdapter implements ImportableEntityInterface
             $owner,
             $metadataValues,
             $notes,
+            $duplicate,
+            $duplicateStrategy,
         ) {
             $leadPayload = [
                 'organization_id' => $organization->id,
@@ -354,13 +360,18 @@ class LeadImportAdapter implements ImportableEntityInterface
                 $leadPayload['assigned_to'] = $owner->id;
             }
 
-            $lead = $this->leads->create(
-                $leadPayload,
-                $user,
-                AssignmentHistory::REASON_IMPORTED,
-            );
+            if ($duplicate && $duplicateStrategy === 'update') {
+                $updatePayload = $this->updatePayloadForMappedRow($leadPayload, $mappedRow);
+                $lead = $this->leads->update($duplicate, $updatePayload, $user, $metadataValues);
+            } else {
+                $lead = $this->leads->create(
+                    $leadPayload,
+                    $user,
+                    AssignmentHistory::REASON_IMPORTED,
+                );
+            }
 
-            if ($metadataValues !== []) {
+            if ($metadataValues !== [] && ! ($duplicate && $duplicateStrategy === 'update')) {
                 $this->metadataForms->persistValidatedValues($lead, $metadataValues);
             }
 
@@ -377,13 +388,57 @@ class LeadImportAdapter implements ImportableEntityInterface
         });
 
         return [
-            'action' => 'created',
+            'action' => $duplicate && $duplicateStrategy === 'update' ? 'updated' : 'created',
             'id' => $lead->id,
             'organization_id' => $lead->organization_id,
             'assigned_to' => $lead->assigned_to,
             'created_by' => $lead->created_by,
             'owner_resolution' => $ownerResolution['matched_by'],
         ];
+    }
+
+    protected function duplicateStrategy(ImportSession $session): string
+    {
+        $strategy = strtolower(trim((string) ($session->metadata['duplicate_strategy'] ?? 'skip')));
+
+        return in_array($strategy, ['skip', 'update', 'create'], true) ? $strategy : 'skip';
+    }
+
+    /**
+     * Only update fields that were populated by the import row.
+     *
+     * @param  array<string, mixed>  $leadPayload
+     * @param  array<string, mixed>  $mappedRow
+     * @return array<string, mixed>
+     */
+    protected function updatePayloadForMappedRow(array $leadPayload, array $mappedRow): array
+    {
+        unset($leadPayload['organization_id']);
+
+        $fieldMap = [
+            'company' => 'company',
+            'email' => 'email',
+            'phone' => 'phone',
+            'address_line_1' => 'address_line_1',
+            'city' => 'city',
+            'state' => 'state',
+            'country' => 'country',
+            'postal_code' => 'postal_code',
+            'source' => 'source',
+            'status' => 'status',
+            'priority' => 'priority',
+            'industry' => 'industry',
+            'budget' => 'budget',
+            'assigned_to' => 'owner',
+        ];
+
+        foreach ($fieldMap as $payloadKey => $rowKey) {
+            if ($this->stringOrNull($mappedRow[$rowKey] ?? null) === null) {
+                unset($leadPayload[$payloadKey]);
+            }
+        }
+
+        return $leadPayload;
     }
 
     /**

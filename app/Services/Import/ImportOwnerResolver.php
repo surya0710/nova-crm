@@ -190,6 +190,7 @@ class ImportOwnerResolver
             ->withoutGlobalScopes()
             ->where('organization_id', '!=', $organization->id)
             ->whereNotNull('user_id')
+            ->whereNull('deleted_at')
             ->get()
             ->contains(fn (Employee $employee): bool => mb_strtolower((string) $employee->employee_code) === $needle
                 || mb_strtolower($employee->full_name) === $needle);

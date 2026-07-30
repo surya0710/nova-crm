@@ -131,6 +131,12 @@ return [
             'group' => 'crm_config',
             'optional' => true,
         ],
+        'assignments' => [
+            'label' => 'Assignment Settings',
+            'route' => 'organization.settings.assignments.index',
+            'permission' => 'assignments.view',
+            'group' => 'crm_config',
+        ],
         'project_defaults' => [
             'label' => 'Project Defaults',
             'route' => 'projects.index',

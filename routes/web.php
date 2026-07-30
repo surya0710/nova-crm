@@ -2,31 +2,22 @@
 
 use App\Http\Controllers\Administration\AdministrationHomeController;
 use App\Http\Controllers\Administration\BrandingController as AdministrationBrandingController;
-use App\Http\Controllers\Administration\DeveloperController as AdministrationDeveloperController;
-use App\Http\Controllers\Administration\ImportCenterController;
 use App\Http\Controllers\Administration\BulkOperationsController;
+use App\Http\Controllers\Administration\DeveloperController as AdministrationDeveloperController;
 use App\Http\Controllers\Administration\ExportCenterController;
+use App\Http\Controllers\Administration\ImportCenterController;
 use App\Http\Controllers\Administration\ModulesController as AdministrationModulesController;
 use App\Http\Controllers\Administration\SecurityController as AdministrationSecurityController;
 use App\Http\Controllers\Analytics\AnalyticsHomeController;
 use App\Http\Controllers\Analytics\AnalyticsPagesController;
-use App\Http\Controllers\Marketing\MarketingAttributionController;
-use App\Http\Controllers\Marketing\MarketingCampaignController;
-use App\Http\Controllers\Marketing\MarketingHomeController;
-use App\Http\Controllers\Marketing\MarketingProvidersController;
-use App\Http\Controllers\WorkspaceDashboardPreferenceController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AssignmentSettingsController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BacklogController;
 use App\Http\Controllers\Crm\CrmActivitiesController;
 use App\Http\Controllers\Crm\CrmExportsController;
 use App\Http\Controllers\Crm\CrmHomeController;
-use App\Http\Controllers\Operations\OperationsHomeController;
-use App\Http\Controllers\Projects\ProjectsBudgetsHubController;
-use App\Http\Controllers\Projects\ProjectsHomeController;
-use App\Http\Controllers\Projects\ProjectsMilestonesHubController;
-use App\Http\Controllers\Projects\ProjectsReportsController;
 use App\Http\Controllers\Crm\CrmReportsController;
 use App\Http\Controllers\Crm\CrmRevenueController;
 use App\Http\Controllers\Crm\CrmSavedViewsController;
@@ -39,11 +30,6 @@ use App\Http\Controllers\Dashboard\QuickActionController;
 use App\Http\Controllers\Dashboard\RecentActivitiesController;
 use App\Http\Controllers\Dashboard\WorkspaceController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Shell\CommandPaletteController;
-use App\Http\Controllers\Lookup\LookupController;
-use App\Http\Controllers\Shell\GlobalSearchController;
-use App\Http\Controllers\Shell\NotificationDrawerController;
-use App\Http\Controllers\Shell\ShellPreferenceController;
 use App\Http\Controllers\Ess\EssAttendanceController;
 use App\Http\Controllers\Ess\EssDashboardController;
 use App\Http\Controllers\Ess\EssDocumentController;
@@ -60,18 +46,24 @@ use App\Http\Controllers\Hrms\AttendanceCalendarController as HrmsAttendanceCale
 use App\Http\Controllers\Hrms\AttendanceController as HrmsAttendanceController;
 use App\Http\Controllers\Hrms\AttendanceReportController as HrmsAttendanceReportController;
 use App\Http\Controllers\Hrms\BranchController as HrmsBranchController;
+use App\Http\Controllers\Hrms\CandidateAccountAdminController;
+use App\Http\Controllers\Hrms\CandidateController as HrmsCandidateController;
+use App\Http\Controllers\Hrms\CandidateEvaluationController as HrmsCandidateEvaluationController;
+use App\Http\Controllers\Hrms\CandidatePortalSettingsController;
+use App\Http\Controllers\Hrms\CareerSiteSettingsController;
 use App\Http\Controllers\Hrms\CompetencyCategoryController as HrmsCompetencyCategoryController;
 use App\Http\Controllers\Hrms\CompetencyController as HrmsCompetencyController;
 use App\Http\Controllers\Hrms\DepartmentController as HrmsDepartmentController;
 use App\Http\Controllers\Hrms\DesignationController as HrmsDesignationController;
 use App\Http\Controllers\Hrms\EmployeeAppraisalController as HrmsEmployeeAppraisalController;
-use App\Http\Controllers\Hrms\EmployeeController as HrmsEmployeeController;
 use App\Http\Controllers\Hrms\EmployeeCareerController as HrmsEmployeeCareerController;
+use App\Http\Controllers\Hrms\EmployeeController as HrmsEmployeeController;
 use App\Http\Controllers\Hrms\EmployeeDirectoryController;
 use App\Http\Controllers\Hrms\EmployeeDocumentController as HrmsEmployeeDocumentController;
 use App\Http\Controllers\Hrms\EmployeeExitController as HrmsEmployeeExitController;
 use App\Http\Controllers\Hrms\EmployeeSalaryAssignmentController as HrmsEmployeeSalaryAssignmentController;
 use App\Http\Controllers\Hrms\EmployeeTimelineController;
+use App\Http\Controllers\Hrms\EvaluationTemplateController as HrmsRecruitmentEvaluationTemplateController;
 use App\Http\Controllers\Hrms\FeedbackCampaignController as HrmsFeedbackCampaignController;
 use App\Http\Controllers\Hrms\FeedbackDashboardController as HrmsFeedbackDashboardController;
 use App\Http\Controllers\Hrms\FeedbackReportController as HrmsFeedbackReportController;
@@ -82,28 +74,25 @@ use App\Http\Controllers\Hrms\GoalCheckinController as HrmsGoalCheckinController
 use App\Http\Controllers\Hrms\GoalController as HrmsGoalController;
 use App\Http\Controllers\Hrms\GoalLibraryController as HrmsGoalLibraryController;
 use App\Http\Controllers\Hrms\GoalProgressController as HrmsGoalProgressController;
+use App\Http\Controllers\Hrms\HiringDecisionController as HrmsHiringDecisionController;
 use App\Http\Controllers\Hrms\HolidayController as HrmsHolidayController;
-use App\Http\Controllers\Hrms\CandidateController as HrmsCandidateController;
-use App\Http\Controllers\Hrms\CandidateEvaluationController as HrmsCandidateEvaluationController;
-use App\Http\Controllers\Hrms\EvaluationTemplateController as HrmsRecruitmentEvaluationTemplateController;
+use App\Http\Controllers\Hrms\HrmsDashboardController;
+use App\Http\Controllers\Hrms\HrmsHomeController;
 use App\Http\Controllers\Hrms\InterviewRoundController as HrmsInterviewRoundController;
 use App\Http\Controllers\Hrms\InterviewStageController as HrmsInterviewStageController;
 use App\Http\Controllers\Hrms\JobApplicationController as HrmsJobApplicationController;
-use App\Http\Controllers\Hrms\HiringDecisionController as HrmsHiringDecisionController;
-use App\Http\Controllers\Hrms\OfferApprovalController as HrmsOfferApprovalController;
-use App\Http\Controllers\Hrms\OfferLetterController as HrmsOfferLetterController;
-use App\Http\Controllers\Hrms\OfferNegotiationController as HrmsOfferNegotiationController;
-use App\Http\Controllers\Hrms\OfferTemplateController as HrmsOfferTemplateController;
 use App\Http\Controllers\Hrms\JobOpeningController as HrmsJobOpeningController;
 use App\Http\Controllers\Hrms\JobRequisitionController as HrmsJobRequisitionController;
-use App\Http\Controllers\Hrms\HrmsDashboardController;
-use App\Http\Controllers\Hrms\HrmsHomeController;
 use App\Http\Controllers\Hrms\KpiController as HrmsKpiController;
 use App\Http\Controllers\Hrms\LeaveApplicationController as HrmsLeaveApplicationController;
 use App\Http\Controllers\Hrms\LeaveBalanceController as HrmsLeaveBalanceController;
 use App\Http\Controllers\Hrms\LeaveDashboardController as HrmsLeaveDashboardController;
 use App\Http\Controllers\Hrms\LeaveTypeController as HrmsLeaveTypeController;
 use App\Http\Controllers\Hrms\ManagerDashboardController;
+use App\Http\Controllers\Hrms\OfferApprovalController as HrmsOfferApprovalController;
+use App\Http\Controllers\Hrms\OfferLetterController as HrmsOfferLetterController;
+use App\Http\Controllers\Hrms\OfferNegotiationController as HrmsOfferNegotiationController;
+use App\Http\Controllers\Hrms\OfferTemplateController as HrmsOfferTemplateController;
 use App\Http\Controllers\Hrms\OrganizationCalendarController;
 use App\Http\Controllers\Hrms\PayrollConfigurationController as HrmsPayrollConfigurationController;
 use App\Http\Controllers\Hrms\PayrollDashboardController as HrmsPayrollDashboardController;
@@ -119,11 +108,19 @@ use App\Http\Controllers\Hrms\PerformanceRatingScaleController as HrmsPerformanc
 use App\Http\Controllers\Hrms\PerformanceReviewAssignmentController as HrmsPerformanceReviewAssignmentController;
 use App\Http\Controllers\Hrms\PerformanceReviewController as HrmsPerformanceReviewController;
 use App\Http\Controllers\Hrms\PerformanceReviewTemplateController as HrmsPerformanceReviewTemplateController;
-use App\Http\Controllers\Hrms\RecruitmentDashboardController as HrmsRecruitmentDashboardController;
 use App\Http\Controllers\Hrms\RecruitmentAnalyticsController as HrmsRecruitmentAnalyticsController;
-use App\Http\Controllers\Hrms\RecruitmentReportController as HrmsRecruitmentReportController;
-use App\Http\Controllers\Hrms\RecruitmentSavedReportController as HrmsRecruitmentSavedReportController;
+use App\Http\Controllers\Hrms\RecruitmentApiAccessController;
+use App\Http\Controllers\Hrms\RecruitmentBackgroundVerificationController;
+use App\Http\Controllers\Hrms\RecruitmentCalendarController;
+use App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController;
+use App\Http\Controllers\Hrms\RecruitmentDashboardController as HrmsRecruitmentDashboardController;
 use App\Http\Controllers\Hrms\RecruitmentExportController as HrmsRecruitmentExportController;
+use App\Http\Controllers\Hrms\RecruitmentIntegrationController;
+use App\Http\Controllers\Hrms\RecruitmentJobBoardController;
+use App\Http\Controllers\Hrms\RecruitmentReportController as HrmsRecruitmentReportController;
+use App\Http\Controllers\Hrms\RecruitmentResumeParsingController;
+use App\Http\Controllers\Hrms\RecruitmentSavedReportController as HrmsRecruitmentSavedReportController;
+use App\Http\Controllers\Hrms\RecruitmentWebhookController;
 use App\Http\Controllers\Hrms\SalaryComponentController as HrmsSalaryComponentController;
 use App\Http\Controllers\Hrms\SalaryStructureController as HrmsSalaryStructureController;
 use App\Http\Controllers\Hrms\ShiftAssignmentController as HrmsShiftAssignmentController;
@@ -133,15 +130,22 @@ use App\Http\Controllers\Hrms\TalentMatrixController as HrmsTalentMatrixControll
 use App\Http\Controllers\Hrms\TeamController as HrmsTeamController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\KnowledgeCenterController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadImportController;
-use App\Http\Controllers\KnowledgeCenterController;
+use App\Http\Controllers\Lookup\LookupController;
+use App\Http\Controllers\Marketing\MarketingAttributionController;
+use App\Http\Controllers\Marketing\MarketingCampaignController;
+use App\Http\Controllers\Marketing\MarketingHomeController;
+use App\Http\Controllers\Marketing\MarketingProvidersController;
 use App\Http\Controllers\MarketingProviderOAuthController;
 use App\Http\Controllers\MarketingTrackingController;
 use App\Http\Controllers\MetadataFieldBlueprintActivationController;
 use App\Http\Controllers\MetadataFieldDefinitionController;
 use App\Http\Controllers\MetaWebhookController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\Operations\OperationsHomeController;
 use App\Http\Controllers\OpportunityController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSettings\HrConfigurationController;
@@ -149,55 +153,61 @@ use App\Http\Controllers\OrganizationSettings\OrganizationSettingsHubController;
 use App\Http\Controllers\OrganizationSetupController;
 use App\Http\Controllers\OrganizationSwitchController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PlanningReportController;
 use App\Http\Controllers\Platform\ImpersonationController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\PortfolioExecutiveController;
 use App\Http\Controllers\PortfolioForecastController;
 use App\Http\Controllers\PortfolioReportController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\ProjectAutomationController;
 use App\Http\Controllers\ProjectBaselineController;
 use App\Http\Controllers\ProjectBudgetController;
-use App\Http\Controllers\ProjectCategoryController;
 use App\Http\Controllers\ProjectCalendarController;
+use App\Http\Controllers\ProjectCategoryController;
 use App\Http\Controllers\ProjectCollaborationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectDependencyController;
 use App\Http\Controllers\ProjectExecutiveDashboardController;
-use App\Http\Controllers\ProjectAutomationController;
 use App\Http\Controllers\ProjectGanttController;
 use App\Http\Controllers\ProjectHealthController;
 use App\Http\Controllers\ProjectIssueController;
 use App\Http\Controllers\ProjectLabelController;
+use App\Http\Controllers\ProjectLifecycleStageController;
+use App\Http\Controllers\ProjectMemberController;
 use App\Http\Controllers\ProjectMentionController;
+use App\Http\Controllers\ProjectMilestoneController;
 use App\Http\Controllers\ProjectProgressController;
 use App\Http\Controllers\ProjectProgressDashboardController;
 use App\Http\Controllers\ProjectReportController;
-use App\Http\Controllers\PlanningReportController;
 use App\Http\Controllers\ProjectRiskController;
-use App\Http\Controllers\NotificationPreferenceController;
-use App\Http\Controllers\ResourceAllocationController;
-use App\Http\Controllers\ResourceCalendarController;
-use App\Http\Controllers\ResourcePlannerController;
-use App\Http\Controllers\ProjectLifecycleStageController;
-use App\Http\Controllers\ProjectMemberController;
-use App\Http\Controllers\ProjectMilestoneController;
+use App\Http\Controllers\Projects\ProjectsBudgetsHubController;
+use App\Http\Controllers\Projects\ProjectsHomeController;
+use App\Http\Controllers\Projects\ProjectsMilestonesHubController;
+use App\Http\Controllers\Projects\ProjectsReportsController;
 use App\Http\Controllers\ProjectStatusController;
 use App\Http\Controllers\ProjectTemplateController;
 use App\Http\Controllers\ProjectTypeController;
 use App\Http\Controllers\ProjectWatcherController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ResourceAllocationController;
+use App\Http\Controllers\ResourceCalendarController;
+use App\Http\Controllers\ResourcePlannerController;
 use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Shell\CommandPaletteController;
+use App\Http\Controllers\Shell\GlobalSearchController;
+use App\Http\Controllers\Shell\NotificationDrawerController;
+use App\Http\Controllers\Shell\ShellPreferenceController;
+use App\Http\Controllers\SprintController;
 use App\Http\Controllers\TaskAttachmentController;
+use App\Http\Controllers\TaskBoardController;
 use App\Http\Controllers\TaskChecklistController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TaskBoardController;
-use App\Http\Controllers\BacklogController;
-use App\Http\Controllers\SprintController;
 use App\Http\Controllers\TaskDependencyController;
 use App\Http\Controllers\TaskPriorityController;
 use App\Http\Controllers\TaskRecurrenceController;
@@ -207,6 +217,8 @@ use App\Http\Controllers\TaskWatcherController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\WorkflowExecutionController;
+use App\Http\Controllers\WorkspaceDashboardPreferenceController;
+use App\Services\Navigation\NavigationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -221,7 +233,7 @@ Route::get('/', function () {
             ?? $user->organizations()->first();
 
         if ($organization) {
-            $landing = app(\App\Services\Navigation\NavigationService::class)
+            $landing = app(NavigationService::class)
                 ->resolveLandingUrl($user, $organization);
 
             return redirect()->to($landing);
@@ -676,111 +688,111 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->only(['index', 'show', 'store'])
             ->middleware('permission:recruitment.offer.view')
             ->names('hrms.recruitment.hiring-decisions');
-        Route::get('hrms/recruitment/careers/settings', [\App\Http\Controllers\Hrms\CareerSiteSettingsController::class, 'edit'])
+        Route::get('hrms/recruitment/careers/settings', [CareerSiteSettingsController::class, 'edit'])
             ->middleware('permission:recruitment.careers.manage')
             ->name('hrms.recruitment.careers.settings.edit');
-        Route::put('hrms/recruitment/careers/settings', [\App\Http\Controllers\Hrms\CareerSiteSettingsController::class, 'update'])
+        Route::put('hrms/recruitment/careers/settings', [CareerSiteSettingsController::class, 'update'])
             ->middleware('permission:recruitment.careers.manage')
             ->name('hrms.recruitment.careers.settings.update');
-        Route::get('hrms/recruitment/portal/settings', [\App\Http\Controllers\Hrms\CandidatePortalSettingsController::class, 'edit'])
+        Route::get('hrms/recruitment/portal/settings', [CandidatePortalSettingsController::class, 'edit'])
             ->middleware('permission:recruitment.portal.settings')
             ->name('hrms.recruitment.portal.settings.edit');
-        Route::put('hrms/recruitment/portal/settings', [\App\Http\Controllers\Hrms\CandidatePortalSettingsController::class, 'update'])
+        Route::put('hrms/recruitment/portal/settings', [CandidatePortalSettingsController::class, 'update'])
             ->middleware('permission:recruitment.portal.settings')
             ->name('hrms.recruitment.portal.settings.update');
-        Route::get('hrms/recruitment/portal/accounts', [\App\Http\Controllers\Hrms\CandidateAccountAdminController::class, 'index'])
+        Route::get('hrms/recruitment/portal/accounts', [CandidateAccountAdminController::class, 'index'])
             ->middleware('permission:recruitment.portal.manage')
             ->name('hrms.recruitment.portal.accounts.index');
 
-        Route::get('hrms/recruitment/integrations', [\App\Http\Controllers\Hrms\RecruitmentIntegrationController::class, 'index'])
+        Route::get('hrms/recruitment/integrations', [RecruitmentIntegrationController::class, 'index'])
             ->middleware('permission:recruitment.integration.view')
             ->name('hrms.recruitment.integrations.index');
-        Route::post('hrms/recruitment/integrations/{provider}/connect', [\App\Http\Controllers\Hrms\RecruitmentIntegrationController::class, 'connect'])
+        Route::post('hrms/recruitment/integrations/{provider}/connect', [RecruitmentIntegrationController::class, 'connect'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.integrations.connect');
-        Route::post('hrms/recruitment/integrations/providers/{recruitment_provider}/disconnect', [\App\Http\Controllers\Hrms\RecruitmentIntegrationController::class, 'disconnect'])
+        Route::post('hrms/recruitment/integrations/providers/{recruitment_provider}/disconnect', [RecruitmentIntegrationController::class, 'disconnect'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.integrations.disconnect');
-        Route::post('hrms/recruitment/integrations/providers/{recruitment_provider}/health-check', [\App\Http\Controllers\Hrms\RecruitmentIntegrationController::class, 'healthCheck'])
+        Route::post('hrms/recruitment/integrations/providers/{recruitment_provider}/health-check', [RecruitmentIntegrationController::class, 'healthCheck'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.integrations.health-check');
-        Route::post('hrms/recruitment/integrations/retries', [\App\Http\Controllers\Hrms\RecruitmentIntegrationController::class, 'processRetries'])
+        Route::post('hrms/recruitment/integrations/retries', [RecruitmentIntegrationController::class, 'processRetries'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.integrations.retries');
 
-        Route::get('hrms/recruitment/integrations/communication-templates', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/communication-templates', [RecruitmentCommunicationTemplateController::class, 'index'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.index');
-        Route::post('hrms/recruitment/integrations/communication-templates', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'store'])
+        Route::post('hrms/recruitment/integrations/communication-templates', [RecruitmentCommunicationTemplateController::class, 'store'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.store');
-        Route::put('hrms/recruitment/integrations/communication-templates/{template}', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'update'])
+        Route::put('hrms/recruitment/integrations/communication-templates/{template}', [RecruitmentCommunicationTemplateController::class, 'update'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.update');
-        Route::post('hrms/recruitment/integrations/communication-templates/{template}/submit', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'submit'])
+        Route::post('hrms/recruitment/integrations/communication-templates/{template}/submit', [RecruitmentCommunicationTemplateController::class, 'submit'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.submit');
-        Route::post('hrms/recruitment/integrations/communication-templates/{template}/approve', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'approve'])
+        Route::post('hrms/recruitment/integrations/communication-templates/{template}/approve', [RecruitmentCommunicationTemplateController::class, 'approve'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.approve');
-        Route::post('hrms/recruitment/integrations/communication-templates/{template}/deactivate', [\App\Http\Controllers\Hrms\RecruitmentCommunicationTemplateController::class, 'deactivate'])
+        Route::post('hrms/recruitment/integrations/communication-templates/{template}/deactivate', [RecruitmentCommunicationTemplateController::class, 'deactivate'])
             ->middleware('permission:recruitment.communication.manage')
             ->name('hrms.recruitment.communication-templates.deactivate');
 
-        Route::get('hrms/recruitment/integrations/calendar', [\App\Http\Controllers\Hrms\RecruitmentCalendarController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/calendar', [RecruitmentCalendarController::class, 'index'])
             ->middleware('permission:recruitment.integration.view')
             ->name('hrms.recruitment.calendar.index');
-        Route::post('hrms/recruitment/integrations/calendar/sync', [\App\Http\Controllers\Hrms\RecruitmentCalendarController::class, 'sync'])
+        Route::post('hrms/recruitment/integrations/calendar/sync', [RecruitmentCalendarController::class, 'sync'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.calendar.sync');
 
-        Route::get('hrms/recruitment/integrations/job-boards', [\App\Http\Controllers\Hrms\RecruitmentJobBoardController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/job-boards', [RecruitmentJobBoardController::class, 'index'])
             ->middleware('permission:recruitment.integration.view')
             ->name('hrms.recruitment.job-boards.index');
-        Route::post('hrms/recruitment/integrations/job-boards/publish', [\App\Http\Controllers\Hrms\RecruitmentJobBoardController::class, 'publish'])
+        Route::post('hrms/recruitment/integrations/job-boards/publish', [RecruitmentJobBoardController::class, 'publish'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.job-boards.publish');
-        Route::post('hrms/recruitment/integrations/job-boards/{listing}/sync', [\App\Http\Controllers\Hrms\RecruitmentJobBoardController::class, 'sync'])
+        Route::post('hrms/recruitment/integrations/job-boards/{listing}/sync', [RecruitmentJobBoardController::class, 'sync'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.job-boards.sync');
-        Route::post('hrms/recruitment/integrations/job-boards/{listing}/close', [\App\Http\Controllers\Hrms\RecruitmentJobBoardController::class, 'close'])
+        Route::post('hrms/recruitment/integrations/job-boards/{listing}/close', [RecruitmentJobBoardController::class, 'close'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.job-boards.close');
 
-        Route::get('hrms/recruitment/integrations/resume-parsing', [\App\Http\Controllers\Hrms\RecruitmentResumeParsingController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/resume-parsing', [RecruitmentResumeParsingController::class, 'index'])
             ->middleware('permission:recruitment.integration.view')
             ->name('hrms.recruitment.resume-parsing.index');
-        Route::post('hrms/recruitment/integrations/resume-parsing', [\App\Http\Controllers\Hrms\RecruitmentResumeParsingController::class, 'store'])
+        Route::post('hrms/recruitment/integrations/resume-parsing', [RecruitmentResumeParsingController::class, 'store'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.resume-parsing.store');
-        Route::post('hrms/recruitment/integrations/resume-parsing/{parseRequest}/apply', [\App\Http\Controllers\Hrms\RecruitmentResumeParsingController::class, 'apply'])
+        Route::post('hrms/recruitment/integrations/resume-parsing/{parseRequest}/apply', [RecruitmentResumeParsingController::class, 'apply'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.resume-parsing.apply');
 
-        Route::get('hrms/recruitment/integrations/background-verification', [\App\Http\Controllers\Hrms\RecruitmentBackgroundVerificationController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/background-verification', [RecruitmentBackgroundVerificationController::class, 'index'])
             ->middleware('permission:recruitment.integration.view')
             ->name('hrms.recruitment.background-verification.index');
-        Route::post('hrms/recruitment/integrations/background-verification', [\App\Http\Controllers\Hrms\RecruitmentBackgroundVerificationController::class, 'store'])
+        Route::post('hrms/recruitment/integrations/background-verification', [RecruitmentBackgroundVerificationController::class, 'store'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.background-verification.store');
-        Route::post('hrms/recruitment/integrations/background-verification/{verification}/refresh', [\App\Http\Controllers\Hrms\RecruitmentBackgroundVerificationController::class, 'refresh'])
+        Route::post('hrms/recruitment/integrations/background-verification/{verification}/refresh', [RecruitmentBackgroundVerificationController::class, 'refresh'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.background-verification.refresh');
-        Route::post('hrms/recruitment/integrations/background-verification/{verification}/cancel', [\App\Http\Controllers\Hrms\RecruitmentBackgroundVerificationController::class, 'cancel'])
+        Route::post('hrms/recruitment/integrations/background-verification/{verification}/cancel', [RecruitmentBackgroundVerificationController::class, 'cancel'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.background-verification.cancel');
 
-        Route::get('hrms/recruitment/integrations/api-access', [\App\Http\Controllers\Hrms\RecruitmentApiAccessController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/api-access', [RecruitmentApiAccessController::class, 'index'])
             ->middleware('permission:recruitment.api.manage')
             ->name('hrms.recruitment.api-access.index');
 
-        Route::get('hrms/recruitment/integrations/webhooks', [\App\Http\Controllers\Hrms\RecruitmentWebhookController::class, 'index'])
+        Route::get('hrms/recruitment/integrations/webhooks', [RecruitmentWebhookController::class, 'index'])
             ->middleware('permission:recruitment.webhook.view')
             ->name('hrms.recruitment.webhooks.index');
-        Route::post('hrms/recruitment/integrations/webhooks', [\App\Http\Controllers\Hrms\RecruitmentWebhookController::class, 'store'])
+        Route::post('hrms/recruitment/integrations/webhooks', [RecruitmentWebhookController::class, 'store'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.webhooks.store');
-        Route::post('hrms/recruitment/integrations/webhooks/deliveries/{delivery}/retry', [\App\Http\Controllers\Hrms\RecruitmentWebhookController::class, 'retry'])
+        Route::post('hrms/recruitment/integrations/webhooks/deliveries/{delivery}/retry', [RecruitmentWebhookController::class, 'retry'])
             ->middleware('permission:recruitment.integration.manage')
             ->name('hrms.recruitment.webhooks.retry');
 
@@ -1573,7 +1585,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->middleware('permission:integrations.manage')
             ->name('integrations.disconnect');
 
-        Route::get('assignments', [AssignmentSettingsController::class, 'index'])
+        Route::get('assignments', fn () => redirect()->route('organization.settings.assignments.index'))
             ->middleware('permission:assignments.view')
             ->name('assignments.index');
         Route::post('assignments/pools', [AssignmentSettingsController::class, 'storePool'])
@@ -1706,6 +1718,9 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::prefix('organization/settings')->name('organization.settings.')->group(function () {
             Route::get('subscription', [HrConfigurationController::class, 'subscription'])->name('subscription');
             Route::get('billing', [HrConfigurationController::class, 'billing'])->name('billing');
+            Route::get('assignments', [AssignmentSettingsController::class, 'index'])
+                ->middleware('permission:assignments.view')
+                ->name('assignments.index');
 
             Route::get('working-days', [HrConfigurationController::class, 'editWorkingDays'])->name('working-days.edit');
             Route::put('working-days', [HrConfigurationController::class, 'updateWorkingDays'])->name('working-days.update');
