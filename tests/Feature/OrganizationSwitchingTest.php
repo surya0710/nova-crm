@@ -33,8 +33,13 @@ class OrganizationSwitchingTest extends TestCase
         );
 
         $response = $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organizationA->id])
-            ->post(route('organization.switch', $organizationB));
+            ->withSession([
+                '_token' => 'organization-switch-token',
+                'current_organization_id' => $organizationA->id,
+            ])
+            ->post(route('organization.switch', $organizationB), [
+                '_token' => 'organization-switch-token',
+            ]);
 
         $response->assertRedirect(route('dashboard'));
         $response->assertSessionHas('current_organization_id', $organizationB->id);
@@ -51,7 +56,9 @@ class OrganizationSwitchingTest extends TestCase
             ->assertOk()
             ->assertSee('Organization B');
 
-        $this->post(route('organization.switch', $organizationA))
+        $this->post(route('organization.switch', $organizationA), [
+            '_token' => 'organization-switch-token',
+        ])
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('current_organization_id', $organizationA->id)
             ->assertSessionHas('current_organization_name', 'Organization A');
@@ -75,8 +82,13 @@ class OrganizationSwitchingTest extends TestCase
 
         foreach ([$notAMember, $inactiveOrganization, $disabledMembership] as $organization) {
             $this->actingAs($user)
-                ->withSession(['current_organization_id' => $current->id])
-                ->post(route('organization.switch', $organization))
+                ->withSession([
+                    '_token' => 'organization-switch-token',
+                    'current_organization_id' => $current->id,
+                ])
+                ->post(route('organization.switch', $organization), [
+                    '_token' => 'organization-switch-token',
+                ])
                 ->assertForbidden()
                 ->assertSessionHas('current_organization_id', $current->id);
         }
