@@ -20,6 +20,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Owner resolution
+    |--------------------------------------------------------------------------
+    */
+
+    'owner_resolution_priority' => [
+        'user_id',
+        'email',
+        'employee_code',
+        'user_name',
+        'employee_name',
+    ],
+
+    'owner_active_employee_statuses' => [
+        'active',
+        'probation',
+        'notice_period',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Entity catalog (module grouping + RBAC)
     |--------------------------------------------------------------------------
     |

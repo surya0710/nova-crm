@@ -25,6 +25,8 @@ class ImportSession extends Model
 
     public const STATUS_READY = 'ready';
 
+    public const STATUS_QUEUED = 'queued';
+
     public const STATUS_IMPORTING = 'importing';
 
     public const STATUS_COMPLETED = 'completed';
@@ -38,6 +40,7 @@ class ImportSession extends Model
         self::STATUS_UPLOADED,
         self::STATUS_VALIDATING,
         self::STATUS_READY,
+        self::STATUS_QUEUED,
         self::STATUS_IMPORTING,
         self::STATUS_COMPLETED,
         self::STATUS_FAILED,
@@ -68,6 +71,12 @@ class ImportSession extends Model
             self::STATUS_CANCELLED,
         ],
         self::STATUS_READY => [
+            self::STATUS_QUEUED,
+            self::STATUS_IMPORTING,
+            self::STATUS_CANCELLED,
+            self::STATUS_FAILED,
+        ],
+        self::STATUS_QUEUED => [
             self::STATUS_IMPORTING,
             self::STATUS_CANCELLED,
             self::STATUS_FAILED,

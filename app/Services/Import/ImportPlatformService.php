@@ -5,14 +5,18 @@ namespace App\Services\Import;
 use App\Contracts\Import\ImportableEntityInterface;
 use App\Jobs\ProcessImportSessionJob;
 use App\Models\ImportSession;
+use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -50,20 +54,21 @@ class ImportPlatformService
         $this->assertRegisteredEntity($entityType);
         $this->assertSupportedUpload($file);
 
+        $disk = (string) config('import.disk', 'local');
         $directory = 'imports/'.$organization->id.'/'.$entityType;
-        $path = $file->store($directory, 'local');
+        $path = $file->store($directory, $disk);
 
         if ($path === false) {
             throw new RuntimeException('Unable to store import upload.');
         }
 
-        return DB::transaction(function () use ($organization, $entityType, $file, $user, $path, $worksheetName) {
+        return DB::transaction(function () use ($organization, $entityType, $file, $user, $path, $worksheetName, $disk) {
             $session = ImportSession::query()->create([
                 'organization_id' => $organization->id,
                 'entity_type' => $entityType,
                 'original_filename' => $file->getClientOriginalName(),
                 'stored_path' => $path,
-                'disk' => 'local',
+                'disk' => $disk,
                 'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
                 'uploaded_by' => $user?->id,
@@ -239,9 +244,9 @@ class ImportPlatformService
     {
         $this->assertOrganizationOwned($session);
 
-        $errors = $session->validation_summary['errors'] ?? null;
+        $errors = $this->combinedSessionErrors($session);
 
-        if (! is_array($errors)) {
+        if ($errors === null) {
             $preview = $this->preview($session);
             $errors = $preview->errors;
         }
@@ -263,14 +268,30 @@ class ImportPlatformService
     {
         $this->assertOrganizationOwned($session);
 
-        $errors = $session->validation_summary['errors'] ?? null;
+        $errors = $this->combinedSessionErrors($session);
 
-        if (! is_array($errors)) {
+        if ($errors === null) {
             $preview = $this->preview($session);
             $errors = $preview->errors;
         }
 
         return $this->errorReportGenerator->toCsvString($errors);
+    }
+
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    protected function combinedSessionErrors(ImportSession $session): ?array
+    {
+        $summary = $session->validation_summary;
+        if (! is_array($summary)) {
+            return null;
+        }
+
+        return array_values(array_merge(
+            is_array($summary['errors'] ?? null) ? $summary['errors'] : [],
+            is_array($summary['execution_errors'] ?? null) ? $summary['execution_errors'] : [],
+        ));
     }
 
     /**
@@ -327,12 +348,33 @@ class ImportPlatformService
         $threshold = (int) config('import.queue_threshold_rows', 100);
 
         if (($session->total_rows ?? 0) > $threshold) {
-            ProcessImportSessionJob::dispatch($session->id, $user?->id);
+            $this->transition($session, ImportSession::STATUS_QUEUED);
+
+            try {
+                ProcessImportSessionJob::dispatch($session->id, $user?->id);
+            } catch (Throwable $e) {
+                $this->transition($session, ImportSession::STATUS_FAILED, [
+                    'last_error' => 'Import could not be queued: '.$e->getMessage(),
+                    'completed_at' => now(),
+                ]);
+
+                Log::error('import.queue.failed', $this->importLogContext($session, $user, [
+                    'exception_class' => $e::class,
+                    'exception' => $e,
+                    'reason' => $e->getMessage(),
+                ]));
+
+                throw $e;
+            }
 
             $this->auditLogger->log($session, 'import_queued', [
                 'entity_type' => $session->entity_type,
                 'total_rows' => $session->total_rows,
             ], $user);
+
+            Log::info('import.execution.queued', $this->importLogContext($session, $user, [
+                'rows_parsed' => $session->total_rows,
+            ]));
 
             return $session->fresh();
         }
@@ -348,13 +390,19 @@ class ImportPlatformService
         $this->assertOrganizationOwned($session);
         $entity = $this->assertRegisteredEntity($session->entity_type);
 
-        if ($session->status !== ImportSession::STATUS_READY) {
+        if (! in_array($session->status, [ImportSession::STATUS_READY, ImportSession::STATUS_QUEUED], true)) {
             throw new InvalidArgumentException(
-                "Import session must be in ready status to execute, got [{$session->status}]."
+                "Import session must be ready or queued to execute, got [{$session->status}]."
             );
         }
 
         $this->transition($session, ImportSession::STATUS_IMPORTING);
+
+        $executionStartedAt = microtime(true);
+        $memoryAtStart = memory_get_usage(true);
+        $leadCountBefore = $session->entity_type === 'lead'
+            ? Lead::query()->where('organization_id', $session->organization_id)->count()
+            : null;
 
         $this->auditLogger->log($session, 'import_started', [
             'entity_type' => $session->entity_type,
@@ -367,6 +415,11 @@ class ImportPlatformService
         $failed = 0;
         $processed = 0;
         $rowErrors = [];
+        $createdIds = [];
+        $rowOutcomes = [];
+        $validationErrorCount = 0;
+        $databaseErrorCount = 0;
+        $ownerResolutionErrorCount = 0;
 
         try {
             $absolutePath = $this->absolutePath($session);
@@ -387,8 +440,16 @@ class ImportPlatformService
                 $entity->validateMappedRows($result['preview_rows'], $session),
             );
 
+            Log::info('import.execution.started', $this->importLogContext($session, $user, [
+                'rows_parsed' => $result['total_rows'],
+                'rows_valid' => $result['valid_rows'],
+                'rows_invalid' => $result['invalid_rows'],
+                'memory_bytes' => $memoryAtStart,
+            ]));
+
             foreach ($result['preview_rows'] as $row) {
                 $processed++;
+                $rowContext = $this->rowLogContext($session, $user, $row);
 
                 if (! $row['valid']) {
                     $isDuplicate = collect($row['errors'])->contains(
@@ -401,15 +462,33 @@ class ImportPlatformService
                         $failed++;
                     }
 
-                    foreach ($row['errors'] as $message) {
+                    $validationErrorCount += count($row['errors']);
+                    foreach ($this->errorsForRow($result['errors'], (int) $row['row_number']) as $error) {
+                        $message = (string) $error['error'];
+                        if (str_contains(strtolower($message), 'owner')) {
+                            $ownerResolutionErrorCount++;
+                        }
+
                         $rowErrors[] = [
                             'row_number' => $row['row_number'],
-                            'column' => null,
-                            'field' => null,
+                            'column' => $error['column'] ?? null,
+                            'field' => $error['field'] ?? null,
                             'error' => $message,
-                            'value' => null,
+                            'value' => $error['value'] ?? null,
+                            'category' => $isDuplicate ? 'duplicate' : 'validation',
                         ];
                     }
+
+                    $rowOutcomes[] = [
+                        'row_number' => $row['row_number'],
+                        'result' => $isDuplicate ? 'skipped' : 'failed',
+                        'reason' => implode('; ', $row['errors']),
+                    ];
+                    Log::warning('import.row.rejected', array_merge($rowContext, [
+                        'validation_result' => 'invalid',
+                        'insert_result' => $isDuplicate ? 'skipped' : 'not_attempted',
+                        'reason' => implode('; ', $row['errors']),
+                    ]));
 
                     continue;
                 }
@@ -423,15 +502,53 @@ class ImportPlatformService
                         'skipped' => $skipped++,
                         default => $created++,
                     };
-                } catch (\Throwable $e) {
+
+                    if (in_array($action, ['created', 'updated'], true) && isset($outcome['id'])) {
+                        $createdIds[] = $outcome['id'];
+                    }
+
+                    Log::info('import.row.processed', array_merge($rowContext, [
+                        'validation_result' => 'valid',
+                        'insert_result' => $action,
+                        'entity_id' => $outcome['id'] ?? null,
+                        'organization_id_result' => $outcome['organization_id'] ?? $session->organization_id,
+                        'assigned_user_id' => $outcome['assigned_to'] ?? null,
+                        'created_by' => $outcome['created_by'] ?? null,
+                        'owner_resolution' => $outcome['owner_resolution'] ?? null,
+                        'reason' => $action === 'skipped' ? 'Adapter skipped the row.' : null,
+                    ]));
+                } catch (Throwable $e) {
                     $failed++;
+                    $category = $this->exceptionCategory($e);
+                    match ($category) {
+                        'owner_resolution' => $ownerResolutionErrorCount++,
+                        'validation' => $validationErrorCount++,
+                        default => $databaseErrorCount++,
+                    };
+
                     $rowErrors[] = [
                         'row_number' => $row['row_number'],
                         'column' => null,
                         'field' => null,
                         'error' => $e->getMessage(),
-                        'value' => null,
+                        'value' => $row['values']['email'] ?? $row['values']['phone'] ?? null,
+                        'category' => $category,
                     ];
+                    $rowOutcomes[] = [
+                        'row_number' => $row['row_number'],
+                        'result' => 'failed',
+                        'reason' => $e->getMessage(),
+                        'category' => $category,
+                    ];
+
+                    Log::error('import.row.failed', array_merge($rowContext, [
+                        'validation_result' => 'valid',
+                        'insert_result' => 'failed',
+                        'exception_class' => $e::class,
+                        'exception' => $e,
+                        'reason' => $e->getMessage(),
+                        'category' => $category,
+                    ]));
                 }
 
                 if ($processed % max(1, (int) config('import.chunk_size', 100)) === 0) {
@@ -445,8 +562,38 @@ class ImportPlatformService
                 }
             }
 
+            $durationMs = (int) round((microtime(true) - $executionStartedAt) * 1000);
+            $memoryBytes = memory_get_peak_usage(true);
+            $imported = $created + $updated;
+            $leadCountAfter = $session->entity_type === 'lead'
+                ? Lead::query()->where('organization_id', $session->organization_id)->count()
+                : null;
+            $zeroImportReason = $processed > 0 && $imported === 0
+                ? "Import processed {$processed} rows but created or updated no records. Review row errors."
+                : null;
+
             $summary = $session->validation_summary ?? [];
             $summary['execution_errors'] = $rowErrors;
+            $summary['execution_summary'] = [
+                'rows_parsed' => $result['total_rows'],
+                'rows_valid' => $result['valid_rows'],
+                'rows_invalid' => $result['invalid_rows'],
+                'rows_processed' => $processed,
+                'rows_imported' => $imported,
+                'rows_failed' => $failed,
+                'rows_skipped' => $skipped,
+                'duplicate_count' => (int) ($summary['duplicate_rows'] ?? 0),
+                'validation_errors' => $validationErrorCount,
+                'database_errors' => $databaseErrorCount,
+                'owner_resolution_errors' => $ownerResolutionErrorCount,
+                'processing_time_ms' => $durationMs,
+                'memory_start_bytes' => $memoryAtStart,
+                'memory_peak_bytes' => $memoryBytes,
+                'lead_count_before' => $leadCountBefore,
+                'lead_count_after' => $leadCountAfter,
+                'created_ids' => $createdIds,
+                'row_outcomes' => $rowOutcomes,
+            ];
 
             $this->transition($session, ImportSession::STATUS_COMPLETED, [
                 'processed_rows' => $processed,
@@ -456,7 +603,7 @@ class ImportPlatformService
                 'failed_count' => $failed,
                 'completed_at' => now(),
                 'validation_summary' => $summary,
-                'last_error' => null,
+                'last_error' => $zeroImportReason,
             ]);
 
             $this->auditLogger->log($session, 'import_completed', [
@@ -467,10 +614,25 @@ class ImportPlatformService
                 'skipped' => $skipped,
                 'failed' => $failed,
                 'duplicate_rows' => $summary['duplicate_rows'] ?? 0,
+                'duration_ms' => $durationMs,
+                'memory_peak_bytes' => $memoryBytes,
+                'created_ids' => $createdIds,
             ], $user);
 
+            $completionContext = $this->importLogContext($session, $user, [
+                ...$summary['execution_summary'],
+                'status' => ImportSession::STATUS_COMPLETED,
+                'zero_import_reason' => $zeroImportReason,
+            ]);
+            if ($zeroImportReason !== null) {
+                Log::warning('import.execution.zero_records', $completionContext);
+            } else {
+                Log::info('import.execution.completed', $completionContext);
+            }
+
             return $session->fresh();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
+            $durationMs = (int) round((microtime(true) - $executionStartedAt) * 1000);
             if ($session->status === ImportSession::STATUS_IMPORTING) {
                 $this->transition($session, ImportSession::STATUS_FAILED, [
                     'last_error' => $e->getMessage(),
@@ -486,10 +648,81 @@ class ImportPlatformService
             $this->auditLogger->log($session, 'import_failed', [
                 'entity_type' => $session->entity_type,
                 'error' => $e->getMessage(),
+                'duration_ms' => $durationMs,
             ], $user);
+
+            Log::critical('import.execution.failed', $this->importLogContext($session, $user, [
+                'rows_processed' => $processed,
+                'rows_imported' => $created + $updated,
+                'rows_failed' => $failed,
+                'rows_skipped' => $skipped,
+                'duration_ms' => $durationMs,
+                'memory_peak_bytes' => memory_get_peak_usage(true),
+                'exception_class' => $e::class,
+                'exception' => $e,
+                'reason' => $e->getMessage(),
+            ]));
 
             throw $e;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    protected function importLogContext(ImportSession $session, ?User $user, array $extra = []): array
+    {
+        return array_merge([
+            'import_id' => $session->id,
+            'entity_type' => $session->entity_type,
+            'organization_id' => $session->organization_id,
+            'user_id' => $user?->id ?? $session->uploaded_by,
+            'filename' => $session->original_filename,
+        ], $extra);
+    }
+
+    /**
+     * @param  array{row_number: int, values: array<string, mixed>, valid: bool, errors: list<string>}  $row
+     * @return array<string, mixed>
+     */
+    protected function rowLogContext(ImportSession $session, ?User $user, array $row): array
+    {
+        return $this->importLogContext($session, $user, [
+            'row_number' => $row['row_number'],
+            'phone' => $row['values']['phone'] ?? null,
+            'email' => $row['values']['email'] ?? null,
+            'owner' => $row['values']['owner'] ?? null,
+            'lead_status' => $row['values']['status'] ?? null,
+        ]);
+    }
+
+    /**
+     * @param  list<array{row_number: int, column: string|null, field: string|null, error: string, value: string|null}>  $errors
+     * @return list<array{row_number: int, column: string|null, field: string|null, error: string, value: string|null}>
+     */
+    protected function errorsForRow(array $errors, int $rowNumber): array
+    {
+        return array_values(array_filter(
+            $errors,
+            static fn (array $error): bool => (int) $error['row_number'] === $rowNumber,
+        ));
+    }
+
+    protected function exceptionCategory(Throwable $exception): string
+    {
+        $message = strtolower($exception->getMessage());
+
+        if (str_contains($message, 'owner')) {
+            return 'owner_resolution';
+        }
+
+        if ($exception instanceof ValidationException
+            || $exception instanceof InvalidArgumentException) {
+            return 'validation';
+        }
+
+        return 'database';
     }
 
     public function cancel(ImportSession $session, ?User $user = null): ImportSession

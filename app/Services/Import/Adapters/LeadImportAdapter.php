@@ -75,7 +75,7 @@ class LeadImportAdapter implements ImportableEntityInterface
             new ImportFieldDefinition(
                 key: 'phone',
                 label: 'Phone',
-                required: false,
+                required: true,
                 dataType: ImportFieldDefinition::TYPE_PHONE,
                 aliases: ['Phone Number', 'Mobile', 'Mobile Number'],
             ),
@@ -182,6 +182,13 @@ class LeadImportAdapter implements ImportableEntityInterface
                 $errors[] = $this->error($rowNumber, 'full_name', 'Full Name (or First Name / Last Name) is required.', $values['full_name'] ?? null);
             }
 
+            $firstNameMapped = ! empty($session->column_mapping['first_name']);
+            if ($firstNameMapped
+                && $this->stringOrNull($values['first_name'] ?? null) === null
+                && $this->stringOrNull($values['full_name'] ?? null) === null) {
+                $errors[] = $this->error($rowNumber, 'first_name', 'First Name is required when the First Name column is mapped.', null);
+            }
+
             foreach (['state' => 'State', 'country' => 'Country'] as $field => $label) {
                 $value = $this->stringOrNull($values[$field] ?? null);
                 if ($value !== null && mb_strlen($value) > 255) {
@@ -224,8 +231,16 @@ class LeadImportAdapter implements ImportableEntityInterface
             }
 
             $ownerValue = $this->stringOrNull($values['owner'] ?? null);
-            if ($ownerValue !== null && $this->owners->resolve($organization, $ownerValue) === null) {
-                $errors[] = $this->error($rowNumber, 'owner', 'Unknown owner. Use member email or full name.', $ownerValue);
+            if ($ownerValue !== null) {
+                $ownerResolution = $this->owners->resolveWithDiagnostics($organization, $ownerValue);
+                if ($ownerResolution['user'] === null) {
+                    $errors[] = $this->error(
+                        $rowNumber,
+                        'owner',
+                        $ownerResolution['error'] ?? 'Owner could not be resolved.',
+                        $ownerValue,
+                    );
+                }
             }
 
             $sourceValue = $this->stringOrNull($values['source'] ?? null);
@@ -271,7 +286,14 @@ class LeadImportAdapter implements ImportableEntityInterface
         }
 
         $ownerValue = $this->stringOrNull($mappedRow['owner'] ?? null);
-        $owner = $ownerValue !== null ? $this->owners->resolve($organization, $ownerValue) : null;
+        $ownerResolution = $ownerValue !== null
+            ? $this->owners->resolveWithDiagnostics($organization, $ownerValue)
+            : ['user' => null, 'matched_by' => null, 'error' => null];
+        $owner = $ownerResolution['user'];
+
+        if ($ownerValue !== null && $owner === null) {
+            throw new \RuntimeException($ownerResolution['error'] ?? 'Owner could not be resolved.');
+        }
 
         $source = $this->resolveConfigKey(config('leads.sources'), $this->stringOrNull($mappedRow['source'] ?? null))
             ?? 'import';
@@ -357,6 +379,10 @@ class LeadImportAdapter implements ImportableEntityInterface
         return [
             'action' => 'created',
             'id' => $lead->id,
+            'organization_id' => $lead->organization_id,
+            'assigned_to' => $lead->assigned_to,
+            'created_by' => $lead->created_by,
+            'owner_resolution' => $ownerResolution['matched_by'],
         ];
     }
 
@@ -536,17 +562,18 @@ class LeadImportAdapter implements ImportableEntityInterface
     {
         if ($session->uploaded_by) {
             $user = User::query()->find($session->uploaded_by);
-            if ($user) {
+            if ($user && $user->belongsToActiveOrganization((int) $session->organization_id)) {
                 return $user;
             }
         }
 
         $authUser = auth()->user();
-        if ($authUser instanceof User) {
+        if ($authUser instanceof User
+            && $authUser->belongsToActiveOrganization((int) $session->organization_id)) {
             return $authUser;
         }
 
-        throw new \RuntimeException('Import session has no uploading user.');
+        throw new \RuntimeException('Import session has no active uploading user in this organization.');
     }
 
     protected function normalizeEmail(mixed $email): ?string
