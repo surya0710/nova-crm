@@ -11,7 +11,7 @@
         && app(ModuleSubscriptionService::class)->moduleAllowed($organization, 'crm');
 
     $initialDueFollowUps = $crmAllowed
-        ? app(LeadFollowUpService::class)->dueForAlertPayloads()->values()->all()
+        ? app(LeadFollowUpService::class)->dueForAlertPayloads($user)->values()->all()
         : [];
 @endphp
 

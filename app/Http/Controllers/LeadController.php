@@ -18,6 +18,7 @@ use App\Services\Bulk\BulkOperationsService;
 use App\Services\LeadConversionService;
 use App\Services\LeadFollowUpService;
 use App\Services\LeadService;
+use App\Services\LeadVisibilityService;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
@@ -41,6 +42,7 @@ class LeadController extends Controller
         protected LeadFollowUpService $followUpService,
         protected LeadConversionService $conversionService,
         protected LeadService $leadService,
+        protected LeadVisibilityService $leadVisibility,
         protected MetadataEntityFormService $metadataForms,
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
@@ -54,10 +56,12 @@ class LeadController extends Controller
     public function index(IndexLeadRequest $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
+        $user = $request->user();
         $saved = $this->resolveSavedIndexFilters($request, $tenant, 'lead', $this->savedFilters);
         $filterInput = $saved['input'];
+        $canFilterByOwner = $this->leadVisibility->canViewAll($user, $organization);
 
-        $query = Lead::query()->with('assignee');
+        $query = $this->leadVisibility->visibleQuery($user, $organization)->with('assignee');
 
         $this->leadService->searchQuery($query, $filterInput['search'] ?? null);
         $this->leadService->geographicFilterQuery(
@@ -78,7 +82,12 @@ class LeadController extends Controller
             $query->where('priority', $priority);
         }
 
-        if ($assignedTo = (int) ($filterInput['assigned_to'] ?? 0)) {
+        $assignedTo = $this->leadVisibility->resolveAssignedToFilter(
+            $user,
+            $organization,
+            $filterInput['assigned_to'] ?? null,
+        );
+        if ($canFilterByOwner && $assignedTo !== null) {
             $query->where('assigned_to', $assignedTo);
         }
 
@@ -91,13 +100,17 @@ class LeadController extends Controller
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'lead');
         $filters = collect($filterInput)->only(['search', 'status', 'source', 'priority', 'assigned_to', 'state', 'country', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        if (! $canFilterByOwner) {
+            $filters['assigned_to'] = (string) $user->id;
+        }
         $leads = $query->paginate(15)->withQueryString();
         $geographicOptions = $this->leadService->geographicOptions();
 
         return view('leads.index', [
             'leads' => $leads,
             'organization' => $organization,
-            'assignees' => $this->organizationMembers($organization),
+            'assignees' => $canFilterByOwner ? $this->organizationMembers($organization) : collect(),
+            'canFilterByOwner' => $canFilterByOwner,
             'filters' => $filters,
             'stateOptions' => $geographicOptions['states'],
             'countryOptions' => $geographicOptions['countries'],
@@ -108,7 +121,7 @@ class LeadController extends Controller
             'savedFilterRoute' => 'leads.index',
             'savedFilterEntityType' => 'lead',
             'bulkActions' => $this->bulkOperations->availableActionsFor(
-                $request->user(),
+                $user,
                 $organization,
                 'lead'
             ),
@@ -262,7 +275,7 @@ class LeadController extends Controller
         abort_unless($request->user()->hasPermission('leads.view'), 403);
 
         return response()->json([
-            'data' => $this->followUpService->dueForAlertPayloads(),
+            'data' => $this->followUpService->dueForAlertPayloads($request->user()),
         ]);
     }
 

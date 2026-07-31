@@ -5,13 +5,13 @@ namespace App\Services\Analytics;
 use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\Invoice;
-use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\UserUiPreference;
 use App\Services\ExecutiveDashboardService;
+use App\Services\LeadVisibilityService;
 use App\Services\Navigation\ShellQuickActionService;
 use App\Services\ReportService;
 use App\Services\TenantContext;
@@ -27,6 +27,7 @@ class AnalyticsWorkspaceHomeService
     public function __construct(
         protected TenantContext $tenant,
         protected ReportService $reports,
+        protected LeadVisibilityService $leadVisibility,
         protected ExecutiveDashboardService $executive,
         protected AnalyticsDomainService $domains,
         protected ShellQuickActionService $shellQuickActions,
@@ -175,7 +176,7 @@ class AnalyticsWorkspaceHomeService
 
         if ($user->hasAnyPermission(['reports.view', 'opportunities.view', 'leads.view'])) {
             $report = $user->hasPermission('reports.view')
-                ? $this->reports->compile($organization)
+                ? $this->reports->compile($organization, user: $user)
                 : null;
             $cards[] = [
                 'key' => 'sales',
@@ -183,7 +184,10 @@ class AnalyticsWorkspaceHomeService
                 'metrics' => [
                     ['label' => __('Open pipeline'), 'value' => number_format((float) ($report['open_pipeline_value'] ?? 0), 0)],
                     ['label' => __('Open leads'), 'value' => $user->hasPermission('leads.view')
-                        ? Lead::query()->whereNotIn('status', ['won', 'lost', 'converted'])->count()
+                        ? $this->leadVisibility
+                            ->visibleQuery($user, $organization)
+                            ->whereNotIn('status', ['won', 'lost', 'converted'])
+                            ->count()
                         : '—'],
                     ['label' => __('Win rate'), 'value' => isset($report['conversion_rate']) ? $report['conversion_rate'].'%' : '—'],
                 ],
@@ -225,7 +229,7 @@ class AnalyticsWorkspaceHomeService
 
         if ($user->hasAnyPermission(['reports.view', 'invoices.view', 'finance.view'])) {
             $report = $user->hasPermission('reports.view')
-                ? $this->reports->compile($organization)
+                ? $this->reports->compile($organization, user: $user)
                 : null;
             $cards[] = [
                 'key' => 'finance',

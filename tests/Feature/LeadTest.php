@@ -168,6 +168,7 @@ class LeadTest extends TestCase
             'name' => 'Old Name',
             'status' => 'new',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -213,6 +214,7 @@ class LeadTest extends TestCase
         $lead = Lead::factory()->create([
             'organization_id' => $organization->id,
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -264,6 +266,7 @@ class LeadTest extends TestCase
             'organization_id' => $organization->id,
             'status' => 'new',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -315,6 +318,7 @@ class LeadTest extends TestCase
         $lead = Lead::factory()->create([
             'organization_id' => $organization->id,
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $followUpAt = now()->addDay()->format('Y-m-d\TH:i');
@@ -344,6 +348,7 @@ class LeadTest extends TestCase
             'next_follow_up_at' => now()->subMinute(),
             'next_follow_up_note' => 'Call back today',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         Lead::factory()->create([
@@ -352,6 +357,7 @@ class LeadTest extends TestCase
             'status' => 'contacted',
             'next_follow_up_at' => now()->addDay(),
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -373,6 +379,7 @@ class LeadTest extends TestCase
             'status' => 'contacted',
             'next_follow_up_at' => now()->subMinute(),
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $this->actingAs($user)
@@ -397,6 +404,7 @@ class LeadTest extends TestCase
             'status' => 'contacted',
             'next_follow_up_at' => now()->subMinute(),
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $this->assertNull($lead->follow_up_alerted_at);
@@ -425,6 +433,7 @@ class LeadTest extends TestCase
             'organization_id' => $organization->id,
             'status' => 'contacted',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $localDueTime = now('Asia/Kolkata')->addHour()->format('Y-m-d\TH:i');
@@ -449,6 +458,7 @@ class LeadTest extends TestCase
         $lead = Lead::factory()->create([
             'organization_id' => $organization->id,
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)

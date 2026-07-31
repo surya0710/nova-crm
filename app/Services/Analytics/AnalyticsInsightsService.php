@@ -12,6 +12,8 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\ForecastService;
 use App\Services\LeadFollowUpService;
+use App\Services\LeadVisibilityService;
+use App\Services\TenantContext;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
@@ -22,7 +24,9 @@ class AnalyticsInsightsService
     public function __construct(
         protected ForecastService $forecast,
         protected LeadFollowUpService $followUps,
+        protected LeadVisibilityService $leadVisibility,
         protected AnalyticsDomainService $domains,
+        protected TenantContext $tenant,
     ) {}
 
     /**
@@ -99,8 +103,10 @@ class AnalyticsInsightsService
             return collect();
         }
 
-        $last30 = Lead::query()->where('created_at', '>=', now()->subDays(30))->count();
-        $prior30 = Lead::query()
+        $last30 = $this->leadVisibility->visibleQuery($user, $this->tenant->get())
+            ->where('created_at', '>=', now()->subDays(30))
+            ->count();
+        $prior30 = $this->leadVisibility->visibleQuery($user, $this->tenant->get())
             ->whereBetween('created_at', [now()->subDays(60), now()->subDays(30)])
             ->count();
 
@@ -254,7 +260,7 @@ class AnalyticsInsightsService
         }
 
         if (Schema::hasColumn('leads', 'score')) {
-            $highScore = Lead::query()
+            $highScore = $this->leadVisibility->visibleQuery($user, $this->tenant->get())
                 ->whereNotIn('status', ['won', 'lost', 'converted'])
                 ->where('score', '>=', 70)
                 ->orderByDesc('score')
@@ -285,7 +291,7 @@ class AnalyticsInsightsService
             ]);
         }
 
-        $highValue = Lead::query()
+        $highValue = $this->leadVisibility->visibleQuery($user, $this->tenant->get())
             ->whereNotIn('status', ['won', 'lost', 'converted'])
             ->when(Schema::hasColumn('leads', 'budget'), fn ($q) => $q->where('budget', '>=', 10000))
             ->orderByDesc(Schema::hasColumn('leads', 'budget') ? 'budget' : 'created_at')
@@ -326,7 +332,7 @@ class AnalyticsInsightsService
             return collect();
         }
 
-        $followUps = $this->followUps->dueForAlertPayloads(5);
+        $followUps = $this->followUps->dueForAlertPayloads($user, 5);
 
         return collect([
             [

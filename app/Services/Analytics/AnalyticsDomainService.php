@@ -41,7 +41,7 @@ class AnalyticsDomainService
     public function executive(User $user, Organization $organization): array
     {
         $report = $user->hasPermission('reports.view')
-            ? $this->reports->compile($organization)
+            ? $this->reports->compile($organization, user: $user)
             : [];
 
         $exec = $user->hasPermission('projects.view')
@@ -88,7 +88,7 @@ class AnalyticsDomainService
     public function crm(User $user, Organization $organization): array
     {
         $report = $user->hasPermission('reports.view')
-            ? $this->reports->compile($organization)
+            ? $this->reports->compile($organization, user: $user)
             : [];
 
         return [

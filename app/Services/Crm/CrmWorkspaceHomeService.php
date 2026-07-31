@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\UserUiPreference;
 use App\Services\LeadFollowUpService;
+use App\Services\LeadVisibilityService;
 use App\Services\Navigation\ShellQuickActionService;
 use App\Services\TenantContext;
 use App\Services\Workspace\CachesWorkspaceHome;
@@ -23,6 +24,7 @@ class CrmWorkspaceHomeService
 
     public function __construct(
         protected LeadFollowUpService $followUps,
+        protected LeadVisibilityService $leadVisibility,
         protected TenantContext $tenant,
         protected ShellQuickActionService $shellQuickActions,
     ) {}
@@ -72,7 +74,8 @@ class CrmWorkspaceHomeService
         $kpis = [];
 
         if ($user->hasPermission('leads.view')) {
-            $openLeads = Lead::query()
+            $organization = $this->tenant->get();
+            $openLeads = $this->leadVisibility->visibleQuery($user, $organization)
                 ->whereNotIn('status', ['won', 'lost', 'converted'])
                 ->count();
             $kpis[] = [
@@ -109,7 +112,8 @@ class CrmWorkspaceHomeService
         }
 
         if ($user->hasPermission('leads.view')) {
-            $dueToday = Lead::query()
+            $organization = $this->tenant->get();
+            $dueToday = $this->leadVisibility->visibleQuery($user, $organization)
                 ->whereNotNull('next_follow_up_at')
                 ->where('next_follow_up_at', '<=', $this->followUps->organizationNow()->endOfDay()->utc())
                 ->where('next_follow_up_at', '>=', $this->followUps->organizationNow()->startOfDay()->utc())
@@ -170,7 +174,7 @@ class CrmWorkspaceHomeService
             return collect();
         }
 
-        return $this->followUps->dueForAlertPayloads(8)->map(fn (array $item) => [
+        return $this->followUps->dueForAlertPayloads($user, 8)->map(fn (array $item) => [
             'title' => $item['name'],
             'subtitle' => $item['company'] ?: ($item['next_follow_up_at_formatted'] ?? null),
             'href' => $item['url'],
@@ -190,7 +194,7 @@ class CrmWorkspaceHomeService
         $start = $this->followUps->organizationNow()->copy()->startOfDay()->utc();
         $end = $this->followUps->organizationNow()->copy()->endOfDay()->utc();
 
-        return Lead::query()
+        return $this->leadVisibility->visibleQuery($user, $this->tenant->get())
             ->with('assignee')
             ->whereNotNull('next_follow_up_at')
             ->whereBetween('next_follow_up_at', [$start, $end])
@@ -208,7 +212,8 @@ class CrmWorkspaceHomeService
             return collect();
         }
 
-        return Lead::query()
+        // Product "My assigned" list — always the current user; visibility is inherent.
+        return $this->leadVisibility->visibleQuery($user, $this->tenant->get())
             ->with('assignee')
             ->where('assigned_to', $user->id)
             ->whereNotIn('status', ['won', 'lost', 'converted'])
@@ -300,7 +305,7 @@ class CrmWorkspaceHomeService
         $items = collect();
 
         if ($user->hasPermission('leads.view')) {
-            Lead::query()
+            $this->leadVisibility->visibleQuery($user, $this->tenant->get())
                 ->latest('updated_at')
                 ->limit(5)
                 ->get()

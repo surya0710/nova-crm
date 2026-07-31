@@ -32,6 +32,7 @@ class LeadConversionTest extends TestCase
             'organization_id' => $organization->id,
             'status' => 'qualified',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -52,6 +53,7 @@ class LeadConversionTest extends TestCase
             'converted_at' => now(),
             'converted_by' => $user->id,
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -72,6 +74,7 @@ class LeadConversionTest extends TestCase
             'name' => 'Jane Prospect',
             'email' => 'jane@example.test',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -121,6 +124,7 @@ class LeadConversionTest extends TestCase
                 'lead_only' => 'should-not-copy',
             ],
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)
@@ -158,6 +162,7 @@ class LeadConversionTest extends TestCase
             'status' => 'qualified',
             'email' => 'shared@example.test',
             'created_by' => $user->id,
+            'assigned_to' => $user->id,
         ]);
 
         $response = $this->actingAs($user)

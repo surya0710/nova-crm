@@ -16,11 +16,15 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
-    public function __construct(protected RevenueService $revenue) {}
+    public function __construct(
+        protected RevenueService $revenue,
+        protected LeadVisibilityService $leadVisibility,
+    ) {}
 
-    public function compile(Organization $organization, ?Carbon $from = null, string $groupBy = 'state'): array
+    public function compile(Organization $organization, ?Carbon $from = null, string $groupBy = 'state', ?User $user = null): array
     {
         $groupBy = in_array($groupBy, ['state', 'country'], true) ? $groupBy : 'state';
+        $user ??= auth()->user();
         $filters = [
             'date_from' => $from,
             'date_to' => null,
@@ -41,7 +45,11 @@ class ReportService
         $outstandingAmount = $financeSummary['outstanding_receivables'];
         $outstandingCount = $financeSummary['outstanding_count'];
 
-        $leadCounts = Lead::query()
+        $visibleLeads = fn () => $user
+            ? $this->leadVisibility->visibleQuery($user, $organization)
+            : Lead::query();
+
+        $leadCounts = $visibleLeads()
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status');
@@ -77,7 +85,7 @@ class ReportService
             ->orderByDesc('total')
             ->get();
 
-        $topPerformers = Lead::query()
+        $topPerformers = $visibleLeads()
             ->where('status', 'won')
             ->whereNotNull('assigned_to')
             ->select('assigned_to', DB::raw('count(*) as won_count'))
@@ -96,7 +104,7 @@ class ReportService
             'count' => (int) $row->won_count,
         ]);
 
-        $leadGeography = Lead::query()
+        $leadGeography = $visibleLeads()
             ->whereNotNull($groupBy)
             ->where($groupBy, '!=', '')
             ->select($groupBy, DB::raw('count(*) as count'))
@@ -125,7 +133,7 @@ class ReportService
             ->orderByDesc('total')
             ->get();
 
-        $conversionGeography = Lead::query()
+        $conversionGeography = $visibleLeads()
             ->whereNotNull($groupBy)
             ->where($groupBy, '!=', '')
             ->select(
@@ -155,7 +163,7 @@ class ReportService
             'outstanding_count' => $outstandingCount,
             'lead_counts' => $leadCounts,
             'conversion_rate' => $conversionRate,
-            'lead_total' => Lead::query()->count(),
+            'lead_total' => $visibleLeads()->count(),
             'opportunity_by_stage' => $opportunityByStage,
             'open_pipeline_value' => $openPipelineValue,
             'invoice_counts' => $invoiceCounts,

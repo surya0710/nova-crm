@@ -3,15 +3,21 @@
 namespace App\Services\Export\Adapters;
 
 use App\Models\Lead;
+use App\Models\Organization;
 use App\Services\Export\ExportColumnDefinition;
 use App\Services\LeadService;
+use App\Services\LeadVisibilityService;
+use App\Services\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 
 class LeadExportAdapter extends AbstractExportAdapter
 {
-    public function __construct(protected LeadService $leadService) {}
+    public function __construct(
+        protected LeadService $leadService,
+        protected LeadVisibilityService $leadVisibility,
+    ) {}
 
     public function entityType(): string
     {
@@ -75,6 +81,18 @@ class LeadExportAdapter extends AbstractExportAdapter
         ];
     }
 
+    public function resolveQuery(Organization $organization, array $selection): Builder
+    {
+        $query = parent::resolveQuery($organization, $selection);
+        $actor = auth()->user();
+
+        if ($actor) {
+            $this->leadVisibility->apply($query, $actor, $organization);
+        }
+
+        return $query;
+    }
+
     protected function applyFilters(Builder $query, array $filters): void
     {
         parent::applyFilters($query, $filters);
@@ -89,8 +107,17 @@ class LeadExportAdapter extends AbstractExportAdapter
             Arr::get($filters, 'country'),
         );
 
-        if ($assigned = Arr::get($filters, 'assigned_to')) {
-            $query->where('assigned_to', (int) $assigned);
+        $actor = auth()->user();
+        $organization = app(TenantContext::class)->get();
+        if ($actor) {
+            $assignedTo = $this->leadVisibility->resolveAssignedToFilter(
+                $actor,
+                $organization,
+                Arr::get($filters, 'assigned_to'),
+            );
+            if ($this->leadVisibility->canViewAll($actor, $organization) && $assignedTo !== null) {
+                $query->where('assigned_to', $assignedTo);
+            }
         }
 
         if ($source = Arr::get($filters, 'source')) {

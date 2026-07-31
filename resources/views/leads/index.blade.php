@@ -105,12 +105,14 @@
                     @endforeach
                 </x-forms.select>
                 <div class="flex gap-2">
-                    <x-forms.select name="assigned_to" class="flex-1" aria-label="{{ __('Assignee') }}">
-                        <option value="">{{ __('Anyone') }}</option>
-                        @foreach ($assignees as $member)
-                            <option value="{{ $member->id }}" @selected(($filters['assigned_to'] ?? '') == $member->id)>{{ $member->name }}</option>
-                        @endforeach
-                    </x-forms.select>
+                    @if ($canFilterByOwner ?? false)
+                        <x-forms.select name="assigned_to" class="flex-1" aria-label="{{ __('Assignee') }}">
+                            <option value="">{{ __('Anyone') }}</option>
+                            @foreach ($assignees as $member)
+                                <option value="{{ $member->id }}" @selected(($filters['assigned_to'] ?? '') == $member->id)>{{ $member->name }}</option>
+                            @endforeach
+                        </x-forms.select>
+                    @endif
                     <x-ui.button type="submit" variant="primary" size="sm">{{ __('Filter') }}</x-ui.button>
                 </div>
                 @include('metadata-fields._index_query_controls')

@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\LeadService;
+use App\Services\LeadVisibilityService;
 use App\Services\MetadataSearchService;
 use Illuminate\Support\Collection;
 
@@ -14,6 +15,7 @@ class CrmLeadSearchProvider implements SearchProviderInterface
     public function __construct(
         protected MetadataSearchService $metadataSearch,
         protected LeadService $leadService,
+        protected LeadVisibilityService $leadVisibility,
     ) {}
 
     public function key(): string
@@ -37,7 +39,7 @@ class CrmLeadSearchProvider implements SearchProviderInterface
             return collect();
         }
 
-        return Lead::query()
+        return $this->leadVisibility->visibleQuery($user, $organization)
             ->where('leads.organization_id', $organization->id)
             ->where(function ($q) use ($query, $organization) {
                 $this->leadService->searchQuery($q, $query);

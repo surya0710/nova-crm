@@ -105,7 +105,7 @@ class AnalyticsPagesController extends Controller
         $organization = $tenant->get();
         abort_unless($organization, 404);
 
-        $compiled = $reports->compile($organization);
+        $compiled = $reports->compile($organization, user: $request->user());
 
         return view('analytics.reports', [
             'compiled' => $compiled,

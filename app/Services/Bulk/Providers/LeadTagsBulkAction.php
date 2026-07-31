@@ -75,7 +75,7 @@ class LeadTagsBulkAction implements BulkActionProviderInterface
 
     public function resolveQuery(Organization $organization, array $selection): Builder
     {
-        return $this->baseOrganizationQuery(Lead::class, $organization, $selection);
+        return $this->resolveLeadQuery($organization, $selection);
     }
 
     public function executeOne(Model $record, array $input, BulkOperation $operation): array

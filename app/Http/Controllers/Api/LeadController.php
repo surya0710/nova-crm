@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateApiLeadRequest;
 use App\Http\Resources\LeadResource;
 use App\Models\Lead;
 use App\Services\LeadService;
+use App\Services\LeadVisibilityService;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
@@ -24,6 +25,7 @@ class LeadController extends Controller
 {
     public function __construct(
         protected LeadService $leadService,
+        protected LeadVisibilityService $leadVisibility,
         protected MetadataEntityFormService $metadataForms,
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
@@ -32,7 +34,7 @@ class LeadController extends Controller
     public function index(IndexApiLeadRequest $request, TenantContext $tenant): AnonymousResourceCollection
     {
         $organization = $tenant->get();
-        $query = Lead::query()->with('assignee');
+        $query = $this->leadVisibility->visibleQuery($request->user(), $organization)->with('assignee');
 
         $this->leadService->searchQuery($query, $request->validated('search'));
         $this->leadService->geographicFilterQuery(

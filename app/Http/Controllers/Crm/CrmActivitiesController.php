@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Services\LeadFollowUpService;
+use App\Services\LeadVisibilityService;
 use App\Services\TenantContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,9 +15,16 @@ use Illuminate\View\View;
 
 class CrmActivitiesController extends Controller
 {
-    public function __invoke(Request $request, TenantContext $tenant, LeadFollowUpService $followUps): View
-    {
+    public function __invoke(
+        Request $request,
+        TenantContext $tenant,
+        LeadFollowUpService $followUps,
+        LeadVisibilityService $leadVisibility,
+    ): View {
         abort_unless($request->user()->hasPermission('leads.view'), 403);
+
+        $user = $request->user();
+        $organization = $tenant->get();
 
         $view = $request->query('view', 'list');
         if (! in_array($view, ['list', 'timeline', 'calendar'], true)) {
@@ -31,12 +39,12 @@ class CrmActivitiesController extends Controller
         $calendarGroups = collect();
 
         if ($view === 'list') {
-            $dueFollowUps = $followUps->dueForAlertPayloads(20);
+            $dueFollowUps = $followUps->dueForAlertPayloads($user, 20);
 
             $start = $followUps->organizationNow()->copy()->startOfDay()->utc();
             $end = $followUps->organizationNow()->copy()->endOfDay()->utc();
 
-            $todaysFollowUps = Lead::query()
+            $todaysFollowUps = $leadVisibility->visibleQuery($user, $organization)
                 ->with('assignee')
                 ->whereNotNull('next_follow_up_at')
                 ->whereBetween('next_follow_up_at', [$start, $end])
@@ -44,20 +52,20 @@ class CrmActivitiesController extends Controller
                 ->limit(25)
                 ->get();
 
-            $recentNotes = $this->recentLeadNotes();
-            $weekStrip = $this->weekStrip($followUps);
+            $recentNotes = $this->recentLeadNotes($user, $organization, $leadVisibility);
+            $weekStrip = $this->weekStrip($followUps, $user, $organization, $leadVisibility);
         }
 
         if ($view === 'timeline') {
-            $timelineItems = $this->timelineItems($followUps);
+            $timelineItems = $this->timelineItems($followUps, $user, $organization, $leadVisibility);
         }
 
         if ($view === 'calendar') {
-            $calendarGroups = $this->calendarGroups($followUps);
+            $calendarGroups = $this->calendarGroups($followUps, $user, $organization, $leadVisibility);
         }
 
         return view('crm.activities', [
-            'organization' => $tenant->get(),
+            'organization' => $organization,
             'view' => $view,
             'dueFollowUps' => $dueFollowUps,
             'todaysFollowUps' => $todaysFollowUps,
@@ -71,10 +79,13 @@ class CrmActivitiesController extends Controller
     /**
      * @return Collection<int, LeadNote>
      */
-    protected function recentLeadNotes(): Collection
+    protected function recentLeadNotes($user, $organization, LeadVisibilityService $leadVisibility): Collection
     {
         return LeadNote::query()
             ->with(['user', 'lead'])
+            ->whereHas('lead', function ($query) use ($user, $organization, $leadVisibility) {
+                $leadVisibility->apply($query, $user, $organization);
+            })
             ->latest()
             ->limit(20)
             ->get();
@@ -83,14 +94,18 @@ class CrmActivitiesController extends Controller
     /**
      * @return Collection<int, array{date: Carbon, label: string, count: int, is_today: bool}>
      */
-    protected function weekStrip(LeadFollowUpService $followUps): Collection
-    {
+    protected function weekStrip(
+        LeadFollowUpService $followUps,
+        $user,
+        $organization,
+        LeadVisibilityService $leadVisibility,
+    ): Collection {
         $tz = $followUps->organizationTimezone();
         $weekStart = $followUps->organizationNow()->copy()->startOfWeek();
         $rangeStart = $weekStart->copy()->startOfDay()->utc();
         $rangeEnd = $weekStart->copy()->addDays(6)->endOfDay()->utc();
 
-        $counts = Lead::query()
+        $counts = $leadVisibility->visibleQuery($user, $organization)
             ->whereNotNull('next_follow_up_at')
             ->whereBetween('next_follow_up_at', [$rangeStart, $rangeEnd])
             ->get(['next_follow_up_at'])
@@ -115,11 +130,15 @@ class CrmActivitiesController extends Controller
     /**
      * @return Collection<int, array{type: string, actor: ?string, label: ?string, body: string, timestamp: ?Carbon, url: ?string}>
      */
-    protected function timelineItems(LeadFollowUpService $followUps): Collection
-    {
+    protected function timelineItems(
+        LeadFollowUpService $followUps,
+        $user,
+        $organization,
+        LeadVisibilityService $leadVisibility,
+    ): Collection {
         $tz = $followUps->organizationTimezone();
 
-        $followUpItems = Lead::query()
+        $followUpItems = $leadVisibility->visibleQuery($user, $organization)
             ->with('assignee')
             ->whereNotNull('next_follow_up_at')
             ->orderByDesc('next_follow_up_at')
@@ -139,7 +158,7 @@ class CrmActivitiesController extends Controller
                 ];
             });
 
-        $noteItems = $this->recentLeadNotes()->map(fn (LeadNote $note) => [
+        $noteItems = $this->recentLeadNotes($user, $organization, $leadVisibility)->map(fn (LeadNote $note) => [
             'type' => 'note',
             'actor' => $note->user?->name,
             'label' => $note->lead?->name,
@@ -157,13 +176,17 @@ class CrmActivitiesController extends Controller
     /**
      * @return Collection<string, array{date: Carbon, label: string, items: Collection<int, Lead>}>
      */
-    protected function calendarGroups(LeadFollowUpService $followUps): Collection
-    {
+    protected function calendarGroups(
+        LeadFollowUpService $followUps,
+        $user,
+        $organization,
+        LeadVisibilityService $leadVisibility,
+    ): Collection {
         $tz = $followUps->organizationTimezone();
         $startLocal = $followUps->organizationNow()->copy()->startOfDay();
         $endLocal = $followUps->organizationNow()->copy()->addDays(13)->endOfDay();
 
-        $leads = Lead::query()
+        $leads = $leadVisibility->visibleQuery($user, $organization)
             ->with('assignee')
             ->whereNotNull('next_follow_up_at')
             ->whereBetween('next_follow_up_at', [$startLocal->copy()->utc(), $endLocal->copy()->utc()])

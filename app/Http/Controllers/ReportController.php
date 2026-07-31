@@ -33,7 +33,7 @@ class ReportController extends Controller
 
         return view('reports.index', [
             'organization' => $organization,
-            'data' => $reports->compile($organization, $from, $groupBy),
+            'data' => $reports->compile($organization, $from, $groupBy, $request->user()),
             'period' => in_array($period, ['30', '90', '365', 'all'], true) ? $period : '30',
             'groupBy' => $groupBy,
         ]);
