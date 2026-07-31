@@ -92,5 +92,13 @@ class LeadExportAdapter extends AbstractExportAdapter
         if ($assigned = Arr::get($filters, 'assigned_to')) {
             $query->where('assigned_to', (int) $assigned);
         }
+
+        if ($source = Arr::get($filters, 'source')) {
+            $query->where('source', $source);
+        }
+
+        if ($priority = Arr::get($filters, 'priority')) {
+            $query->where('priority', $priority);
+        }
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\Assignment\AssignmentService;
 use App\Services\Bulk\Concerns\DefinesLookupField;
+use App\Services\Bulk\Providers\Concerns\AppliesLeadListingFilters;
 use App\Services\Bulk\Providers\Concerns\ResolvesBulkSelection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class LeadAssignOwnerBulkAction implements BulkActionProviderInterface
 {
+    use AppliesLeadListingFilters;
     use DefinesLookupField;
     use ResolvesBulkSelection;
 

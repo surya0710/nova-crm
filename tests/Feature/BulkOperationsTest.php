@@ -36,6 +36,10 @@ class BulkOperationsTest extends TestCase
         $registry = app(BulkActionRegistry::class);
 
         $this->assertTrue($registry->has('lead.change_status'));
+        $this->assertTrue($registry->has('lead.change_source'));
+        $this->assertTrue($registry->has('lead.add_tags'));
+        $this->assertTrue($registry->has('lead.remove_tags'));
+        $this->assertTrue($registry->has('lead.delete'));
         $this->assertTrue($registry->has('employee.generate_login'));
         $this->assertTrue($registry->has('user.lock'));
     }
@@ -218,5 +222,128 @@ class BulkOperationsTest extends TestCase
 
         $this->assertSame('department', $fields[0]['type']);
         $this->assertSame('department_id', $fields[0]['key']);
+    }
+
+    public function test_web_bulk_store_returns_json_for_toolbar(): void
+    {
+        [$user, $organization] = $this->setupOwner();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'status' => 'new',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->postJson(route('administration.bulk.store'), [
+                'action_key' => 'lead.change_status',
+                'selection_mode' => 'ids',
+                'ids' => [$lead->id],
+                'input' => ['status' => 'contacted'],
+                'confirm' => '1',
+                'redirect_to' => route('leads.index'),
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('message', 'Bulk action started.')
+            ->assertJsonStructure(['redirect', 'operation' => ['id']]);
+
+        $this->assertSame('contacted', $lead->fresh()->status);
+    }
+
+    public function test_filtered_selection_applies_status_filter_not_page_ids(): void
+    {
+        [$user, $organization] = $this->setupOwner();
+
+        $matching = Lead::factory()->count(3)->create([
+            'organization_id' => $organization->id,
+            'status' => 'new',
+        ]);
+        Lead::factory()->count(2)->create([
+            'organization_id' => $organization->id,
+            'status' => 'qualified',
+        ]);
+
+        $pagePreviewIds = [$matching->first()->id];
+
+        $operation = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.change_status',
+            [
+                'mode' => 'filtered',
+                'ids' => $pagePreviewIds,
+                'filters' => ['status' => 'new'],
+            ],
+            ['status' => 'contacted'],
+            true,
+        );
+
+        $this->assertSame(3, $operation->total_count);
+        $this->assertSame(3, $operation->success_count);
+
+        foreach ($matching as $lead) {
+            $this->assertSame('contacted', $lead->fresh()->status);
+        }
+    }
+
+    public function test_lead_change_source_and_add_tags_bulk(): void
+    {
+        [$user, $organization] = $this->setupOwner();
+        $lead = Lead::factory()->create([
+            'organization_id' => $organization->id,
+            'source' => 'website',
+            'tags' => ['existing'],
+        ]);
+
+        $sourceOp = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.change_source',
+            ['mode' => 'ids', 'ids' => [$lead->id]],
+            ['source' => 'referral'],
+            true,
+        );
+        $this->assertSame(1, $sourceOp->success_count);
+        $this->assertSame('referral', $lead->fresh()->source);
+
+        $tagsOp = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.add_tags',
+            ['mode' => 'ids', 'ids' => [$lead->id]],
+            ['tags' => 'vip, hot'],
+            true,
+        );
+        $this->assertSame(1, $tagsOp->success_count);
+        $this->assertEqualsCanonicalizing(['existing', 'vip', 'hot'], $lead->fresh()->tags);
+
+        $removeOp = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.remove_tags',
+            ['mode' => 'ids', 'ids' => [$lead->id]],
+            ['tags' => 'existing'],
+            true,
+        );
+        $this->assertSame(1, $removeOp->success_count);
+        $this->assertEqualsCanonicalizing(['vip', 'hot'], $lead->fresh()->tags);
+    }
+
+    public function test_lead_delete_bulk(): void
+    {
+        [$user, $organization] = $this->setupOwner();
+        $lead = Lead::factory()->create(['organization_id' => $organization->id]);
+
+        $operation = app(BulkOperationsService::class)->start(
+            $organization,
+            $user,
+            'lead.delete',
+            ['mode' => 'ids', 'ids' => [$lead->id]],
+            [],
+            true,
+        );
+
+        $this->assertSame(1, $operation->success_count);
+        $this->assertDatabaseMissing('leads', ['id' => $lead->id]);
     }
 }

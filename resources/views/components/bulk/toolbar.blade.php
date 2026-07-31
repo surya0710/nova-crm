@@ -66,7 +66,7 @@
 
         <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-ink-muted">
             <label class="inline-flex items-center gap-2 text-sm text-ink">
-                <input type="checkbox" class="rounded border-line text-primary-600" @change="togglePage($event.target.checked)" :checked="pageSelected">
+                <input type="checkbox" class="rounded border-line text-primary-600" @change="togglePage($event.target.checked)" :checked="pageSelected" :indeterminate="isPartialPage()">
                 {{ __('Select page') }}
             </label>
             <button type="button" class="text-primary-700 hover:underline" @click="selectAllFiltered()">
@@ -234,7 +234,7 @@ function bulkToolbar(config) {
         },
         selectionHeading() {
             if (this.selectAllMode) {
-                return this.selected.length + ' {{ __('records selected') }} ({{ __('all filtered') }})';
+                return '{{ __('All filtered records selected') }}';
             }
             return this.selected.length + ' {{ __('records selected') }}';
         },
@@ -243,7 +243,7 @@ function bulkToolbar(config) {
         },
         selectionLabel() {
             if (this.selectAllMode) {
-                return this.selected.length + ' selected (all results mode)';
+                return '{{ __('All filtered records') }}';
             }
             return this.selected.length + ' selected';
         },
@@ -297,10 +297,13 @@ function bulkToolbar(config) {
                 const body = new FormData();
                 body.append('_token', this.csrf);
                 body.append('action_key', this.actionKey);
-                body.append('selection_mode', this.selectAllMode ? 'all' : 'ids');
+                body.append('selection_mode', this.selectAllMode ? 'filtered' : 'ids');
                 body.append('confirm', '1');
                 body.append('redirect_to', this.redirectTo);
-                this.selected.forEach(id => body.append('ids[]', id));
+                if (!this.selectAllMode) {
+                    this.selected.forEach(id => body.append('ids[]', id));
+                }
+                this.appendFilters(body);
                 Object.entries(this.input).forEach(([key, value]) => {
                     if (typeof value === 'boolean') {
                         body.append('input[' + key + ']', value ? '1' : '0');
@@ -328,6 +331,23 @@ function bulkToolbar(config) {
                 this.submitting = false;
             }
         },
+        appendFilters(body) {
+            const appendValue = (prefix, value) => {
+                if (value === null || value === undefined || value === '') {
+                    return;
+                }
+                if (Array.isArray(value)) {
+                    value.forEach((item, index) => appendValue(prefix + '[' + index + ']', item));
+                    return;
+                }
+                if (typeof value === 'object') {
+                    Object.entries(value).forEach(([key, nested]) => appendValue(prefix + '[' + key + ']', nested));
+                    return;
+                }
+                body.append(prefix, value);
+            };
+            Object.entries(this.filters || {}).forEach(([key, value]) => appendValue('filters[' + key + ']', value));
+        },
         async submitExport() {
             this.exportSubmitting = true;
             this.exportError = '';
@@ -338,12 +358,10 @@ function bulkToolbar(config) {
                 body.append('format', this.exportFormat);
                 body.append('selection_mode', this.selectAllMode ? 'filtered' : 'ids');
                 body.append('redirect_to', this.redirectTo);
-                this.selected.forEach(id => body.append('ids[]', id));
-                Object.entries(this.filters || {}).forEach(([key, value]) => {
-                    if (value !== null && value !== undefined && value !== '') {
-                        body.append('filters[' + key + ']', value);
-                    }
-                });
+                if (!this.selectAllMode) {
+                    this.selected.forEach(id => body.append('ids[]', id));
+                }
+                this.appendFilters(body);
                 const response = await fetch(this.exportUrl, {
                     method: 'POST',
                     headers: {
@@ -363,7 +381,13 @@ function bulkToolbar(config) {
                 this.exportError = e.message || 'Export failed.';
                 this.exportSubmitting = false;
             }
-        }
+        },
+        isPartialPage() {
+            if (this.pageSelected || this.pageIds.length === 0) {
+                return false;
+            }
+            return this.pageIds.some(pid => this.selected.includes(pid));
+        },
     }
 }
 </script>

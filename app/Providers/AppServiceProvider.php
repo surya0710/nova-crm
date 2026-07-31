@@ -419,7 +419,10 @@ use App\Services\Bulk\Providers\EmployeeAssignOrgUnitBulkAction;
 use App\Services\Bulk\Providers\EmployeeGenerateLoginBulkAction;
 use App\Services\Bulk\Providers\EmployeePortalBulkAction;
 use App\Services\Bulk\Providers\LeadAssignOwnerBulkAction;
+use App\Services\Bulk\Providers\LeadChangeSourceBulkAction;
 use App\Services\Bulk\Providers\LeadChangeStatusBulkAction;
+use App\Services\Bulk\Providers\LeadDeleteBulkAction;
+use App\Services\Bulk\Providers\LeadTagsBulkAction;
 use App\Services\Bulk\Providers\ProjectChangeStatusBulkAction;
 use App\Services\Bulk\Providers\TaskChangePriorityBulkAction;
 use App\Services\Bulk\Providers\TaskAssignBulkAction;
@@ -1032,6 +1035,7 @@ class AppServiceProvider extends ServiceProvider
         foreach ([
             LeadAssignOwnerBulkAction::class,
             LeadChangeStatusBulkAction::class,
+            LeadChangeSourceBulkAction::class,
             EmployeeGenerateLoginBulkAction::class,
             ProjectChangeStatusBulkAction::class,
             TaskChangePriorityBulkAction::class,
@@ -1040,7 +1044,9 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($this->app->make($actionClass));
         }
 
-        $registry->register(CrmDeleteBulkAction::leads());
+        $registry->register(new LeadDeleteBulkAction);
+        $registry->register(LeadTagsBulkAction::add());
+        $registry->register(LeadTagsBulkAction::remove());
         $registry->register(CrmDeleteBulkAction::customers());
         $registry->register(CrmDeleteBulkAction::opportunities());
 

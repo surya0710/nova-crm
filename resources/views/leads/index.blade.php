@@ -16,7 +16,12 @@
     ];
     $density = $shellNav['density'] ?? 'comfortable';
     $columns = [
-        ['label' => '', 'class' => 'w-10'],
+        [
+            'label' => new \Illuminate\Support\HtmlString(
+                '<input type="checkbox" class="rounded border-line text-primary-600" @change="togglePage($event.target.checked)" :checked="pageSelected" :indeterminate="isPartialPage()" aria-label="'.e(__('Select page')).'">'
+            ),
+            'class' => 'w-10',
+        ],
         __('Lead'),
         __('Status'),
         ['label' => __('Source'), 'class' => 'hidden md:table-cell'],
@@ -133,7 +138,7 @@
                 :page-ids="$pageIds"
                 :redirect-to="route('leads.index')"
                 :export-enabled="true"
-                :filters="request()->except(['page'])"
+                :filters="$filters ?? []"
             >
                 <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
                     @foreach ($leads as $lead)

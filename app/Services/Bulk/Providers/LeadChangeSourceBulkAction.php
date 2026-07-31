@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
-class LeadChangeStatusBulkAction implements BulkActionProviderInterface
+class LeadChangeSourceBulkAction implements BulkActionProviderInterface
 {
     use AppliesLeadListingFilters;
     use ResolvesBulkSelection;
@@ -25,7 +25,7 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
 
     public function key(): string
     {
-        return 'lead.change_status';
+        return 'lead.change_source';
     }
 
     public function module(): string
@@ -40,7 +40,7 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
 
     public function label(): string
     {
-        return 'Change Status';
+        return 'Change Source';
     }
 
     public function permission(): string
@@ -50,7 +50,7 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
 
     public function confirmationMessage(): string
     {
-        return 'Update the status of the selected leads?';
+        return 'Update the source of the selected leads?';
     }
 
     public function supportsQueue(): bool
@@ -60,14 +60,14 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
 
     public function inputFields(): array
     {
-        $options = collect(config('leads.statuses', []))->mapWithKeys(
+        $options = collect(config('leads.sources', []))->mapWithKeys(
             fn ($label, $key) => [(string) $key => is_string($label) ? $label : (string) $key]
         )->all();
 
         return [
             [
-                'key' => 'status',
-                'label' => 'Status',
+                'key' => 'source',
+                'label' => 'Source',
                 'type' => 'select',
                 'required' => true,
                 'options' => $options,
@@ -83,13 +83,13 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
     public function executeOne(Model $record, array $input, BulkOperation $operation): array
     {
         /** @var Lead $record */
-        $status = (string) ($input['status'] ?? '');
-        if ($status === '' || ! array_key_exists($status, config('leads.statuses', []))) {
-            return $this->failed('Invalid lead status.');
+        $source = (string) ($input['source'] ?? '');
+        if ($source === '' || ! array_key_exists($source, config('leads.sources', []))) {
+            return $this->failed('Invalid lead source.');
         }
 
-        if ($record->status === $status) {
-            return $this->skipped('Already in this status.');
+        if ($record->source === $source) {
+            return $this->skipped('Already using this source.');
         }
 
         $actor = User::query()->find($operation->initiated_by);
@@ -98,11 +98,11 @@ class LeadChangeStatusBulkAction implements BulkActionProviderInterface
         }
 
         try {
-            $this->leads->changeStatus($record, $status, $actor);
+            $this->leads->update($record, ['source' => $source], $actor);
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first();
 
-            return $this->failed($message ?: 'Status update failed.');
+            return $this->failed($message ?: 'Source update failed.');
         }
 
         return $this->success();

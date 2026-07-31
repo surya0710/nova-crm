@@ -47,10 +47,8 @@ trait ResolvesBulkSelection
                 $this->applyFilters($query, $filters);
             }
 
-            if ($ids !== []) {
-                $query->whereIn($key, $ids);
-            }
-
+            // Page IDs from the toolbar are only a preview count — do not intersect
+            // them when operating on the full filtered set.
             return $query;
         }
 

@@ -7,6 +7,7 @@ use App\Models\BulkOperation;
 use App\Services\Bulk\BulkActionRegistry;
 use App\Services\Bulk\BulkOperationsService;
 use App\Services\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -59,7 +60,7 @@ class BulkOperationsController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $organization = $this->requireOrganization();
 

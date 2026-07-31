@@ -49,6 +49,9 @@ class LeadTest extends TestCase
         $response->assertOk();
         $response->assertSee('bulkToolbar(', false);
         $response->assertSee('Assign Owner');
+        $response->assertSee('Change Status');
+        $response->assertSee('Change Source');
+        $response->assertSee('Add Tags');
         $response->assertSee('Select all filtered records');
     }
 
