@@ -357,13 +357,51 @@ class LeadImportTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('leads.import.summary', $session->fresh()))
             ->assertOk()
-            ->assertSee('Created');
+            ->assertSee('Created')
+            ->assertDontSee('http-equiv="refresh"', false);
 
         $this->actingAs($owner)
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('leads.index'))
             ->assertOk()
             ->assertSee(route('leads.import.create'), false);
+    }
+
+    public function test_summary_auto_refreshes_while_queued_or_importing(): void
+    {
+        [$owner, $organization] = $this->setupUserWithOrg();
+
+        $queued = ImportSession::factory()
+            ->forOrganization($organization)
+            ->uploadedBy($owner)
+            ->create([
+                'entity_type' => 'lead',
+                'status' => ImportSession::STATUS_QUEUED,
+            ]);
+
+        $this->actingAs($owner)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('leads.import.summary', $queued))
+            ->assertOk()
+            ->assertSee('http-equiv="refresh"', false)
+            ->assertSee('content="5"', false)
+            ->assertSee(__('This import is queued. The counters will update automatically when a queue worker processes it.'));
+
+        $importing = ImportSession::factory()
+            ->forOrganization($organization)
+            ->uploadedBy($owner)
+            ->create([
+                'entity_type' => 'lead',
+                'status' => ImportSession::STATUS_IMPORTING,
+                'started_at' => now(),
+            ]);
+
+        $this->actingAs($owner)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('leads.import.summary', $importing))
+            ->assertOk()
+            ->assertSee('http-equiv="refresh"', false)
+            ->assertSee(__('Import is processing. This page refreshes automatically every five seconds.'));
     }
 
     public function test_organization_alias_maps_to_company(): void

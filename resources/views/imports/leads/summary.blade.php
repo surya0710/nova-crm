@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-flash-messages />
 
-    @if (in_array($session->status, [\App\Models\ImportSession::STATUS_QUEUED, \App\Models\ImportSession::STATUS_IMPORTING], true))
-        @push('head')
-            <meta http-equiv="refresh" content="5">
-        @endpush
-    @endif
-
     <x-layouts.entity-listing
         :title="__('Import Summary')"
         :subtitle="$session->original_filename"
@@ -41,6 +35,10 @@
                 <x-ui.alert variant="danger">
                     {{ $session->last_error }}
                 </x-ui.alert>
+            @endif
+
+            @if (in_array($session->status, [\App\Models\ImportSession::STATUS_QUEUED, \App\Models\ImportSession::STATUS_IMPORTING], true))
+                <meta http-equiv="refresh" content="5">
             @endif
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
