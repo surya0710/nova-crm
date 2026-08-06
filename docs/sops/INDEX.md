@@ -1,4 +1,4 @@
-# NovaCRM SOP Index
+# Konnect Nex SOP Index
 
 **Version:** 1.0  
 **Effective Date:** 2026-07-25  
@@ -65,6 +65,30 @@ SOP-ONB-008
 ## Implementation
 
 Reserved for future implementation-specialist SOPs (complex integrations, multi-branch rollouts, custom role packs). Until assigned, use Onboarding and Administration SOPs. See [implementation/README.md](implementation/README.md).
+
+----------------------------------
+
+## Business Operations
+
+Operator runbooks for day-to-day CRM / HRMS workflows (Phase 13.0 stabilization).
+
+SOP-OPS-001  
+[Employee Onboarding](business-operations/SOP-OPS-001-employee-onboarding.md)
+
+SOP-OPS-002  
+[Attendance Lock Workflow](business-operations/SOP-OPS-002-attendance-lock-workflow.md)
+
+SOP-OPS-003  
+[Payroll Processing](business-operations/SOP-OPS-003-payroll-processing.md)
+
+SOP-OPS-004  
+[Tax Declaration Workflow](business-operations/SOP-OPS-004-tax-declaration-workflow.md)
+
+SOP-OPS-005  
+[Recruitment Workflow](business-operations/SOP-OPS-005-recruitment-workflow.md)
+
+SOP-OPS-006  
+[CRM Setup](business-operations/SOP-OPS-006-crm-setup.md)
 
 ----------------------------------
 
@@ -338,6 +362,7 @@ SOP-OFF-006
 | SOP-SAL | Sales |
 | SOP-ONB | Onboarding |
 | SOP-IMP | Implementation (reserved) |
+| SOP-OPS | Business Operations |
 | SOP-ADM | Administration |
 | SOP-DEP | Deployment |
 | SOP-SUP | Support |
