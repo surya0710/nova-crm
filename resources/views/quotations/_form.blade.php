@@ -31,73 +31,60 @@
 @endphp
 
 <div class="space-y-8">
-    <div>
-        <h4 class="text-sm font-semibold text-slate-900 mb-4">{{ __('Quotation Details') }}</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-                <x-input-label for="customer_id" :value="__('Customer')" />
-                <select id="customer_id" name="customer_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                    <option value="">{{ __('Select customer') }}</option>
-                    @foreach ($customers as $customer)
-                        <option value="{{ $customer->id }}" @selected((string) old('customer_id', $quotation->customer_id) === (string) $customer->id)>{{ $customer->display_name }}</option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('customer_id')" class="mt-2" />
-            </div>
-            <div>
-                <x-input-label for="opportunity_id" :value="__('Deal (optional)')" />
-                <select id="opportunity_id" name="opportunity_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                    <option value="">{{ __('None') }}</option>
-                    @foreach ($opportunities as $opportunity)
-                        <option value="{{ $opportunity->id }}" @selected((string) old('opportunity_id', $quotation->opportunity_id) === (string) $opportunity->id)>
-                            {{ $opportunity->title }}@if($opportunity->customer) · {{ $opportunity->customer->display_name }}@endif
-                        </option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('opportunity_id')" class="mt-2" />
-            </div>
-            <div class="sm:col-span-2">
-                <x-input-label for="title" :value="__('Title')" />
-                <x-text-input id="title" class="block mt-1 w-full" type="text" name="title" :value="old('title', $quotation->title)" placeholder="{{ __('Website redesign proposal') }}" />
-                <x-input-error :messages="$errors->get('title')" class="mt-2" />
-            </div>
-            <div>
-                <x-input-label for="issue_date" :value="__('Issue Date')" />
-                <x-text-input id="issue_date" class="block mt-1 w-full" type="date" name="issue_date" :value="old('issue_date', $quotation->issue_date?->format('Y-m-d'))" required />
-                <x-input-error :messages="$errors->get('issue_date')" class="mt-2" />
-            </div>
-            <div>
-                <x-input-label for="valid_until" :value="__('Valid Until')" />
-                <x-text-input id="valid_until" class="block mt-1 w-full" type="date" name="valid_until" :value="old('valid_until', $quotation->valid_until?->format('Y-m-d'))" />
-                <x-input-error :messages="$errors->get('valid_until')" class="mt-2" />
-            </div>
-            <div>
-                <x-input-label for="currency" :value="__('Currency')" />
-                <select id="currency" name="currency" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                    @foreach (config('quotations.currencies') as $value => $label)
-                        <option value="{{ $value }}" @selected(old('currency', $quotation->currency) === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('currency')" class="mt-2" />
-            </div>
-            <div>
-                @if ($quotation->exists)
-                    <x-input-label :value="__('Status')" />
-                    <p class="mt-1 text-sm text-slate-700">{{ $quotation->status_label }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ __('Status is managed from the quotation detail page.') }}</p>
-                @else
-                    <input type="hidden" name="status" value="draft">
-                    <x-input-label :value="__('Status')" />
-                    <p class="mt-1 text-sm text-slate-700">{{ config('quotations.statuses.draft') }}</p>
-                @endif
-            </div>
-            <div class="sm:col-span-2">
-                <x-input-label for="notes" :value="__('Terms & Notes')" />
-                <textarea id="notes" name="notes" rows="3" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" placeholder="{{ __('Payment terms, delivery timeline…') }}">{{ old('notes', $quotation->notes) }}</textarea>
-                <x-input-error :messages="$errors->get('notes')" class="mt-2" />
-            </div>
+    <x-forms.section :title="__('Quotation Details')">
+        <x-forms.field :label="__('Customer')" name="customer_id" required>
+            <x-forms.select id="customer_id" name="customer_id" required>
+                <option value="">{{ __('Select customer') }}</option>
+                @foreach ($customers as $customer)
+                    <option value="{{ $customer->id }}" @selected((string) old('customer_id', $quotation->customer_id) === (string) $customer->id)>{{ $customer->display_name }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <x-forms.field :label="__('Deal (optional)')" name="opportunity_id">
+            <x-forms.select id="opportunity_id" name="opportunity_id">
+                <option value="">{{ __('None') }}</option>
+                @foreach ($opportunities as $opportunity)
+                    <option value="{{ $opportunity->id }}" @selected((string) old('opportunity_id', $quotation->opportunity_id) === (string) $opportunity->id)>
+                        {{ $opportunity->title }}@if($opportunity->customer) · {{ $opportunity->customer->display_name }}@endif
+                    </option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <div class="sm:col-span-2">
+            <x-forms.field :label="__('Title')" name="title">
+                <x-forms.input id="title" type="text" name="title" :value="old('title', $quotation->title)" placeholder="{{ __('Website redesign proposal') }}" />
+            </x-forms.field>
         </div>
-    </div>
+        <x-forms.field :label="__('Issue Date')" name="issue_date" required>
+            <x-forms.input id="issue_date" type="date" name="issue_date" :value="old('issue_date', $quotation->issue_date?->format('Y-m-d'))" required />
+        </x-forms.field>
+        <x-forms.field :label="__('Valid Until')" name="valid_until">
+            <x-forms.input id="valid_until" type="date" name="valid_until" :value="old('valid_until', $quotation->valid_until?->format('Y-m-d'))" />
+        </x-forms.field>
+        <x-forms.field :label="__('Currency')" name="currency" required>
+            <x-forms.select id="currency" name="currency" required>
+                @foreach (config('quotations.currencies') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('currency', $quotation->currency) === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <div>
+            @if ($quotation->exists)
+                <p class="text-xs font-medium text-ink-muted">{{ __('Status') }}</p>
+                <p class="mt-1 text-sm text-ink-heading">{{ $quotation->status_label }}</p>
+                <p class="mt-1 text-xs text-ink-muted">{{ __('Status is managed from the quotation detail page.') }}</p>
+            @else
+                <input type="hidden" name="status" value="draft">
+                <p class="text-xs font-medium text-ink-muted">{{ __('Status') }}</p>
+                <p class="mt-1 text-sm text-ink-heading">{{ config('quotations.statuses.draft') }}</p>
+            @endif
+        </div>
+        <div class="sm:col-span-2">
+            <x-forms.field :label="__('Terms & Notes')" name="notes">
+                <x-forms.textarea id="notes" name="notes" rows="3" placeholder="{{ __('Payment terms, delivery timeline…') }}">{{ old('notes', $quotation->notes) }}</x-forms.textarea>
+            </x-forms.field>
+        </div>
+    </x-forms.section>
 
     <div
         x-data="{
@@ -149,9 +136,9 @@
             }
         }"
     >
-        <div class="flex items-center justify-between mb-4">
-            <h4 class="text-sm font-semibold text-slate-900">{{ __('Line Items') }}</h4>
-            <button type="button" @click="addItem()" class="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+        <div class="mb-4 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-ink-heading">{{ __('Line Items') }}</h4>
+            <button type="button" @click="addItem()" class="text-sm font-medium text-primary-600 hover:text-primary-700">
                 + {{ __('Add line') }}
             </button>
         </div>
@@ -160,12 +147,12 @@
 
         <div class="space-y-4">
             <template x-for="(item, index) in items" :key="index">
-                <div class="rounded-lg border border-slate-200 p-4 bg-slate-50/50">
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                <div class="rounded-lg border border-line bg-surface-muted/40 p-4">
+                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-12">
                         <div class="lg:col-span-3">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Product') }}</label>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Product') }}</label>
                             <select
-                                class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                 x-model="item.product_id"
                                 @change="selectProduct(index, $event.target.value)"
                             >
@@ -177,57 +164,57 @@
                             <input type="hidden" :name="'items[' + index + '][product_id]'" x-model="item.product_id">
                         </div>
                         <div class="lg:col-span-4">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Description') }}</label>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Description') }}</label>
                             <input
                                 type="text"
-                                class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"
                                 :name="'items[' + index + '][description]'"
                                 x-model="item.description"
                                 required
                             >
                         </div>
                         <div class="lg:col-span-1">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Qty') }}</label>
-                            <input type="number" step="0.01" min="0.01" class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" :name="'items[' + index + '][quantity]'" x-model="item.quantity" required>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Qty') }}</label>
+                            <input type="number" step="0.01" min="0.01" class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500" :name="'items[' + index + '][quantity]'" x-model="item.quantity" required>
                         </div>
                         <div class="lg:col-span-2">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Unit Price') }}</label>
-                            <input type="number" step="0.01" min="0" class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" :name="'items[' + index + '][unit_price]'" x-model="item.unit_price" required>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Unit Price') }}</label>
+                            <input type="number" step="0.01" min="0" class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500" :name="'items[' + index + '][unit_price]'" x-model="item.unit_price" required>
                         </div>
                         <div class="lg:col-span-1">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Tax %') }}</label>
-                            <input type="number" step="0.01" min="0" max="100" class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" :name="'items[' + index + '][tax_rate]'" x-model="item.tax_rate">
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Tax %') }}</label>
+                            <input type="number" step="0.01" min="0" max="100" class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500" :name="'items[' + index + '][tax_rate]'" x-model="item.tax_rate">
                         </div>
                         <div class="lg:col-span-1">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ __('Disc %') }}</label>
-                            <input type="number" step="0.01" min="0" max="100" class="w-full text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" :name="'items[' + index + '][discount_percent]'" x-model="item.discount_percent">
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Disc %') }}</label>
+                            <input type="number" step="0.01" min="0" max="100" class="w-full rounded-md border-line text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500" :name="'items[' + index + '][discount_percent]'" x-model="item.discount_percent">
                         </div>
                     </div>
                     <div class="mt-3 flex items-center justify-between">
-                        <button type="button" @click="removeItem(index)" class="text-xs text-red-600 hover:text-red-800" x-show="items.length > 1">{{ __('Remove') }}</button>
-                        <p class="text-sm text-slate-600 ml-auto">{{ __('Line total') }}: <span class="font-semibold text-slate-900" x-text="format(lineTotal(item))"></span></p>
+                        <button type="button" @click="removeItem(index)" class="text-xs text-danger hover:opacity-80" x-show="items.length > 1">{{ __('Remove') }}</button>
+                        <p class="ms-auto text-sm text-ink-muted">{{ __('Line total') }}: <span class="font-semibold text-ink-heading" x-text="format(lineTotal(item))"></span></p>
                     </div>
                 </div>
             </template>
         </div>
 
-        <div class="mt-6 rounded-lg border border-slate-200 bg-white p-4 max-w-sm ml-auto">
+        <div class="mt-6 ms-auto max-w-sm rounded-lg border border-line bg-surface p-4">
             <dl class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <dt class="text-slate-500">{{ __('Subtotal') }}</dt>
-                    <dd class="font-medium text-slate-900" x-text="format(subtotal)"></dd>
+                    <dt class="text-ink-muted">{{ __('Subtotal') }}</dt>
+                    <dd class="font-medium text-ink-heading" x-text="format(subtotal)"></dd>
                 </div>
                 <div class="flex justify-between">
-                    <dt class="text-slate-500">{{ __('Discount') }}</dt>
-                    <dd class="font-medium text-slate-900" x-text="format(discountTotal)"></dd>
+                    <dt class="text-ink-muted">{{ __('Discount') }}</dt>
+                    <dd class="font-medium text-ink-heading" x-text="format(discountTotal)"></dd>
                 </div>
                 <div class="flex justify-between">
-                    <dt class="text-slate-500">{{ __('Tax') }}</dt>
-                    <dd class="font-medium text-slate-900" x-text="format(taxTotal)"></dd>
+                    <dt class="text-ink-muted">{{ __('Tax') }}</dt>
+                    <dd class="font-medium text-ink-heading" x-text="format(taxTotal)"></dd>
                 </div>
-                <div class="flex justify-between border-t border-slate-100 pt-2">
-                    <dt class="font-semibold text-slate-900">{{ __('Total') }}</dt>
-                    <dd class="font-bold text-slate-900" x-text="format(grandTotal)"></dd>
+                <div class="flex justify-between border-t border-line pt-2">
+                    <dt class="font-semibold text-ink-heading">{{ __('Total') }}</dt>
+                    <dd class="font-bold text-ink-heading" x-text="format(grandTotal)"></dd>
                 </div>
             </dl>
         </div>

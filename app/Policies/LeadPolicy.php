@@ -4,9 +4,14 @@ namespace App\Policies;
 
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\LeadVisibilityService;
 
 class LeadPolicy
 {
+    public function __construct(
+        protected LeadVisibilityService $visibility,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('leads.view');
@@ -14,7 +19,7 @@ class LeadPolicy
 
     public function view(User $user, Lead $lead): bool
     {
-        return $user->hasPermission('leads.view', $lead->organization);
+        return $this->visibility->canAccess($user, $lead);
     }
 
     public function create(User $user): bool
@@ -24,17 +29,20 @@ class LeadPolicy
 
     public function update(User $user, Lead $lead): bool
     {
-        return $user->hasPermission('leads.update', $lead->organization);
+        return $user->hasPermission('leads.update', $lead->organization)
+            && $this->visibility->canAccess($user, $lead);
     }
 
     public function convert(User $user, Lead $lead): bool
     {
         return $user->hasPermission('leads.update', $lead->organization)
-            && $user->hasPermission('customers.create', $lead->organization);
+            && $user->hasPermission('customers.create', $lead->organization)
+            && $this->visibility->canAccess($user, $lead);
     }
 
     public function delete(User $user, Lead $lead): bool
     {
-        return $user->hasPermission('leads.delete', $lead->organization);
+        return $user->hasPermission('leads.delete', $lead->organization)
+            && $this->visibility->canAccess($user, $lead);
     }
 }

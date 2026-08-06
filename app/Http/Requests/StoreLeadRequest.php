@@ -2,7 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
+use App\Models\Lead;
+use App\Services\LeadFollowUpService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +12,7 @@ class StoreLeadRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Lead::class) ?? false;
+        return $this->user()?->can('create', Lead::class) ?? false;
     }
 
     public function rules(): array
@@ -25,6 +26,11 @@ class StoreLeadRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'source' => ['required', 'string', Rule::in(array_keys(config('leads.sources')))],
             'industry' => ['nullable', 'string', 'max:100'],
+            'address_line_1' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:20'],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'priority' => ['required', 'string', Rule::in(array_keys(config('leads.priorities')))],
             'assigned_to' => [
@@ -33,7 +39,7 @@ class StoreLeadRequest extends FormRequest
                 Rule::exists('organization_user', 'user_id')->where('organization_id', $organization?->id),
             ],
             'status' => ['required', 'string', Rule::in(array_keys(config('leads.statuses')))],
-            ...app(\App\Services\LeadFollowUpService::class)->validationRules(),
+            ...app(LeadFollowUpService::class)->validationRules(),
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:50'],
         ];
@@ -41,6 +47,13 @@ class StoreLeadRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        foreach (['address_line_1', 'city', 'state', 'country', 'postal_code'] as $field) {
+            if ($this->has($field) && is_string($this->input($field))) {
+                $value = trim($this->input($field));
+                $this->merge([$field => $value === '' ? null : $value]);
+            }
+        }
+
         if ($this->has('tags') && is_string($this->tags)) {
             $tags = trim($this->tags);
 

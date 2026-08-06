@@ -2,7 +2,6 @@
 
 namespace App\Models\Concerns;
 
-use App\Models\AuditLog;
 use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

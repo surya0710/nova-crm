@@ -1,66 +1,98 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# NovaCRM
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Multi-tenant SaaS CRM + Projects (EPM) + HRMS/Recruitment + Marketing attribution + Analytics, with a SaaS owner console at `/platform`.
 
-## About Laravel
+**Stack:** Laravel · Blade + Alpine · Vite · Tailwind · MySQL/SQLite · Sanctum API
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Composer 2
+- Node.js 18+ (Vite assets)
+- MySQL 8+ (recommended) or SQLite for local
+- A queue worker and OS scheduler for production
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Quick start (local)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# Configure DB_* in .env, then:
+php artisan migrate
+npm install && npm run build
+php artisan serve
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Optional XAMPP: set `APP_URL` / `ASSET_URL` to your `/nova-crm/public` path (see `.env.example`).
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Production essentials
 
-### Premium Partners
+| Concern | Command / note |
+|---------|----------------|
+| Assets | `npm ci && npm run build` |
+| Optimize | `php artisan config:cache && php artisan route:cache && php artisan view:cache` |
+| Migrate | `php artisan migrate --force` (forward-only; never `migrate:fresh` in prod) |
+| Queue | `php artisan queue:work --sleep=1 --tries=3` (or supervisor) |
+| Scheduler | Cron: `* * * * * php /path/to/artisan schedule:run` |
+| Health | `GET /up` |
+| Monitoring | Platform console → Monitoring (`platform.monitoring.index`) |
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+See [docs/deployment/overview.md](docs/deployment/overview.md) and [docs/release/production-readiness.md](docs/release/production-readiness.md).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Workspaces
 
-## Code of Conduct
+| Workspace | Entry |
+|-----------|-------|
+| Home / My Work | `/` |
+| CRM | `/crm` |
+| Projects | `/projects` |
+| HR | `/hrms` |
+| Marketing | `/marketing` |
+| Analytics | `/analytics` |
+| Administration | `/administration` |
+| Platform (SaaS owner) | `/platform` |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Enterprise shell flags: `config/features.php` (`ENTERPRISE_SHELL`, etc.). Rollback UI chrome: `ENTERPRISE_SHELL=false`.
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Documentation
+
+| Guide | Path |
+|-------|------|
+| Getting started | [docs/getting-started/overview.md](docs/getting-started/overview.md) |
+| Deployment | [docs/deployment/overview.md](docs/deployment/overview.md) |
+| Upgrade | [UPGRADE.md](UPGRADE.md) |
+| Production readiness | [docs/release/production-readiness.md](docs/release/production-readiness.md) |
+| Launch readiness (Program 15) | [docs/launch/README.md](docs/launch/README.md) |
+| Troubleshooting | [docs/troubleshooting/overview.md](docs/troubleshooting/overview.md) |
+| API overview | [docs/api/overview.md](docs/api/overview.md) |
+| Frontend migration | [docs/frontend/migration-progress.md](docs/frontend/migration-progress.md) |
+| Knowledge Center | In-app `/knowledge` (when enabled) |
+| Demo environment | `php artisan demo:seed-presentation` · [docs/demos/](docs/demos/) |
+
+Module user/admin guides live under `docs/crm`, `docs/hrms`, `docs/projects`, `docs/admin-guide`, and related trees. Commercial SOPs, sales assets, and pilot playbooks live under `docs/sops`, `docs/sales`, `docs/operations`, `docs/launch`, and related Program 15 folders (repo / internal; not exposed in customer Knowledge Center).
+
+---
+
+## Testing
+
+```bash
+php artisan test
+php artisan test --group=smoke
+```
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary — NovaCRM. Laravel framework components retain their upstream licenses.

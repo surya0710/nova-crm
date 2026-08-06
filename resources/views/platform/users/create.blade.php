@@ -1,11 +1,21 @@
 <x-platform-layout>
-    <x-slot name="header">
-        <h1 class="text-lg font-semibold">{{ __('Create Platform User') }}</h1>
-    </x-slot>
+    <x-layouts.create
+        :title="__('Create Platform User')"
+        :subtitle="__('Add an administrator to the platform console')"
+        max-width="3xl"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Platform'), 'href' => route('platform.dashboard')],
+                ['label' => __('Platform Users'), 'href' => route('platform.users.index')],
+                ['label' => __('Create User'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
 
-    <form method="POST" action="{{ route('platform.users.store') }}" class="max-w-lg space-y-4">
-        @csrf
-        @include('platform.users._form')
-        <button type="submit" class="rounded-lg bg-violet-600 hover:bg-violet-500 px-4 py-2 text-sm font-medium">{{ __('Create') }}</button>
-    </form>
+        <form method="POST" action="{{ route('platform.users.store') }}">
+            @csrf
+            @include('platform.users._form')
+            <x-forms.footer :cancel-href="route('platform.users.index')" :submit-label="__('Create User')" />
+        </form>
+    </x-layouts.create>
 </x-platform-layout>

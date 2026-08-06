@@ -1,24 +1,23 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('Add Lead') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Create a new sales lead') }}</p>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    <form method="POST" action="{{ route('leads.store') }}" class="max-w-4xl">
-        @csrf
+    <x-layouts.create
+        :title="__('Add Lead')"
+        :subtitle="__('Create a new sales lead')"
+        max-width="4xl"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('leads'), 'href' => route('leads.index')],
+                ['label' => __('Add Lead'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
 
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-6 sm:p-8">
-                @include('leads._form', ['lead' => $lead, 'assignees' => $assignees])
-            </div>
-            <div class="px-6 sm:px-8 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between gap-4">
-                <a href="{{ route('leads.index') }}" class="text-sm text-slate-600 hover:text-slate-900">{{ __('Cancel') }}</a>
-                <x-primary-button>{{ __('Create Lead') }}</x-primary-button>
-            </div>
-        </div>
-    </form>
+        <form method="POST" action="{{ route('leads.store') }}">
+            @csrf
+            @include('leads._form', ['lead' => $lead, 'assignees' => $assignees])
+            <x-forms.footer :cancel-href="route('leads.index')" :submit-label="__('Create Lead')" />
+        </form>
+    </x-layouts.create>
 </x-app-layout>

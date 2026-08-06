@@ -17,8 +17,8 @@ use InvalidArgumentException;
 class SavedFilterService
 {
     protected array $staticFilterKeys = [
-        'lead' => ['search', 'status', 'source', 'priority', 'assigned_to'],
-        'customer' => ['search', 'status', 'industry', 'assigned_to'],
+        'lead' => ['search', 'status', 'source', 'priority', 'assigned_to', 'state', 'country'],
+        'customer' => ['search', 'status', 'industry', 'assigned_to', 'state', 'country'],
         'opportunity' => ['search', 'stage', 'customer_id', 'assigned_to'],
     ];
 

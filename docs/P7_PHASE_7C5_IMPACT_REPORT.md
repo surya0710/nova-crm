@@ -41,7 +41,7 @@ Implemented **administrator-triggered** import of Meta Lead Form submissions int
 - `latestLeadImportRun($provider)` for UI
 - `supportsLeadImport($provider)`
 
-Unmapped Meta values and provider identifiers are stored under `lead.custom_fields.provider`.
+Unmapped Meta values and provider identifiers are stored under `lead.custom_fields.provider` (not a parallel CRM schema).
 
 ### Duplicate prevention
 
@@ -143,16 +143,14 @@ Coverage:
 - UI import + stats
 - Marketing Platform not written (no visitors); leads created without attribution/conversion when no visitor
 
+Regression suites (all green):
+
 | Suite | Result |
 | --- | --- |
-| Provider + Meta | 64 passed (307 assertions) |
-| Marketing filter | 132 passed (530 assertions) |
+| Provider + Meta | **64 passed (307 assertions)** |
+| Marketing filter | **132 passed (530 assertions)** |
 | Full suite | **614 passed (2137 assertions)**, 0 failures |
 
 ## CTO Recommendation
 
 Manual Meta lead import is complete. Proceed to Phase 7C.6 (Meta Webhook Integration) only after review. Do not add polling or field-mapping in this phase.
-
-## Related
-
-For a narrative summary suitable for handoff / ChatGPT context, see `docs/P7_PHASE_7C5_WHAT_WAS_DONE.md`.

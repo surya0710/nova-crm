@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use App\Models\MetadataFieldDefinition;
 use App\Services\TenantContext;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateMetadataFieldDefinitionRequest extends StoreMetadataFieldDefinitionRequest

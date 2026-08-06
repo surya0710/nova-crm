@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use App\Services\AuditLogger;
+use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use RuntimeException;
@@ -324,7 +325,7 @@ class PaymentTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         try {
-            app(\App\Services\PaymentService::class)->record(
+            app(PaymentService::class)->record(
                 $organization,
                 $invoice,
                 [

@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Quotation;
 use App\Models\User;
+use App\Notifications\CrmNotification;
 use App\Services\AuditLogger;
 use App\Services\QuotationConversionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -428,6 +429,6 @@ class QuotationConversionTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation));
 
-        Notification::assertSentTo($creator, \App\Notifications\CrmNotification::class);
+        Notification::assertSentTo($creator, CrmNotification::class);
     }
 }

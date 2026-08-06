@@ -131,7 +131,6 @@ class MetadataQueryDefinitionService
     }
 
     /**
-     * @param  mixed  $filters
      * @return array<int, MetadataQueryFilter>
      */
     protected function filtersFromInput(int $organizationId, string $entityType, mixed $filters, string $context = 'web_index'): array

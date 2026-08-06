@@ -2,13 +2,11 @@
 
 namespace App\Services\Platform;
 
-use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Organization;
 use App\Models\Payment;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;

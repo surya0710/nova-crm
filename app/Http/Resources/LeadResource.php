@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Lead;
 use App\Services\MetadataApiPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Lead */
+/** @mixin Lead */
 class LeadResource extends JsonResource
 {
     /**
@@ -20,6 +21,11 @@ class LeadResource extends JsonResource
             'company' => $this->company,
             'email' => $this->email,
             'phone' => $this->phone,
+            'address_line_1' => $this->address_line_1,
+            'city' => $this->city,
+            'state' => $this->state,
+            'country' => $this->country,
+            'postal_code' => $this->postal_code,
             'status' => $this->status,
             'status_label' => $this->status_label,
             'priority' => $this->priority,

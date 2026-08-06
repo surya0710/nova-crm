@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        app(OrganizationRoleService::class)->seedPermissions();
+        $this->call(DynamicRbacSeeder::class);
 
         $user = User::factory()->create([
             'name' => 'Test User',

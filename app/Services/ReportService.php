@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
@@ -15,10 +16,15 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
-    public function __construct(protected RevenueService $revenue) {}
+    public function __construct(
+        protected RevenueService $revenue,
+        protected LeadVisibilityService $leadVisibility,
+    ) {}
 
-    public function compile(Organization $organization, ?Carbon $from = null): array
+    public function compile(Organization $organization, ?Carbon $from = null, string $groupBy = 'state', ?User $user = null): array
     {
+        $groupBy = in_array($groupBy, ['state', 'country'], true) ? $groupBy : 'state';
+        $user ??= auth()->user();
         $filters = [
             'date_from' => $from,
             'date_to' => null,
@@ -39,7 +45,11 @@ class ReportService
         $outstandingAmount = $financeSummary['outstanding_receivables'];
         $outstandingCount = $financeSummary['outstanding_count'];
 
-        $leadCounts = Lead::query()
+        $visibleLeads = fn () => $user
+            ? $this->leadVisibility->visibleQuery($user, $organization)
+            : Lead::query();
+
+        $leadCounts = $visibleLeads()
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status');
@@ -75,7 +85,7 @@ class ReportService
             ->orderByDesc('total')
             ->get();
 
-        $topPerformers = Lead::query()
+        $topPerformers = $visibleLeads()
             ->where('status', 'won')
             ->whereNotNull('assigned_to')
             ->select('assigned_to', DB::raw('count(*) as won_count'))
@@ -94,6 +104,58 @@ class ReportService
             'count' => (int) $row->won_count,
         ]);
 
+        $leadGeography = $visibleLeads()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select($groupBy, DB::raw('count(*) as count'))
+            ->groupBy($groupBy)
+            ->orderByDesc('count')
+            ->get();
+
+        $customerGeography = Customer::query()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select($groupBy, DB::raw('count(*) as count'))
+            ->groupBy($groupBy)
+            ->orderByDesc('count')
+            ->get();
+
+        $revenueGeography = (clone $paymentQuery)
+            ->join('customers', 'customers.id', '=', 'payments.customer_id')
+            ->where('customers.organization_id', $organization->id)
+            ->whereNotNull('customers.'.$groupBy)
+            ->where('customers.'.$groupBy, '!=', '')
+            ->select(
+                'customers.'.$groupBy.' as geography',
+                DB::raw('sum(payments.amount) as total'),
+            )
+            ->groupBy('customers.'.$groupBy)
+            ->orderByDesc('total')
+            ->get();
+
+        $conversionGeography = $visibleLeads()
+            ->whereNotNull($groupBy)
+            ->where($groupBy, '!=', '')
+            ->select(
+                $groupBy,
+                DB::raw('count(*) as total'),
+                DB::raw("sum(case when status = 'converted' or converted_at is not null then 1 else 0 end) as converted"),
+            )
+            ->groupBy($groupBy)
+            ->orderByDesc('converted')
+            ->get()
+            ->map(function ($row) use ($groupBy) {
+                $total = (int) $row->total;
+                $converted = (int) $row->converted;
+
+                return [
+                    'geography' => (string) $row->{$groupBy},
+                    'total' => $total,
+                    'converted' => $converted,
+                    'rate' => $total > 0 ? round(($converted / $total) * 100, 1) : 0.0,
+                ];
+            });
+
         return [
             'currency' => $organization->currency,
             'revenue_collected' => $revenueCollected,
@@ -101,7 +163,7 @@ class ReportService
             'outstanding_count' => $outstandingCount,
             'lead_counts' => $leadCounts,
             'conversion_rate' => $conversionRate,
-            'lead_total' => Lead::query()->count(),
+            'lead_total' => $visibleLeads()->count(),
             'opportunity_by_stage' => $opportunityByStage,
             'open_pipeline_value' => $openPipelineValue,
             'invoice_counts' => $invoiceCounts,
@@ -109,6 +171,11 @@ class ReportService
             'monthly_revenue' => $this->monthlyRevenue(),
             'payments_by_method' => $paymentsByMethod,
             'top_performers' => $topPerformers,
+            'geographic_group' => $groupBy,
+            'leads_by_geography' => $leadGeography,
+            'customers_by_geography' => $customerGeography,
+            'revenue_by_geography' => $revenueGeography,
+            'lead_conversion_by_geography' => $conversionGeography,
         ];
     }
 

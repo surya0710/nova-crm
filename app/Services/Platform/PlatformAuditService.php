@@ -35,11 +35,49 @@ class PlatformAuditService
             ->latest();
 
         if (! empty($filters['event'])) {
-            $query->where('event', $filters['event']);
+            $query->where('event', 'like', '%'.$filters['event'].'%');
         }
 
         if (! empty($filters['organization_id'])) {
             $query->where('organization_id', $filters['organization_id']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('event', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%");
+            });
+        }
+
+        if (! empty($filters['category'])) {
+            match ($filters['category']) {
+                'security' => $query->where(function ($q) {
+                    $q->where('event', 'like', '%security%')
+                        ->orWhere('event', 'like', '%login%')
+                        ->orWhere('event', 'like', '%lock%')
+                        ->orWhere('event', 'like', '%password%')
+                        ->orWhere('event', 'like', '%impersonat%');
+                }),
+                'organization' => $query->where('event', 'like', 'organization.%'),
+                'administrative' => $query->where(function ($q) {
+                    $q->where('event', 'like', 'platform.%')
+                        ->orWhere('event', 'like', 'configuration.%')
+                        ->orWhere('event', 'like', 'licensing.%')
+                        ->orWhere('event', 'like', 'coupon.%')
+                        ->orWhere('event', 'like', 'support.%');
+                }),
+                default => null,
+            };
+        }
+
+        if (! empty($filters['from'])) {
+            $query->whereDate('created_at', '>=', $filters['from']);
+        }
+
+        if (! empty($filters['to'])) {
+            $query->whereDate('created_at', '<=', $filters['to']);
         }
 
         return $query->paginate($perPage)->withQueryString();

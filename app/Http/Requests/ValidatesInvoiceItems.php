@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Services\InvoiceCalculationService;
 use App\Services\TenantContext;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 trait ValidatesInvoiceItems
@@ -70,7 +71,7 @@ trait ValidatesInvoiceItems
 
             try {
                 app(InvoiceCalculationService::class)->validateItems($items);
-            } catch (\Illuminate\Validation\ValidationException $e) {
+            } catch (ValidationException $e) {
                 foreach ($e->errors() as $key => $messages) {
                     foreach ($messages as $message) {
                         $validator->errors()->add($key, $message);

@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\CustomerCreated;
+use App\Events\LeadConverted;
+use App\Events\OpportunityCreated;
 use App\Exceptions\DuplicateCustomerException;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -19,6 +22,8 @@ class LeadConversionService
         protected AuditLogger $auditLogger,
         protected TenantContext $tenantContext,
         protected MetadataEntityFormService $metadataForms,
+        protected MarketingAttributionService $attribution,
+        protected MarketingConversionService $conversions,
     ) {}
 
     /**
@@ -48,6 +53,18 @@ class LeadConversionService
 
             $lead = $this->markLeadConverted($lead, $user);
 
+            $this->attribution->propagateToConversion($lead, $customer, $opportunity);
+
+            $this->conversions->recordLeadConverted($lead, $customer, $opportunity);
+
+            if (! $reusedCustomer) {
+                $this->conversions->recordCustomerCreated($lead, $customer);
+            }
+
+            if ($opportunity) {
+                $this->conversions->recordOpportunityCreated($lead, $customer, $opportunity);
+            }
+
             $this->auditLogger->log($lead, 'converted', [
                 'customer_id' => $customer->id,
                 'opportunity_id' => $opportunity?->id,
@@ -55,6 +72,18 @@ class LeadConversionService
             ], $user);
 
             $this->notifyAssignee($lead, $customer, $user);
+
+            event(LeadConverted::forModel($lead, [
+                'actor_id' => $user->id,
+                'customer_id' => $customer->id,
+                'opportunity_id' => $opportunity?->id,
+            ]));
+            if (! $reusedCustomer) {
+                event(CustomerCreated::forModel($customer, ['actor_id' => $user->id, 'lead_id' => $lead->id]));
+            }
+            if ($opportunity) {
+                event(OpportunityCreated::forModel($opportunity, ['actor_id' => $user->id, 'lead_id' => $lead->id]));
+            }
 
             return [
                 'lead' => $lead->fresh(['assignee', 'customer', 'convertedBy']),
@@ -166,6 +195,11 @@ class LeadConversionService
             'phone' => $data['phone'] ?? $lead->phone,
             'industry' => $lead->industry,
             'status' => 'prospect',
+            'address_line_1' => $lead->address_line_1,
+            'city' => $lead->city,
+            'state' => $lead->state,
+            'country' => $lead->country,
+            'postal_code' => $lead->postal_code,
             'assigned_to' => $lead->assigned_to,
             'lead_id' => $lead->id,
             'tags' => $lead->tags,

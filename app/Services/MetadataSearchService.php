@@ -7,6 +7,10 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\MetadataFieldDefinition;
 use App\Models\Opportunity;
+use App\Models\ProgressUpdate;
+use App\Models\Project;
+use App\Models\ResourceAllocation;
+use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -18,6 +22,10 @@ class MetadataSearchService
         'lead' => Lead::class,
         'customer' => Customer::class,
         'opportunity' => Opportunity::class,
+        'project' => Project::class,
+        'task' => Task::class,
+        'resource_allocation' => ResourceAllocation::class,
+        'project_progress_update' => ProgressUpdate::class,
     ];
 
     public function __construct(

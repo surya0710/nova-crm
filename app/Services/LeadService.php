@@ -2,14 +2,24 @@
 
 namespace App\Services;
 
+use App\Events\LeadAssigned;
+use App\Events\LeadCreated;
+use App\Events\LeadUpdated;
 use App\Exceptions\DuplicateLeadException;
+use App\Models\AssignmentHistory;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\CrmNotification;
+use App\Services\Assignment\AssignmentContext;
+use App\Services\Assignment\AssignmentResult;
+use App\Services\Assignment\AssignmentService;
+use App\Workflow\WorkflowRuntimeContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class LeadService
 {
@@ -17,17 +27,222 @@ class LeadService
         protected AuditLogger $auditLogger,
         protected LeadNormalizationService $normalizer,
         protected MetadataEntityFormService $metadataForms,
+        protected MarketingAttributionService $attribution,
+        protected MarketingConversionService $conversions,
+        protected AssignmentService $assignment,
     ) {}
+
+    /**
+     * Apply the shared web/API lead search.
+     *
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
+     */
+    public function searchQuery(Builder $query, ?string $search): Builder
+    {
+        $search = trim((string) $search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $textLike = '%'.strtolower($search).'%';
+        $phoneTerms = $this->phoneSearchTerms($search);
+
+        return $query->where(function (Builder $searchQuery) use ($textLike, $phoneTerms) {
+            $this->applySearchFields(
+                $searchQuery,
+                ['leads.name', 'leads.company', 'leads.email', 'leads.state', 'leads.country'],
+                'leads.phone',
+                $textLike,
+                $phoneTerms,
+            );
+
+            $searchQuery->orWhereHas('customer', function (Builder $customerQuery) use ($textLike, $phoneTerms) {
+                $this->applySearchFields(
+                    $customerQuery,
+                    ['customers.name', 'customers.company', 'customers.email', 'customers.state', 'customers.country'],
+                    'customers.phone',
+                    $textLike,
+                    $phoneTerms,
+                );
+            });
+        });
+    }
+
+    /**
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
+     */
+    public function geographicFilterQuery(Builder $query, mixed $states, mixed $countries): Builder
+    {
+        $states = $this->normalizeFilterValues($states);
+        $countries = $this->normalizeFilterValues($countries);
+
+        if ($states !== []) {
+            $query->whereIn('leads.state', $states);
+        }
+
+        if ($countries !== []) {
+            $query->whereIn('leads.country', $countries);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array{states: array<int, string>, countries: array<int, string>}
+     */
+    public function geographicOptions(): array
+    {
+        return [
+            'states' => Lead::query()
+                ->whereNotNull('state')
+                ->where('state', '!=', '')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state')
+                ->all(),
+            'countries' => Lead::query()
+                ->whereNotNull('country')
+                ->where('country', '!=', '')
+                ->distinct()
+                ->orderBy('country')
+                ->pluck('country')
+                ->all(),
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $textColumns
+     * @param  array<int, string>  $phoneTerms
+     */
+    protected function applySearchFields(
+        Builder $query,
+        array $textColumns,
+        string $phoneColumn,
+        string $textLike,
+        array $phoneTerms,
+    ): void {
+        foreach ($textColumns as $column) {
+            $query->orWhereRaw("LOWER({$column}) LIKE ?", [$textLike]);
+        }
+
+        $normalizedPhoneColumn = $this->normalizedPhoneSql($phoneColumn);
+        foreach ($phoneTerms as $phoneTerm) {
+            $query->orWhereRaw("{$normalizedPhoneColumn} LIKE ?", ['%'.$phoneTerm.'%']);
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function phoneSearchTerms(string $search): array
+    {
+        if (! preg_match('/^[\d\s+().\/-]+$/', $search)) {
+            return [];
+        }
+
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+        if ($digits === '') {
+            return [];
+        }
+
+        $terms = [$digits];
+        if (strlen($digits) > 10) {
+            $terms[] = substr($digits, -10);
+        }
+
+        return array_values(array_unique($terms));
+    }
+
+    protected function normalizedPhoneSql(string $column): string
+    {
+        foreach ([' ', '+', '-', '(', ')', '.', '/'] as $character) {
+            $column = "REPLACE({$column}, '{$character}', '')";
+        }
+
+        return $column;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function normalizeFilterValues(mixed $value): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => trim((string) $item), $values),
+            static fn (string $item): bool => $item !== '',
+        )));
+    }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data, User $user): Lead
-    {
-        return Lead::query()->create([
+    public function create(
+        array $data,
+        User $user,
+        string $assignmentReason = AssignmentHistory::REASON_AUTOMATIC,
+        array $metadataValues = [],
+    ): Lead {
+        $signals = $this->extractAttributionSignals($data);
+        unset($data['visitor_uuid'], $data['session_uuid']);
+
+        $assignmentResult = null;
+        $usedAutoAssignment = false;
+
+        if (! $this->assignment->hasExplicitOwner($data)) {
+            $organizationId = (int) ($data['organization_id'] ?? app(TenantContext::class)->id());
+            $context = AssignmentContext::forLead($organizationId, $data);
+            $assignmentResult = $this->assignment->resolve($context);
+            $data['assigned_to'] = $assignmentResult->assigneeId();
+            $usedAutoAssignment = true;
+        }
+
+        $lead = Lead::query()->create([
             ...$data,
             'created_by' => $user->id,
         ]);
+
+        if ($usedAutoAssignment && $assignmentResult instanceof AssignmentResult && $assignmentResult->matched) {
+            $this->assignment->recordHistory(
+                context: AssignmentContext::forLead((int) $lead->organization_id, $data),
+                entityId: (int) $lead->id,
+                result: $assignmentResult,
+                reason: $assignmentReason,
+                assignedBy: $user,
+                previousOwnerId: null,
+            );
+
+            if ($assignmentResult->assigneeId()) {
+                $this->auditLogger->log($lead, 'assigned', [
+                    'from' => null,
+                    'to' => $assignmentResult->assigneeId(),
+                    'via' => 'assignment_platform',
+                    'strategy' => $assignmentResult->strategy,
+                    'rule_id' => $assignmentResult->rule?->id,
+                    'reason' => $assignmentReason,
+                ], $user);
+            }
+        }
+
+        $this->attribution->attributeLead($lead, $signals);
+        $this->conversions->recordLeadCreated($lead->fresh());
+
+        $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $lead = $lead->fresh();
+        if ($lead->assigned_to) {
+            event(LeadAssigned::forModel($lead, [
+                'previous_owner_id' => null,
+                'owner_id' => (int) $lead->assigned_to,
+                'actor_id' => $user->id,
+            ]));
+        }
+        event(LeadCreated::forModel($lead, ['actor_id' => $user->id]));
+
+        return $lead;
     }
 
     /**
@@ -35,7 +250,10 @@ class LeadService
      */
     public function createFromApi(array $payload, User $user, Organization $organization): Lead
     {
+        $signals = $this->extractAttributionSignals($payload);
         $data = $this->normalizer->normalize($payload);
+        unset($data['visitor_uuid'], $data['session_uuid']);
+
         $metadataValues = $this->metadataForms->validatedValues(
             null,
             $organization,
@@ -58,16 +276,40 @@ class LeadService
         $message = $data['message'] ?? null;
         unset($data['message']);
 
-        return DB::transaction(function () use ($data, $user, $organization, $message, $payload, $metadataValues) {
-            $lead = Lead::query()->create([
+        return DB::transaction(function () use ($data, $user, $organization, $message, $payload, $metadataValues, $signals) {
+            $leadPayload = [
                 'organization_id' => $organization->id,
                 'name' => $data['name'],
+                'company' => $data['company'] ?? null,
                 'email' => $data['email'] ?? null,
                 'phone' => $data['phone'] ?? null,
+                'industry' => $data['industry'] ?? null,
+                'address_line_1' => $data['address_line_1'] ?? null,
+                'city' => $data['city'] ?? null,
+                'state' => $data['state'] ?? null,
+                'country' => $data['country'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null,
                 'source' => $data['source'] ?? 'api',
                 'status' => 'new',
                 'priority' => $data['priority'] ?? 'medium',
                 'assigned_to' => $data['assigned_to'] ?? null,
+                'custom_fields' => $data['custom_fields'] ?? [],
+            ];
+
+            $assignmentResult = null;
+            $usedAutoAssignment = false;
+
+            if (! $this->assignment->hasExplicitOwner($leadPayload)) {
+                $context = AssignmentContext::forLead($organization->id, $leadPayload);
+                $assignmentResult = $this->assignment->resolve($context);
+                $leadPayload['assigned_to'] = $assignmentResult->assigneeId();
+                $usedAutoAssignment = true;
+            }
+
+            unset($leadPayload['custom_fields']);
+
+            $lead = Lead::query()->create([
+                ...$leadPayload,
                 'created_by' => $user->id,
             ]);
 
@@ -82,6 +324,36 @@ class LeadService
                 ]);
             }
 
+            if ($usedAutoAssignment && $assignmentResult instanceof AssignmentResult && $assignmentResult->matched) {
+                $this->assignment->recordHistory(
+                    context: AssignmentContext::forLead($organization->id, [
+                        'source' => $lead->source,
+                        'status' => $lead->status,
+                        'custom_fields' => $data['custom_fields'] ?? [],
+                    ]),
+                    entityId: (int) $lead->id,
+                    result: $assignmentResult,
+                    reason: AssignmentHistory::REASON_API,
+                    assignedBy: $user,
+                    previousOwnerId: null,
+                );
+
+                if ($assignmentResult->assigneeId()) {
+                    $this->auditLogger->log($lead, 'assigned', [
+                        'from' => null,
+                        'to' => $assignmentResult->assigneeId(),
+                        'via' => 'assignment_platform',
+                        'strategy' => $assignmentResult->strategy,
+                        'rule_id' => $assignmentResult->rule?->id,
+                        'reason' => AssignmentHistory::REASON_API,
+                    ], $user);
+                }
+            }
+
+            $this->attribution->attributeLead($lead, $signals);
+
+            $this->conversions->recordLeadCreated($lead);
+
             $this->auditLogger->log($lead, 'received_via_api', [
                 'source' => $lead->source,
                 'form_type' => $payload['form_type'] ?? null,
@@ -90,8 +362,37 @@ class LeadService
 
             $this->notifyApiLeadRecipients($lead, $user);
 
-            return $lead->fresh();
+            $lead = $lead->fresh();
+            if ($lead->assigned_to) {
+                event(LeadAssigned::forModel($lead, [
+                    'previous_owner_id' => null,
+                    'owner_id' => (int) $lead->assigned_to,
+                    'actor_id' => $user->id,
+                ]));
+            }
+            event(LeadCreated::forModel($lead, ['actor_id' => $user->id, 'source' => 'api']));
+
+            return $lead;
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{visitor_uuid?: string|null, session_uuid?: string|null}
+     */
+    protected function extractAttributionSignals(array $payload): array
+    {
+        $signals = [];
+
+        if (array_key_exists('visitor_uuid', $payload)) {
+            $signals['visitor_uuid'] = $payload['visitor_uuid'];
+        }
+
+        if (array_key_exists('session_uuid', $payload)) {
+            $signals['session_uuid'] = $payload['session_uuid'];
+        }
+
+        return $signals;
     }
 
     public function findDuplicate(Organization $organization, ?string $email, ?string $phone): ?Lead
@@ -158,5 +459,49 @@ class LeadService
                     organizationId: $lead->organization_id,
                 ));
             });
+    }
+
+    public function update(Lead $lead, array $data, User $actor, array $metadataValues = []): Lead
+    {
+        $beforeOwner = $lead->assigned_to;
+        $ordinaryChanges = collect($data)->except(['assigned_to'])->all();
+        $before = $lead->only(array_keys($ordinaryChanges));
+
+        $lead->update($ordinaryChanges);
+        if (array_key_exists('assigned_to', $data) && (int) $beforeOwner !== (int) $data['assigned_to']) {
+            $this->assignment->assignOwner($lead, $data['assigned_to'] ? (int) $data['assigned_to'] : null, $actor);
+        }
+
+        $metadataResult = $this->metadataForms->persistValidatedValues($lead, $metadataValues);
+        $lead = $lead->fresh();
+        $changed = array_keys(array_filter(
+            $ordinaryChanges,
+            fn (mixed $value, string $key) => $before[$key] != $lead->getAttribute($key),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+        if ($metadataResult['changed'] ?? false) {
+            $changed[] = 'custom_fields';
+        }
+        if ($changed !== []) {
+            $runtime = app(WorkflowRuntimeContext::class);
+            event(LeadUpdated::forModel(
+                $lead,
+                ['actor_id' => $actor->id, 'changes' => $changed],
+                causationId: $runtime->causationId,
+                depth: $runtime->causationId ? $runtime->depth + 1 : 0,
+            ));
+        }
+
+        return $lead;
+    }
+
+    public function changeStatus(Lead $lead, string $status, User $actor): Lead
+    {
+        $allowed = array_keys(config('leads.statuses', []));
+        if ($allowed !== [] && ! in_array($status, $allowed, true)) {
+            throw ValidationException::withMessages(['status' => 'Invalid lead status.']);
+        }
+
+        return $this->update($lead, ['status' => $status], $actor);
     }
 }

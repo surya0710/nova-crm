@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\PlatformUserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -9,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 
 class PlatformUser extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\PlatformUserFactory> */
+    /** @use HasFactory<PlatformUserFactory> */
     use HasFactory, Notifiable;
 
     protected $fillable = [
@@ -18,8 +19,11 @@ class PlatformUser extends Authenticatable
         'password',
         'role',
         'status',
+        'locked_at',
+        'failed_login_attempts',
         'last_login_at',
         'two_factor_ready',
+        'preferences',
     ];
 
     protected $hidden = [
@@ -32,8 +36,35 @@ class PlatformUser extends Authenticatable
         return [
             'password' => 'hashed',
             'last_login_at' => 'datetime',
+            'locked_at' => 'datetime',
             'two_factor_ready' => 'boolean',
+            'preferences' => 'array',
+            'failed_login_attempts' => 'integer',
         ];
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    public function dashboardLayout(): array
+    {
+        $layout = $this->preferences['dashboard_layout']['platform'] ?? null;
+
+        if (is_array($layout) && $layout !== []) {
+            return $layout;
+        }
+
+        return config('platform.dashboard_widgets', []);
+    }
+
+    public function setDashboardLayout(array $widgets): void
+    {
+        $preferences = $this->preferences ?? [];
+        $preferences['dashboard_layout']['platform'] = array_values($widgets);
+        $this->preferences = $preferences;
+        $this->save();
     }
 
     public function auditLogs(): HasMany

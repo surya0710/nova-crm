@@ -3,23 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
+use App\Http\Requests\IndexCustomerRequest;
 use App\Http\Requests\SendCustomerMailRequest;
 use App\Http\Requests\StoreCustomerNoteRequest;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Mail\CustomerMail;
 use App\Models\Customer;
-use App\Models\CustomerNote;
+use App\Models\Organization;
 use App\Models\User;
+use App\Services\CustomerService;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
+use App\Services\NoteService;
 use App\Services\OrganizationMailer;
 use App\Services\RevenueService;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -32,26 +35,26 @@ class CustomerController extends Controller
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
+        protected CustomerService $customerService,
+        protected NoteService $noteService,
     ) {
         $this->authorizeResource(Customer::class, 'customer');
     }
 
-    public function index(Request $request, TenantContext $tenant): View
+    public function index(IndexCustomerRequest $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
         $saved = $this->resolveSavedIndexFilters($request, $tenant, 'customer', $this->savedFilters);
         $filterInput = $saved['input'];
 
-        $query = Customer::query()
-            ->with(['assignee', 'creator']);
+        $query = Customer::query()->with('assignee');
 
-        if ($search = trim((string) ($filterInput['search'] ?? ''))) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+        $this->customerService->searchQuery($query, $filterInput['search'] ?? null);
+        $this->customerService->geographicFilterQuery(
+            $query,
+            $filterInput['state'] ?? null,
+            $filterInput['country'] ?? null,
+        );
 
         if ($status = ($filterInput['status'] ?? '')) {
             $query->where('status', $status);
@@ -73,13 +76,16 @@ class CustomerController extends Controller
         }
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'customer');
-        $filters = collect($filterInput)->only(['search', 'status', 'industry', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $filters = collect($filterInput)->only(['search', 'status', 'industry', 'assigned_to', 'state', 'country', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $geographicOptions = $this->customerService->geographicOptions();
 
         return view('customers.index', [
             'customers' => $query->paginate(15)->withQueryString(),
             'organization' => $organization,
             'assignees' => $this->organizationMembers($organization),
             'filters' => $filters,
+            'stateOptions' => $geographicOptions['states'],
+            'countryOptions' => $geographicOptions['countries'],
             'metadataFilterFields' => $metadataFields['filterable'],
             'metadataSortFields' => $metadataFields['sortable'],
             'savedFilters' => $saved['savedFilters'],
@@ -103,11 +109,7 @@ class CustomerController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'customer', 'create', $request);
 
-        $customer = Customer::query()->create([
-            ...$request->validated(),
-            'created_by' => $request->user()->id,
-        ]);
-        $this->metadataForms->persistValidatedValues($customer, $metadataValues);
+        $customer = $this->customerService->create($request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -148,8 +150,7 @@ class CustomerController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest($customer, $tenant->get(), 'customer', 'edit', $request);
 
-        $customer->update($request->validated());
-        $this->metadataForms->persistValidatedValues($customer, $metadataValues);
+        $this->customerService->update($customer, $request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('customers.show', $customer)
@@ -167,12 +168,7 @@ class CustomerController extends Controller
 
     public function storeNote(StoreCustomerNoteRequest $request, Customer $customer): RedirectResponse
     {
-        CustomerNote::query()->create([
-            'organization_id' => $customer->organization_id,
-            'customer_id' => $customer->id,
-            'user_id' => $request->user()->id,
-            'body' => $request->validated('body'),
-        ]);
+        $this->noteService->add($customer, $request->validated('body'), $request->user());
 
         return redirect()
             ->route('customers.show', $customer)
@@ -219,9 +215,9 @@ class CustomerController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    protected function organizationMembers(?\App\Models\Organization $organization)
+    protected function organizationMembers(?Organization $organization)
     {
         if (! $organization) {
             return collect();

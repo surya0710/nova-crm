@@ -1,0 +1,21 @@
+; NovaCRM Release 1.2.x Supervisor template
+; Copy to /etc/supervisor/conf.d/nova-crm-worker.conf and replace placeholders.
+[program:nova-crm-worker]
+process_name=%(program_name)s_%(process_num)02d
+directory=/var/www/nova-crm
+command=/usr/bin/php /var/www/nova-crm/artisan queue:work redis --queue=default,imports,exports,bulk,provisioning,mail --sleep=1 --tries=3 --timeout=360 --max-jobs=1000 --max-time=3600 --memory=256
+user=www-data
+numprocs=4
+autostart=true
+autorestart=true
+startsecs=5
+startretries=3
+stopasgroup=true
+killasgroup=true
+stopsignal=TERM
+stopwaitsecs=390
+redirect_stderr=true
+stdout_logfile=/var/www/nova-crm/storage/logs/supervisor-queue.log
+stdout_logfile_maxbytes=20MB
+stdout_logfile_backups=10
+environment=APP_ENV="production"

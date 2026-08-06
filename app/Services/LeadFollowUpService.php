@@ -3,11 +3,18 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Models\User;
+use App\Rules\FutureOrganizationDateTime;
+use App\Services\TenantContext;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class LeadFollowUpService
 {
+    public function __construct(
+        protected LeadVisibilityService $visibility,
+    ) {}
+
     public function organizationTimezone(): string
     {
         return app(TenantContext::class)->get()?->timezone
@@ -41,7 +48,7 @@ class LeadFollowUpService
     public function validationRules(): array
     {
         return [
-            'next_follow_up_at' => ['nullable', 'date', new \App\Rules\FutureOrganizationDateTime],
+            'next_follow_up_at' => ['nullable', 'date', new FutureOrganizationDateTime],
             'next_follow_up_note' => ['nullable', 'string', 'max:2000'],
         ];
     }
@@ -60,9 +67,11 @@ class LeadFollowUpService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function dueForAlertPayloads(int $limit = 10): Collection
+    public function dueForAlertPayloads(User $user, int $limit = 10): Collection
     {
-        return Lead::query()
+        $organization = app(TenantContext::class)->get();
+
+        return $this->visibility->visibleQuery($user, $organization)
             ->dueForFollowUpAlert()
             ->with(['assignee'])
             ->orderBy('next_follow_up_at')

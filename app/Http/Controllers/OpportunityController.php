@@ -10,11 +10,12 @@ use App\Http\Requests\UpdateOpportunityStageRequest;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Opportunity;
-use App\Models\OpportunityNote;
-use App\Models\User;
+use App\Models\Organization;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
+use App\Services\NoteService;
+use App\Services\OpportunityService;
 use App\Services\SavedFilterService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,8 @@ class OpportunityController extends Controller
         protected MetadataQueryDefinitionService $metadataDefinitions,
         protected MetadataQueryService $metadataQueries,
         protected SavedFilterService $savedFilters,
+        protected OpportunityService $opportunityService,
+        protected NoteService $noteService,
     ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
@@ -71,9 +74,35 @@ class OpportunityController extends Controller
 
         $metadataFields = $this->metadataDefinitions->webIndexFields($organization->id, 'opportunity');
         $filters = collect($filterInput)->only(['search', 'stage', 'customer_id', 'assigned_to', 'metadata_filters', 'metadata_sort', 'metadata_sort_key', 'metadata_sort_direction', 'saved_filter'])->all();
+        $viewMode = $request->query('view', 'board') === 'list' ? 'list' : 'board';
+
+        $boardOpportunities = collect();
+        if ($viewMode === 'board') {
+            $boardQuery = Opportunity::query()
+                ->with(['customer', 'assignee'])
+                ->when(trim((string) ($filterInput['search'] ?? '')) !== '', function ($q) use ($filterInput) {
+                    $search = trim((string) $filterInput['search']);
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('title', 'like', "%{$search}%")
+                            ->orWhereHas('customer', fn ($c) => $c->where('company', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%"));
+                    });
+                })
+                ->when((int) ($filterInput['customer_id'] ?? 0), fn ($q, $id) => $q->where('customer_id', $id))
+                ->when((int) ($filterInput['assigned_to'] ?? 0), fn ($q, $id) => $q->where('assigned_to', $id));
+
+            $this->metadataQueries->applyForWebIndex($boardQuery, $metadataRequest, $organization->id);
+
+            $boardOpportunities = $boardQuery
+                ->orderByDesc('updated_at')
+                ->limit(200)
+                ->get()
+                ->groupBy('stage');
+        }
 
         return view('pipeline.index', [
             'opportunities' => $query->paginate(15)->withQueryString(),
+            'boardOpportunities' => $boardOpportunities,
+            'viewMode' => $viewMode,
             'organization' => $organization,
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($organization),
@@ -118,11 +147,7 @@ class OpportunityController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'opportunity', 'create', $request);
 
-        $opportunity = Opportunity::query()->create([
-            ...$request->validated(),
-            'created_by' => $request->user()->id,
-        ]);
-        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
+        $opportunity = $this->opportunityService->create($request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -156,8 +181,7 @@ class OpportunityController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest($opportunity, $tenant->get(), 'opportunity', 'edit', $request);
 
-        $opportunity->update($request->validated());
-        $this->metadataForms->persistValidatedValues($opportunity, $metadataValues);
+        $this->opportunityService->update($opportunity, $request->validated(), $request->user(), $metadataValues);
 
         return redirect()
             ->route('pipeline.show', $opportunity)
@@ -169,17 +193,7 @@ class OpportunityController extends Controller
         $validated = $request->validated();
         $stage = $validated['stage'];
 
-        $attributes = ['stage' => $stage];
-
-        if ($stage === 'closed_won') {
-            $attributes['won_at'] = $validated['won_at'];
-            $attributes['lost_reason'] = null;
-        } elseif ($stage === 'closed_lost') {
-            $attributes['lost_reason'] = $validated['lost_reason'];
-            $attributes['won_at'] = null;
-        }
-
-        $opportunity->update($attributes);
+        $this->opportunityService->updateStage($opportunity, $validated, $request->user());
 
         $flashStatus = match ($stage) {
             'closed_won' => 'opportunity-won',
@@ -188,7 +202,7 @@ class OpportunityController extends Controller
         };
 
         return redirect()
-            ->route('pipeline.show', $opportunity)
+            ->back()
             ->with('status', $flashStatus);
     }
 
@@ -203,19 +217,14 @@ class OpportunityController extends Controller
 
     public function storeNote(StoreOpportunityNoteRequest $request, Opportunity $opportunity): RedirectResponse
     {
-        OpportunityNote::query()->create([
-            'organization_id' => $opportunity->organization_id,
-            'opportunity_id' => $opportunity->id,
-            'user_id' => $request->user()->id,
-            'body' => $request->validated('body'),
-        ]);
+        $this->noteService->add($opportunity, $request->validated('body'), $request->user());
 
         return redirect()
             ->route('pipeline.show', $opportunity)
             ->with('status', 'opportunity-note-added');
     }
 
-    protected function organizationMembers(?\App\Models\Organization $organization)
+    protected function organizationMembers(?Organization $organization)
     {
         if (! $organization) {
             return collect();

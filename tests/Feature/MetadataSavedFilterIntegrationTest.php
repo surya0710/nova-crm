@@ -70,7 +70,7 @@ class MetadataSavedFilterIntegrationTest extends TestCase
     public function test_private_saved_filters_are_not_visible_to_other_users(): void
     {
         [$owner, $organization] = $this->setupUserWithOrg('sales-executive');
-        [$other, ] = $this->setupUserWithOrg('sales-executive');
+        [$other] = $this->setupUserWithOrg('sales-executive');
         $organization->addMember($other, 'sales-executive');
 
         $filter = app(SavedFilterService::class)->create($organization->id, $owner, 'lead', [
@@ -93,7 +93,7 @@ class MetadataSavedFilterIntegrationTest extends TestCase
     public function test_shared_saved_filters_can_be_executed_by_organization_members(): void
     {
         [$owner, $organization] = $this->setupUserWithOrg('sales-executive');
-        [$member, ] = $this->setupUserWithOrg('sales-executive');
+        [$member] = $this->setupUserWithOrg('sales-executive');
         $organization->addMember($member, 'sales-executive');
         $this->field($organization, 'lead', 'destination_country', 'text', ['is_filterable' => true]);
         $match = $this->lead($organization, $owner, 'Shared Filter Match', 'new', ['destination_country' => 'Canada']);
@@ -219,7 +219,7 @@ class MetadataSavedFilterIntegrationTest extends TestCase
     public function test_saved_filter_respects_entity_permissions(): void
     {
         [$hrUser, $organization] = $this->setupUserWithOrg('hr');
-        [$owner, ] = $this->setupUserWithOrg('sales-executive');
+        [$owner] = $this->setupUserWithOrg('sales-executive');
         $organization->addMember($owner, 'sales-executive');
 
         $filter = app(SavedFilterService::class)->create($organization->id, $owner, 'lead', [
@@ -493,7 +493,7 @@ class MetadataSavedFilterIntegrationTest extends TestCase
     public function test_unauthorized_user_cannot_update_saved_filter(): void
     {
         [$owner, $organization] = $this->setupUserWithOrg('sales-executive');
-        [$other, ] = $this->setupUserWithOrg('sales-executive');
+        [$other] = $this->setupUserWithOrg('sales-executive');
         $organization->addMember($other, 'sales-executive');
 
         $filter = app(SavedFilterService::class)->create($organization->id, $owner, 'lead', [

@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Services\OrganizationMemberService;
 use App\Services\TenantContext;
 
 class UserPolicy

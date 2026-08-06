@@ -1,18 +1,59 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div>
-            <h1 class="text-lg font-semibold text-slate-900">{{ __('API Tokens') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Manage personal access tokens for the REST API') }}</p>
-        </div>
-    </x-slot>
+    <x-ui.page-header
+        :title="__('API Tokens')"
+        :subtitle="__('Manage personal access tokens for the REST API')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('Administration'), 'href' => \Illuminate\Support\Facades\Route::has('administration.home') ? route('administration.home') : null],
+                ['label' => __('API Tokens'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+    </x-ui.page-header>
 
     <x-flash-messages />
 
     @if ($plainTextToken)
-        <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p class="font-semibold">{{ __('Copy your new API token now') }}</p>
-            <p class="mt-1 break-all font-mono text-xs">{{ $plainTextToken }}</p>
-            <p class="mt-2 text-xs">{{ __('This token will not be shown again.') }}</p>
+        <div
+            x-data="{
+                token: @js($plainTextToken),
+                copied: false,
+                async copyToken() {
+                    try {
+                        await navigator.clipboard.writeText(this.token);
+                    } catch (e) {
+                        const input = document.createElement('textarea');
+                        input.value = this.token;
+                        input.setAttribute('readonly', '');
+                        input.style.position = 'absolute';
+                        input.style.left = '-9999px';
+                        document.body.appendChild(input);
+                        input.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(input);
+                    }
+                    this.copied = true;
+                    setTimeout(() => this.copied = false, 2000);
+                }
+            }"
+            x-init="copyToken()"
+            class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold">{{ __('Copy your new API token now') }}</p>
+                    <p class="mt-1 break-all font-mono text-xs" x-text="token">{{ $plainTextToken }}</p>
+                    <p class="mt-2 text-xs">{{ __('This token will not be shown again.') }}</p>
+                    <p class="mt-1 text-xs text-amber-700" x-show="copied" x-cloak>{{ __('Token copied to clipboard.') }}</p>
+                </div>
+                <button
+                    type="button"
+                    @click="copyToken()"
+                    class="inline-flex shrink-0 items-center rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-900 shadow-sm hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                >
+                    <span x-text="copied ? '{{ __('Copied!') }}' : '{{ __('Copy') }}'">{{ __('Copy') }}</span>
+                </button>
+            </div>
         </div>
     @endif
 

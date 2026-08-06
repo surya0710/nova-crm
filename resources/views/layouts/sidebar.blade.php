@@ -1,7 +1,7 @@
 @php
     $currentOrganization = app(\App\Services\TenantContext::class)->get();
     $user = Auth::user();
-    $userOrganizations = $user->organizations;
+    $userOrganizations = $user->activeOrganizations()->get();
     $currentRole = $currentOrganization ? $user->getRoleNameInOrganization($currentOrganization) : null;
 
     $can = fn (string $permission) => $user->hasPermission($permission, $currentOrganization);
@@ -18,17 +18,12 @@
     $iconShield = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>';
     $iconTask = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
     $iconFields = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h10M4 18h7M17 10v8m-4-4h8"/></svg>';
+    $iconWorkflow = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 7h5m4 0h5M8 7a2 2 0 11-4 0 2 2 0 014 0zm12 10h-5m-4 0H5m11 0a2 2 0 104 0 2 2 0 00-4 0zM12 7v10"/></svg>';
+    $iconHr = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
+    $iconCog = '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
 @endphp
 
 <aside class="h-full bg-slate-900 text-white flex flex-col w-64 overflow-hidden">
-    <div class="shrink-0 flex items-center gap-3 px-5 py-5 border-b border-slate-800">
-        <div class="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-sm">N</div>
-        <div>
-            <p class="font-semibold text-white leading-tight">NovaCRM</p>
-            <p class="text-xs text-slate-400">Business Suite</p>
-        </div>
-    </div>
-
     @if ($currentOrganization)
         <div class="shrink-0 px-4 py-4 border-b border-slate-800">
             <div class="flex items-center gap-3">
@@ -40,14 +35,25 @@
             </div>
 
             @if ($userOrganizations->count() > 1)
-                <form id="org-switch-form" method="POST" action="#" class="mt-3">
+                <form
+                    id="org-switch-form"
+                    method="POST"
+                    action="{{ route('organization.switch', $currentOrganization) }}"
+                    class="mt-3"
+                >
                     @csrf
                     <select
                         class="w-full text-xs bg-slate-800 border-slate-700 text-slate-300 rounded-lg py-1.5 px-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        onchange="if (this.value) { this.form.action = '{{ url('organization/switch') }}/' + this.value; this.form.submit(); }"
+                        data-current="{{ $currentOrganization->id }}"
+                        aria-label="{{ __('Switch organization') }}"
+                        onchange="this.form.action = this.selectedOptions[0].dataset.url; this.form.submit()"
                     >
                         @foreach ($userOrganizations as $org)
-                            <option value="{{ $org->id }}" @selected($org->id === $currentOrganization->id)>
+                            <option
+                                value="{{ $org->id }}"
+                                data-url="{{ route('organization.switch', $org) }}"
+                                @selected($org->id === $currentOrganization->id)
+                            >
                                 {{ $org->name }}
                             </option>
                         @endforeach
@@ -57,21 +63,21 @@
         </div>
     @endif
 
-    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-6 sidebar-scroll">
+    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-5 sidebar-scroll">
         @if ($currentOrganization)
             <div>
-                <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Main</p>
-                <div class="space-y-1">
+                <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Main</p>
+                <div class="space-y-0.5">
                     <x-sidebar-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" :icon="$iconHome">
                         {{ __('Dashboard') }}
                     </x-sidebar-link>
                 </div>
             </div>
 
-            @if ($can('leads.view') || $can('customers.view') || $can('opportunities.view') || $can('products.view') || $can('quotations.view') || $can('invoices.view') || $can('payments.view') || $can('tasks.view') || $can('reports.view'))
+            @if ($can('leads.view') || $can('customers.view') || $can('opportunities.view') || $can('products.view') || $can('quotations.view') || $can('invoices.view') || $can('payments.view') || $can('tasks.view') || $can('projects.view') || $can('resources.view'))
                 <div>
-                    <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">CRM</p>
-                    <div class="space-y-1">
+                    <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">CRM</p>
+                    <div class="space-y-0.5">
                         @if ($can('leads.view'))
                             <x-sidebar-link :href="route('leads.index')" :active="request()->routeIs('leads.*')" :icon="$iconUsers">{{ crm_term('leads') }}</x-sidebar-link>
                         @endif
@@ -96,14 +102,83 @@
                         @if ($can('tasks.view'))
                             <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.*')" :icon="$iconTask">{{ __('Tasks') }}</x-sidebar-link>
                         @endif
+                        @if ($can('projects.view'))
+                            <x-sidebar-link :href="route('projects.index')" :active="request()->routeIs('projects.*') || request()->routeIs('project-*')" :icon="$iconTask">{{ __('Projects') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('resources.view'))
+                            <x-sidebar-link :href="route('resources.planner')" :active="request()->routeIs('resources.*')" :icon="$iconChart">{{ __('Resource Planner') }}</x-sidebar-link>
+                        @endif
                     </div>
                 </div>
             @endif
 
-            @if ($can('reports.view') || $can('finance.view'))
+            @if ($can('hrms.view'))
                 <div>
-                    <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Analytics') }}</p>
-                    <div class="space-y-1">
+                    <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('HR') }}</p>
+                    <div class="space-y-0.5">
+                        @if ($can('hr.dashboard'))
+                            <x-sidebar-link :href="route('hrms.dashboard')" :active="request()->routeIs('hrms.dashboard')" :icon="$iconHr">{{ __('HR Dashboard') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('manager.dashboard'))
+                            <x-sidebar-link :href="route('hrms.manager.dashboard')" :active="request()->routeIs('hrms.manager.dashboard')" :icon="$iconHr">{{ __('Manager Dashboard') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('employee.directory'))
+                            <x-sidebar-link :href="route('hrms.directory.index')" :active="request()->routeIs('hrms.directory.*')" :icon="$iconUsers">{{ __('Directory') }}</x-sidebar-link>
+                        @endif
+                        <x-sidebar-link :href="route('hrms.employees.index')" :active="request()->routeIs('hrms.employees.*')" :icon="$iconUsers">{{ __('Employees') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('hrms.teams.index')" :active="request()->routeIs('hrms.teams.*')" :icon="$iconUsers">{{ __('Teams') }}</x-sidebar-link>
+                        @if ($can('announcements.manage'))
+                            <x-sidebar-link :href="route('hrms.announcements.index')" :active="request()->routeIs('hrms.announcements.*')" :icon="$iconHr">{{ __('Announcements') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('employee.exit.manage'))
+                            <x-sidebar-link :href="route('hrms.exit-processes.index')" :active="request()->routeIs('hrms.exit-processes.*')" :icon="$iconHr">{{ __('Exit Processes') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('organization.calendar'))
+                            <x-sidebar-link :href="route('hrms.calendar')" :active="request()->routeIs('hrms.calendar')" :icon="$iconHr">{{ __('Calendar') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('attendance.view'))
+                            <x-sidebar-link :href="route('hrms.attendance.index')" :active="request()->routeIs('hrms.attendance.*')" :icon="$iconHr">{{ __('Attendance') }}</x-sidebar-link>
+                            <x-sidebar-link :href="route('hrms.shift-assignments.index')" :active="request()->routeIs('hrms.shift-assignments.*')" :icon="$iconHr">{{ __('Shift Assignments') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('leave.view'))
+                            <x-sidebar-link :href="route('hrms.leave.dashboard')" :active="request()->routeIs('hrms.leave.dashboard')" :icon="$iconHr">{{ __('Leave Dashboard') }}</x-sidebar-link>
+                            <x-sidebar-link :href="route('hrms.leave-applications.index')" :active="request()->routeIs('hrms.leave-applications.index') || request()->routeIs('hrms.leave-applications.show')" :icon="$iconHr">{{ __('Leave Applications') }}</x-sidebar-link>
+                            @if ($can('leave.approve'))
+                                <x-sidebar-link :href="route('hrms.leave-applications.approval-queue')" :active="request()->routeIs('hrms.leave-applications.approval-queue')" :icon="$iconHr">{{ __('Approval Queue') }}</x-sidebar-link>
+                            @endif
+                            <x-sidebar-link :href="route('hrms.leave-balances.index')" :active="request()->routeIs('hrms.leave-balances.*')" :icon="$iconHr">{{ __('Leave Balances') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('recruitment.view'))
+                            <x-sidebar-link :href="route('hrms.recruitment.dashboard')" :active="request()->routeIs('hrms.recruitment.*')" :icon="$iconHr">{{ __('Recruitment') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('performance.view') || $can('performance.goal.view') || $can('performance.review.view'))
+                            <x-sidebar-link :href="route('hrms.performance.index')" :active="request()->routeIs('hrms.performance.*')" :icon="$iconHr">{{ __('Performance') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('payroll.view'))
+                            <x-sidebar-link :href="route('hrms.payroll.index')" :active="request()->routeIs('hrms.payroll.*')" :icon="$iconHr">{{ __('Payroll') }}</x-sidebar-link>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if ($can('ess.access'))
+                <div>
+                    <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Self-Service') }}</p>
+                    <div class="space-y-0.5">
+                        <x-sidebar-link :href="route('ess.dashboard')" :active="request()->routeIs('ess.dashboard')" :icon="$iconUser">{{ __('My HR') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.profile')" :active="request()->routeIs('ess.profile*')" :icon="$iconUser">{{ __('Profile') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.documents.index')" :active="request()->routeIs('ess.documents.*')" :icon="$iconUser">{{ __('Documents') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.attendance.index')" :active="request()->routeIs('ess.attendance.*')" :icon="$iconUser">{{ __('Attendance') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.leave.index')" :active="request()->routeIs('ess.leave.*')" :icon="$iconUser">{{ __('Leave') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.payroll.index')" :active="request()->routeIs('ess.payroll.*')" :icon="$iconUser">{{ __('Payroll') }}</x-sidebar-link>
+                    </div>
+                </div>
+            @endif
+
+            @if ($can('reports.view') || $can('finance.view') || $can('audit.view'))
+                <div>
+                    <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Analytics') }}</p>
+                    <div class="space-y-0.5">
                         @if ($can('reports.view'))
                             <x-sidebar-link :href="route('reports.index')" :active="request()->routeIs('reports.index')" :icon="$iconChart">{{ __('Reports') }}</x-sidebar-link>
                         @endif
@@ -115,41 +190,41 @@
                         @endif
                     </div>
                 </div>
-            @elseif ($can('audit.view'))
-                <div>
-                    <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Analytics') }}</p>
-                    <div class="space-y-1">
-                        <x-sidebar-link :href="route('audit-logs.index')" :active="request()->routeIs('audit-logs.*')" :icon="$iconShield">{{ __('Audit Log') }}</x-sidebar-link>
-                    </div>
-                </div>
             @endif
 
             <div>
-                <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Settings</p>
-                <div class="space-y-1">
+                <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Settings</p>
+                <div class="space-y-0.5">
                     @if ($can('settings.manage'))
-                        <x-sidebar-link :href="route('organization.edit')" :active="request()->routeIs('organization.edit')" :icon="$iconBuilding">
-                            {{ __('Organization') }}
+                        <x-sidebar-link :href="route('organization.settings.hub')" :active="request()->routeIs('organization.settings.*') || request()->routeIs('organization.edit')" :icon="$iconCog">
+                            {{ __('Organization Settings') }}
                         </x-sidebar-link>
+                    @endif
+                    @if ($can('assignments.view'))
+                        <x-sidebar-link :href="route('organization.settings.assignments.index')" :active="request()->routeIs('organization.settings.assignments.*')" :icon="$iconUsers">
+                            {{ __('Assignment Settings') }}
+                        </x-sidebar-link>
+                    @endif
+                    @if ($can('integrations.view') || $can('integrations.manage'))
+                        <x-sidebar-link :href="route('integrations.index')" :active="request()->routeIs('integrations.*')" :icon="$iconShield">{{ __('Integrations') }}</x-sidebar-link>
+                    @endif
+                    @if ($can('workflows.view'))
+                        <x-sidebar-link :href="route('workflows.index')" :active="request()->routeIs('workflows.*')" :icon="$iconWorkflow">{{ __('Workflows') }}</x-sidebar-link>
                     @endif
                     @if ($can('metadata.view') || $can('metadata.manage'))
-                        <x-sidebar-link :href="route('metadata-fields.index')" :active="request()->routeIs('metadata-fields.*')" :icon="$iconFields">
-                            {{ __('Metadata Fields') }}
-                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('metadata-fields.index')" :active="request()->routeIs('metadata-fields.*')" :icon="$iconFields">{{ __('Metadata Fields') }}</x-sidebar-link>
+                    @endif
+                    @if ($can('rbac.view'))
+                        <x-sidebar-link :href="route('rbac.roles.index')" :active="request()->routeIs('rbac.*')" :icon="$iconShield">{{ __('Access Control') }}</x-sidebar-link>
                     @endif
                     @if ($can('users.view'))
-                        <x-sidebar-link :href="route('team.index')" :active="request()->routeIs('team.*')" :icon="$iconUsers">
-                            {{ __('Team') }}
-                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('team.index')" :active="request()->routeIs('team.*')" :icon="$iconUsers">{{ __('Team') }}</x-sidebar-link>
                     @endif
                     @if ($can('api.tokens'))
-                        <x-sidebar-link :href="route('api-tokens.index')" :active="request()->routeIs('api-tokens.*')" :icon="$iconShield">
-                            {{ __('API Tokens') }}
-                        </x-sidebar-link>
+                        <x-sidebar-link :href="route('api-tokens.index')" :active="request()->routeIs('api-tokens.*')" :icon="$iconShield">{{ __('API Tokens') }}</x-sidebar-link>
                     @endif
-                    <x-sidebar-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')" :icon="$iconUser">
-                        {{ __('Profile') }}
-                    </x-sidebar-link>
+                    <x-sidebar-link :href="route('knowledge.index')" :active="request()->routeIs('knowledge.*')" :icon="$iconDoc">{{ __('Knowledge Center') }}</x-sidebar-link>
+                    <x-sidebar-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')" :icon="$iconUser">{{ __('Profile') }}</x-sidebar-link>
                 </div>
             </div>
         @endif

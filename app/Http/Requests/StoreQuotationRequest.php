@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Quotation;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreQuotationRequest extends FormRequest
@@ -10,7 +11,7 @@ class StoreQuotationRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Quotation::class) ?? false;
+        return $this->user()?->can('create', Quotation::class) ?? false;
     }
 
     protected function prepareForValidation(): void

@@ -2,12 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
@@ -29,6 +30,9 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'account_status' => \App\Enums\UserAccountStatus::Active,
+            'portal_access_enabled' => true,
+            'password_changed_at' => now(),
         ];
     }
 
@@ -39,6 +43,15 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function pendingInvitation(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'account_status' => \App\Enums\UserAccountStatus::PendingInvitation,
+            'email_verified_at' => null,
+            'password_changed_at' => null,
         ]);
     }
 }

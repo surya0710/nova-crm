@@ -8,6 +8,10 @@ use App\Models\MetadataFieldDefinition;
 use App\Models\MetadataValueProjection;
 use App\Models\Opportunity;
 use App\Models\Organization;
+use App\Models\ProgressUpdate;
+use App\Models\Project;
+use App\Models\ResourceAllocation;
+use App\Models\Task;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +26,10 @@ class MetadataProjectionService
         'customer' => Customer::class,
         'opportunity' => Opportunity::class,
         'organization' => Organization::class,
+        'project' => Project::class,
+        'task' => Task::class,
+        'resource_allocation' => ResourceAllocation::class,
+        'project_progress_update' => ProgressUpdate::class,
     ];
 
     /**

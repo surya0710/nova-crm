@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\PlatformUser;
+use App\Models\User;
+use App\Models\CandidateAccount;
+
 return [
 
     /*
@@ -45,6 +49,11 @@ return [
             'driver' => 'session',
             'provider' => 'platform_users',
         ],
+
+        'candidate' => [
+            'driver' => 'session',
+            'provider' => 'candidate_accounts',
+        ],
     ],
 
     /*
@@ -67,12 +76,17 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         'platform_users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\PlatformUser::class,
+            'model' => PlatformUser::class,
+        ],
+
+        'candidate_accounts' => [
+            'driver' => 'eloquent',
+            'model' => CandidateAccount::class,
         ],
     ],
 
@@ -106,6 +120,13 @@ return [
         'platform_users' => [
             'provider' => 'platform_users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'candidate_accounts' => [
+            'provider' => 'candidate_accounts',
+            'table' => 'candidate_password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

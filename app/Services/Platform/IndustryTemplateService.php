@@ -7,6 +7,7 @@ use App\Models\IndustryTemplateVersion;
 use App\Models\PlatformUser;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class IndustryTemplateService
 {
@@ -174,7 +175,7 @@ class IndustryTemplateService
         $decoded = json_decode($json, true);
 
         if (! is_array($decoded)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'draft_payload' => __('Draft payload must be valid JSON.'),
             ]);
         }

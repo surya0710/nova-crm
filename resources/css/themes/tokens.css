@@ -1,0 +1,205 @@
+/**
+ * NovaCRM design tokens (Phase 13.3 / 14.1)
+ * Naming: --nova-{category}-{name}[-{variant}]
+ */
+
+:root {
+    /* Brand / primary (indigo) */
+    --nova-color-primary-50: #eef2ff;
+    --nova-color-primary-100: #e0e7ff;
+    --nova-color-primary-200: #c7d2fe;
+    --nova-color-primary-400: #818cf8;
+    --nova-color-primary-500: #6366f1;
+    --nova-color-primary-600: #4f46e5;
+    --nova-color-primary-700: #4338ca;
+    --nova-color-primary-900: #312e81;
+
+    /* Accent (sky — sparingly) */
+    --nova-color-accent-500: #0ea5e9;
+    --nova-color-accent-600: #0284c7;
+
+    /* Feedback */
+    --nova-color-success: #059669;
+    --nova-color-success-soft: #ecfdf5;
+    --nova-color-warning: #d97706;
+    --nova-color-warning-soft: #fffbeb;
+    --nova-color-danger: #dc2626;
+    --nova-color-danger-soft: #fef2f2;
+    --nova-color-info: #0284c7;
+    --nova-color-info-soft: #f0f9ff;
+
+    /* Neutrals (slate) */
+    --nova-color-neutral-0: #ffffff;
+    --nova-color-neutral-50: #f8fafc;
+    --nova-color-neutral-100: #f1f5f9;
+    --nova-color-neutral-200: #e2e8f0;
+    --nova-color-neutral-300: #cbd5e1;
+    --nova-color-neutral-400: #94a3b8;
+    --nova-color-neutral-500: #64748b;
+    --nova-color-neutral-600: #475569;
+    --nova-color-neutral-700: #334155;
+    --nova-color-neutral-800: #1e293b;
+    --nova-color-neutral-900: #0f172a;
+    --nova-color-neutral-950: #020617;
+
+    /* Surfaces & backgrounds */
+    --nova-color-bg-app: var(--nova-color-neutral-50);
+    --nova-color-bg-elevated: var(--nova-color-neutral-0);
+    --nova-color-bg-sunken: var(--nova-color-neutral-100);
+    --nova-color-bg-overlay: rgb(15 23 42 / 0.45);
+    --nova-color-surface-card: var(--nova-color-neutral-0);
+    --nova-color-surface-muted: var(--nova-color-neutral-50);
+    --nova-color-text: var(--nova-color-neutral-700);
+    --nova-color-text-heading: var(--nova-color-neutral-800);
+    --nova-color-text-muted: var(--nova-color-neutral-500);
+    --nova-color-border: var(--nova-color-neutral-200);
+    --nova-color-border-strong: var(--nova-color-neutral-300);
+    --nova-color-border-focus: var(--nova-color-primary-500);
+
+    /* Sidebar */
+    --nova-color-sidebar-bg: #0f172a;
+    --nova-color-sidebar-border: #1e293b;
+    --nova-color-sidebar-text: #ffffff;
+    --nova-color-sidebar-text-muted: #94a3b8;
+    --nova-color-sidebar-active: rgb(79 70 229 / 0.2);
+    --nova-color-sidebar-hover: #1e293b;
+    --nova-sidebar-width: 16rem;
+    --nova-sidebar-width-collapsed: 4rem;
+
+    /* Typography */
+    --nova-font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --nova-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --nova-font-size-xs: 0.75rem;
+    --nova-font-size-sm: 0.875rem;
+    --nova-font-size-base: 1rem;
+    --nova-font-size-lg: 1.125rem;
+    --nova-font-size-xl: 1.25rem;
+    --nova-font-size-2xl: 1.5rem;
+    --nova-font-size-3xl: 1.875rem;
+    --nova-font-weight-normal: 400;
+    --nova-font-weight-medium: 500;
+    --nova-font-weight-semibold: 600;
+    --nova-font-weight-bold: 700;
+    --nova-line-tight: 1.25;
+    --nova-line-snug: 1.375;
+    --nova-line-normal: 1.5;
+    --nova-line-relaxed: 1.625;
+
+    /* Spacing (4px base) */
+    --nova-space-0: 0;
+    --nova-space-0-5: 0.125rem;
+    --nova-space-1: 0.25rem;
+    --nova-space-1-5: 0.375rem;
+    --nova-space-2: 0.5rem;
+    --nova-space-3: 0.75rem;
+    --nova-space-4: 1rem;
+    --nova-space-5: 1.25rem;
+    --nova-space-6: 1.5rem;
+    --nova-space-8: 2rem;
+    --nova-space-10: 2.5rem;
+    --nova-space-12: 3rem;
+    --nova-space-16: 4rem;
+
+    /* Radius */
+    --nova-radius-none: 0;
+    --nova-radius-sm: 0.25rem;
+    --nova-radius-md: 0.375rem;
+    --nova-radius-lg: 0.5rem;
+    --nova-radius-xl: 0.75rem;
+    --nova-radius-2xl: 1rem;
+    --nova-radius-full: 9999px;
+
+    /* Elevation */
+    --nova-shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+    --nova-shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.08);
+    --nova-shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+    --nova-shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.08);
+    --nova-shadow-focus: 0 0 0 3px rgb(99 102 241 / 0.35);
+
+    /* Opacity */
+    --nova-opacity-disabled: 0.5;
+    --nova-opacity-muted: 0.7;
+    --nova-opacity-overlay: 0.45;
+    --nova-opacity-skeleton: 0.4;
+
+    /* Icons / avatars */
+    --nova-icon-xs: 0.75rem;
+    --nova-icon-sm: 1rem;
+    --nova-icon-md: 1.25rem;
+    --nova-icon-lg: 1.5rem;
+    --nova-icon-xl: 2rem;
+    --nova-avatar-xs: 1.5rem;
+    --nova-avatar-sm: 2rem;
+    --nova-avatar-md: 2.25rem;
+    --nova-avatar-lg: 3rem;
+    --nova-avatar-xl: 4rem;
+
+    /* Motion */
+    --nova-duration-instant: 0ms;
+    --nova-duration-fast: 120ms;
+    --nova-duration-normal: 200ms;
+    --nova-duration-moderate: 300ms;
+    --nova-duration-slow: 450ms;
+    --nova-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --nova-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --nova-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Z-index */
+    --nova-z-base: 0;
+    --nova-z-sticky: 10;
+    --nova-z-sidebar: 30;
+    --nova-z-dropdown: 40;
+    --nova-z-drawer: 50;
+    --nova-z-modal: 60;
+    --nova-z-toast: 70;
+    --nova-z-command: 80;
+    --nova-z-tooltip: 90;
+
+    /* Org branding overrides (runtime) */
+    --nova-brand-primary: var(--nova-color-primary-600);
+    --nova-brand-accent: var(--nova-color-accent-600);
+}
+
+[data-theme='dark'] {
+    --nova-color-bg-app: #020617;
+    --nova-color-bg-elevated: #0f172a;
+    --nova-color-bg-sunken: #1e293b;
+    --nova-color-bg-overlay: rgb(2 6 23 / 0.6);
+    --nova-color-surface-card: #0f172a;
+    --nova-color-surface-muted: #1e293b;
+    --nova-color-text: #e2e8f0;
+    --nova-color-text-heading: #f1f5f9;
+    --nova-color-text-muted: #94a3b8;
+    --nova-color-border: #334155;
+    --nova-color-border-strong: #475569;
+    --nova-color-primary-50: #1e1b4b;
+    --nova-color-primary-100: #312e81;
+    --nova-color-success-soft: rgb(5 150 105 / 0.15);
+    --nova-color-warning-soft: rgb(217 119 6 / 0.15);
+    --nova-color-danger-soft: rgb(220 38 38 / 0.15);
+    --nova-color-info-soft: rgb(2 132 199 / 0.15);
+    --nova-color-sidebar-bg: #020617;
+    --nova-color-sidebar-border: #1e293b;
+    --nova-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+    --nova-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+    --nova-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.45);
+}
+
+[data-density='compact'] {
+    --nova-space-page-y: var(--nova-space-3);
+    --nova-control-py: 0.375rem;
+}
+
+[data-density='comfortable'] {
+    --nova-space-page-y: var(--nova-space-6);
+    --nova-control-py: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --nova-duration-fast: 0ms;
+        --nova-duration-normal: 0ms;
+        --nova-duration-moderate: 0ms;
+        --nova-duration-slow: 0ms;
+    }
+}

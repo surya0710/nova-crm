@@ -1,3 +1,5 @@
+@import './themes/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,7 +13,58 @@
     scrollbar-color: #475569 transparent;
 }
 
+@layer base {
+    html {
+        color: var(--nova-color-text);
+        background-color: var(--nova-color-bg-app);
+        height: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        @apply h-full overflow-x-hidden font-sans antialiased bg-app text-ink;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--nova-color-border-focus);
+        outline-offset: 2px;
+    }
+}
+
 @layer components {
+    .nova-skip-link {
+        @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-tooltip focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-white;
+    }
+
+    /* Application shell: fixed chrome, only content scrolls */
+    .nova-shell {
+        @apply flex h-full min-h-0 w-full max-w-[100vw] overflow-hidden;
+    }
+
+    .nova-shell-sidebar {
+        @apply overflow-hidden bg-sidebar text-sidebar-text;
+    }
+
+    .nova-shell-main {
+        @apply min-h-0 min-w-0 max-w-full;
+    }
+
+    .nova-shell-content {
+        @apply min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden;
+    }
+
+    .nova-content {
+        @apply mx-auto w-full max-w-[1600px] min-w-0 px-4 py-4 sm:px-6 sm:py-6 lg:px-8;
+    }
+
+    .nova-header {
+        @apply sticky top-0 z-20 shrink-0 overflow-visible border-b border-line bg-surface-card;
+    }
+
+    .nova-header-inner {
+        @apply relative flex h-14 min-w-0 items-center gap-2 overflow-visible px-3 sm:h-16 sm:gap-3 sm:px-4 lg:px-6;
+    }
+
     .landing-grid {
         background-image:
             linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
@@ -46,5 +99,25 @@
 
     .bento-card {
         @apply relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm;
+    }
+
+    .dashboard-stack {
+        @apply flex flex-col gap-6;
+    }
+
+    .dashboard-kpis {
+        @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+    }
+
+    .dashboard-primary {
+        @apply grid gap-6 lg:grid-cols-3;
+    }
+
+    .dashboard-primary-main {
+        @apply space-y-6 lg:col-span-2;
+    }
+
+    .dashboard-primary-aside {
+        @apply space-y-6;
     }
 }

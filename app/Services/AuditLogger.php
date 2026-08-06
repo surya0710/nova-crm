@@ -3,21 +3,45 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\Customer;
+use App\Models\Lead;
+use App\Models\Opportunity;
+use App\Models\ProgressUpdate;
+use App\Models\Project;
+use App\Models\ProjectReport;
+use App\Models\ResourceAllocation;
+use App\Models\Task;
+use App\Models\Organization;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Route;
 
 class AuditLogger
 {
     public function log(Model $model, string $event, array $properties = [], ?User $user = null): AuditLog
     {
-        $organizationId = $model->organization_id ?? app(TenantContext::class)->id();
+        $organizationId = $model instanceof Organization
+            ? $model->id
+            : ($model->organization_id
+                ?? ($properties['organization_id'] ?? null)
+                ?? app(TenantContext::class)->id());
+
+        if ($organizationId === null) {
+            throw new \RuntimeException('Cannot write audit log without an organization context.');
+        }
+
+        $resolvedUser = $user;
+        if ($resolvedUser === null) {
+            $authenticated = Auth::user();
+            $resolvedUser = $authenticated instanceof User ? $authenticated : null;
+        }
 
         $auditLog = AuditLog::query()->create([
             'organization_id' => $organizationId,
-            'user_id' => ($user ?? Auth::user())?->id,
+            'user_id' => $resolvedUser?->id,
             'auditable_type' => $model->getMorphClass(),
             'auditable_id' => $model->getKey(),
             'event' => $event,
@@ -68,15 +92,50 @@ class AuditLogger
 
     protected function urlFor(Model $model): ?string
     {
+        if ($model instanceof ProgressUpdate) {
+            $project = $this->resolveProjectFor($model);
+
+            return $project && Route::has('projects.show')
+                ? route('projects.show', $project)
+                : null;
+        }
+
+        if ($model instanceof ProjectReport) {
+            $project = $this->resolveProjectFor($model);
+
+            if ($project && Route::has('projects.reports.download')) {
+                return route('projects.reports.download', ['project' => $project, 'report' => $model]);
+            }
+
+            return $project && Route::has('projects.show')
+                ? route('projects.show', $project)
+                : null;
+        }
+
         $map = [
-            \App\Models\Lead::class => 'leads.show',
-            \App\Models\Customer::class => 'customers.show',
-            \App\Models\Opportunity::class => 'pipeline.show',
-            \App\Models\Task::class => 'tasks.show',
+            Lead::class => 'leads.show',
+            Customer::class => 'customers.show',
+            Opportunity::class => 'pipeline.show',
+            Task::class => 'tasks.show',
+            Project::class => 'projects.show',
+            ResourceAllocation::class => 'resources.allocations.show',
         ];
 
         $route = $map[$model::class] ?? null;
 
         return $route ? route($route, $model) : null;
+    }
+
+    protected function resolveProjectFor(Model $model): ?Project
+    {
+        if (! isset($model->project_id) || ! $model->project_id) {
+            return null;
+        }
+
+        if ($model->relationLoaded('project')) {
+            return $model->project;
+        }
+
+        return Project::query()->find($model->project_id);
     }
 }

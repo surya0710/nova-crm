@@ -1,106 +1,118 @@
 @php
-    $statusColors = [
-        'prospect' => 'bg-blue-100 text-blue-800',
-        'active' => 'bg-emerald-100 text-emerald-800',
-        'inactive' => 'bg-slate-100 text-slate-600',
+    $statusVariant = [
+        'prospect' => 'info',
+        'active' => 'success',
+        'inactive' => 'neutral',
+    ];
+    $density = $shellNav['density'] ?? 'comfortable';
+    $columns = [
+        __('Customer'),
+        __('Status'),
+        ['label' => __('Industry'), 'class' => 'hidden md:table-cell'],
+        ['label' => __('Account Manager'), 'class' => 'hidden lg:table-cell'],
+        ['label' => __('Location'), 'class' => 'hidden lg:table-cell'],
     ];
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <h1 class="text-lg font-semibold text-slate-900">{{ crm_term('customers') }}</h1>
-                <p class="text-sm text-slate-500">{{ __('Manage your customer accounts') }}</p>
-            </div>
-            @can('create', App\Models\Customer::class)
-                <a href="{{ route('customers.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition shrink-0">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    {{ __('Add Customer') }}
-                </a>
-            @endcan
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    <div class="rounded-xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 mb-6 space-y-3">
-        <form method="GET" action="{{ route('customers.index') }}" id="customers-index-filters" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <div class="lg:col-span-2">
-                <x-text-input name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, company, email…') }}" class="w-full" />
-            </div>
-            <select name="status" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
-                <option value="">{{ __('All statuses') }}</option>
-                @foreach (config('customers.statuses') as $value => $label)
-                    <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-            <x-text-input name="industry" :value="$filters['industry'] ?? ''" placeholder="{{ __('Industry') }}" class="w-full text-sm" />
-            <div class="flex gap-2">
-                <select name="assigned_to" class="flex-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
-                    <option value="">{{ __('Anyone') }}</option>
-                    @foreach ($assignees as $member)
-                        <option value="{{ $member->id }}" @selected(($filters['assigned_to'] ?? '') == $member->id)>{{ $member->name }}</option>
-                    @endforeach
-                </select>
-                <x-primary-button type="submit">{{ __('Filter') }}</x-primary-button>
-            </div>
-            @include('metadata-fields._index_query_controls')
-        </form>
-        @include('metadata-fields._saved_filter_controls', ['filterFormId' => 'customers-index-filters'])
-    </div>
+    <x-layouts.entity-listing
+        :title="crm_term('customers')"
+        :subtitle="__('Manage your customer accounts')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('customers'), 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
 
-    <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        @if ($customers->isEmpty())
-            <div class="p-12 text-center">
-                <div class="mx-auto h-12 w-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        <x-slot:actions>
+            @can('create', App\Models\Customer::class)
+                @if (auth()->user()?->hasPermission('imports.create'))
+                    <x-ui.button :href="route('customers.import.create')" variant="secondary" size="sm">{{ __('Import') }}</x-ui.button>
+                @endif
+                <x-ui.button :href="route('customers.create')" variant="primary" size="sm">{{ __('Add Customer') }}</x-ui.button>
+            @endcan
+        </x-slot:actions>
+
+        <x-slot:filters>
+            <form method="GET" action="{{ route('customers.index') }}" id="customers-index-filters" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+                <div class="lg:col-span-2">
+                    <label for="customers-search" class="sr-only">{{ __('Search customers') }}</label>
+                    <x-forms.input id="customers-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, company, email…') }}" />
                 </div>
-                <h3 class="text-sm font-semibold text-slate-900">{{ __('No customers yet') }}</h3>
-                <p class="mt-1 text-sm text-slate-500">{{ __('Add your first customer to get started.') }}</p>
-                @can('create', App\Models\Customer::class)
-                    <a href="{{ route('customers.create') }}" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
-                        {{ __('Add Customer') }} →
-                    </a>
-                @endcan
-            </div>
-        @else
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Customer') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Status') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 hidden md:table-cell">{{ __('Industry') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 hidden lg:table-cell">{{ __('Account Manager') }}</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 hidden lg:table-cell">{{ __('Location') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($customers as $customer)
-                            <tr class="hover:bg-slate-50/80 transition">
-                                <td class="px-6 py-4">
-                                    <a href="{{ route('customers.show', $customer) }}" class="group">
-                                        <p class="text-sm font-semibold text-slate-900 group-hover:text-indigo-600">{{ $customer->display_name }}</p>
-                                        <p class="text-xs text-slate-500 mt-0.5">{{ $customer->name }}@if($customer->email) · {{ $customer->email }}@endif</p>
-                                    </a>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex text-xs font-medium px-2 py-0.5 rounded-full {{ $statusColors[$customer->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ $customer->status_label }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 hidden md:table-cell text-sm text-slate-600">{{ $customer->industry ?? '—' }}</td>
-                                <td class="px-6 py-4 hidden lg:table-cell text-sm text-slate-600">{{ $customer->assignee?->name ?? '—' }}</td>
-                                <td class="px-6 py-4 hidden lg:table-cell text-sm text-slate-600">{{ $customer->city ?? '—' }}</td>
-                            </tr>
+                <x-forms.select name="status" aria-label="{{ __('Status') }}">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (config('customers.statuses') as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['status'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-forms.select>
+                <x-forms.input name="industry" :value="$filters['industry'] ?? ''" placeholder="{{ __('Industry') }}" aria-label="{{ __('Industry') }}" />
+                <x-forms.select name="state" aria-label="{{ __('State') }}">
+                    <option value="">{{ __('All states') }}</option>
+                    @foreach ($stateOptions as $state)
+                        <option value="{{ $state }}" @selected(in_array($state, \Illuminate\Support\Arr::wrap($filters['state'] ?? []), true))>{{ $state }}</option>
+                    @endforeach
+                </x-forms.select>
+                <x-forms.select name="country" aria-label="{{ __('Country') }}">
+                    <option value="">{{ __('All countries') }}</option>
+                    @foreach ($countryOptions as $country)
+                        <option value="{{ $country }}" @selected(in_array($country, \Illuminate\Support\Arr::wrap($filters['country'] ?? []), true))>{{ $country }}</option>
+                    @endforeach
+                </x-forms.select>
+                <div class="flex gap-2">
+                    <x-forms.select name="assigned_to" class="flex-1" aria-label="{{ __('Assignee') }}">
+                        <option value="">{{ __('Anyone') }}</option>
+                        @foreach ($assignees as $member)
+                            <option value="{{ $member->id }}" @selected(($filters['assigned_to'] ?? '') == $member->id)>{{ $member->name }}</option>
                         @endforeach
-                    </tbody>
-                </table>
+                    </x-forms.select>
+                    <x-ui.button type="submit" variant="primary" size="sm">{{ __('Filter') }}</x-ui.button>
+                </div>
+                @include('metadata-fields._index_query_controls')
+            </form>
+            <div class="mt-3">
+                @include('metadata-fields._saved_filter_controls', ['filterFormId' => 'customers-index-filters'])
             </div>
-            @if ($customers->hasPages())
-                <div class="px-6 py-4 border-t border-slate-100">{{ $customers->links() }}</div>
-            @endif
+        </x-slot:filters>
+
+        @if ($customers->isEmpty())
+            <x-ui.card>
+                <x-ui.empty-state-preset
+                    variant="generic"
+                    :title="__('No customers yet')"
+                    :description="__('Add your first customer to get started.')"
+                    :action-href="auth()->user()->can('create', App\Models\Customer::class) ? route('customers.create') : null"
+                    :action-label="__('Add Customer')"
+                />
+            </x-ui.card>
+        @else
+            <x-tables.table :columns="$columns" :dense="$density === 'compact'" sticky>
+                @foreach ($customers as $customer)
+                    <tr class="hover:bg-surface-muted/60 transition">
+                        <td class="px-4 py-3">
+                            <a href="{{ route('customers.show', $customer) }}" class="group block">
+                                <p class="text-sm font-semibold text-ink-heading group-hover:text-primary-700">{{ $customer->display_name }}</p>
+                                <p class="mt-0.5 text-xs text-ink-muted">{{ $customer->name }}@if($customer->email) · {{ $customer->email }}@endif</p>
+                            </a>
+                        </td>
+                        <td class="px-4 py-3">
+                            <x-ui.badge :variant="$statusVariant[$customer->status] ?? 'neutral'">{{ $customer->status_label }}</x-ui.badge>
+                        </td>
+                        <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $customer->industry ?? '—' }}</td>
+                        <td class="px-4 py-3 hidden lg:table-cell text-sm text-ink-muted">{{ $customer->assignee?->name ?? '—' }}</td>
+                        <td class="px-4 py-3 hidden lg:table-cell text-sm text-ink-muted">{{ $customer->city ?? '—' }}</td>
+                    </tr>
+                @endforeach
+            </x-tables.table>
         @endif
-    </div>
+
+        @if ($customers->hasPages())
+            <x-slot:pagination>
+                {{ $customers->links() }}
+            </x-slot:pagination>
+        @endif
+    </x-layouts.entity-listing>
 </x-app-layout>

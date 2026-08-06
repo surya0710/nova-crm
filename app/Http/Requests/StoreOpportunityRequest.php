@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Opportunity;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -10,7 +11,7 @@ class StoreOpportunityRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Opportunity::class) ?? false;
+        return $this->user()?->can('create', Opportunity::class) ?? false;
     }
 
     public function rules(): array

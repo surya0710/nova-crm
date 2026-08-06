@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Support\Money;
-
 use Illuminate\Validation\ValidationException;
 
 class InvoiceCalculationService

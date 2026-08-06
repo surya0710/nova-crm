@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\RevenueService;
+use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,7 +28,7 @@ class RevenueReportTest extends TestCase
 
     protected function asOrganization(User $user, Organization $organization): static
     {
-        app(\App\Services\TenantContext::class)->set($organization);
+        app(TenantContext::class)->set($organization);
 
         return $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id]);

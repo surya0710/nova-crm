@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\OrganizationStatus;
+use App\Services\OrganizationRoleService;
+use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +14,7 @@ use Illuminate\Support\Str;
 
 class Organization extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrganizationFactory> */
+    /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -65,7 +67,7 @@ class Organization extends Model
         });
 
         static::created(function (Organization $organization) {
-            app(\App\Services\OrganizationRoleService::class)->seedDefaultRoles($organization);
+            app(OrganizationRoleService::class)->seedDefaultRoles($organization);
         });
     }
 
@@ -86,8 +88,13 @@ class Organization extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-            ->withPivot(['role', 'role_id', 'is_owner'])
+            ->withPivot(['id', 'role', 'role_id', 'is_owner', 'is_active'])
             ->withTimestamps();
+    }
+
+    public function modules(): HasMany
+    {
+        return $this->hasMany(OrganizationModule::class);
     }
 
     public function roles(): HasMany
@@ -98,6 +105,31 @@ class Organization extends Model
     public function templateApplications(): HasMany
     {
         return $this->hasMany(OrganizationTemplateApplication::class);
+    }
+
+    public function workflows(): HasMany
+    {
+        return $this->hasMany(Workflow::class);
+    }
+
+    public function workflowConditions(): HasMany
+    {
+        return $this->hasMany(WorkflowCondition::class);
+    }
+
+    public function workflowActions(): HasMany
+    {
+        return $this->hasMany(WorkflowAction::class);
+    }
+
+    public function workflowExecutions(): HasMany
+    {
+        return $this->hasMany(WorkflowExecution::class);
+    }
+
+    public function workflowExecutionLogs(): HasMany
+    {
+        return $this->hasMany(WorkflowExecutionLog::class);
     }
 
     public function initialTemplateApplication(): ?OrganizationTemplateApplication
@@ -154,6 +186,7 @@ class Organization extends Model
             'role_id' => $role->id,
             'role' => $roleSlug,
             'is_owner' => $roleSlug === 'organization-owner',
+            'is_active' => true,
         ]);
     }
 

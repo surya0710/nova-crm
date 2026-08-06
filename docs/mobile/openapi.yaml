@@ -1,0 +1,646 @@
+openapi: 3.1.0
+info:
+  title: NovaCRM HRMS Mobile API
+  description: |
+    OpenAPI specification for NovaCRM HRMS mobile endpoints.
+    Extracted from Laravel implementation (routes/api*.php, controllers, form requests).
+    
+    **Note:** Many ESS features (leave, profile, documents, holidays) are not yet exposed via REST API.
+  version: 1.0.0
+  contact:
+    name: NovaCRM
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+security:
+  - bearerAuth: []
+    organizationId: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+    organizationId:
+      type: apiKey
+      in: header
+      name: X-Organization-Id
+
+  parameters:
+    OrganizationId:
+      name: X-Organization-Id
+      in: header
+      required: true
+      schema:
+        type: integer
+      description: Organization tenant ID
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    EmptyState:
+      type: object
+      properties:
+        message:
+          type: string
+        empty_state:
+          type: boolean
+        audience:
+          type: string
+          enum: [employee, manager, hr, supervisor]
+
+    WorkingHours:
+      type: object
+      properties:
+        worked_minutes:
+          type: integer
+        worked_label:
+          type: string
+        expected_minutes:
+          type: integer
+          nullable: true
+        expected_label:
+          type: string
+          nullable: true
+        remaining_minutes:
+          type: integer
+          nullable: true
+        remaining_label:
+          type: string
+          nullable: true
+        overtime_minutes:
+          type: integer
+        is_live:
+          type: boolean
+        clock_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        clock_out_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ShiftInfo:
+      type: object
+      properties:
+        available:
+          type: boolean
+        name:
+          type: string
+        code:
+          type: string
+        start_time:
+          type: string
+        end_time:
+          type: string
+        break_minutes:
+          type: integer
+        branch:
+          type: string
+          nullable: true
+        phase:
+          type: string
+          enum: [upcoming, current, completed]
+        phase_label:
+          type: string
+
+    AttendanceIndicator:
+      type: object
+      nullable: true
+      properties:
+        key:
+          type: string
+          enum: [missing_checkout, late, early, on_time]
+        label:
+          type: string
+        color:
+          type: string
+          enum: [red, orange, yellow, green]
+
+    AttendanceActions:
+      type: object
+      properties:
+        can_check_in:
+          type: boolean
+        can_check_out:
+          type: boolean
+        check_in_url:
+          type: string
+          description: Web route URL — use API endpoints for mobile
+        check_out_url:
+          type: string
+        blocked_reason:
+          type: string
+          nullable: true
+
+    AttendanceDashboard:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        state:
+          type: string
+          enum: [not_checked_in, checked_in, checked_out, on_leave, holiday, weekend]
+        state_label:
+          type: string
+        working_hours:
+          $ref: '#/components/schemas/WorkingHours'
+        shift_info:
+          $ref: '#/components/schemas/ShiftInfo'
+        indicator:
+          $ref: '#/components/schemas/AttendanceIndicator'
+        actions:
+          $ref: '#/components/schemas/AttendanceActions'
+        on_leave_today:
+          type: boolean
+
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        organization_id:
+          type: integer
+        employee_id:
+          type: integer
+        shift_id:
+          type: integer
+          nullable: true
+        attendance_date:
+          type: string
+          format: date
+        clock_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        clock_out_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        source:
+          type: string
+          enum: [manual, biometric, mobile, api, import]
+        working_minutes:
+          type: integer
+          nullable: true
+        late_minutes:
+          type: integer
+        early_departure_minutes:
+          type: integer
+        overtime_minutes:
+          type: integer
+
+    TeamSummary:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        team_count:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        leave:
+          type: integer
+        late:
+          type: integer
+        working:
+          type: integer
+        checked_out:
+          type: integer
+        not_checked_in_count:
+          type: integer
+        late_employees:
+          type: array
+          items:
+            type: object
+            properties:
+              employee_id:
+                type: integer
+              name:
+                type: string
+              late_minutes:
+                type: integer
+              clock_in_at:
+                type: string
+                format: date-time
+        attendance_url:
+          type: string
+
+    LookupItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        badge:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+
+    LookupPaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        has_more:
+          type: boolean
+
+    LookupResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LookupItem'
+        meta:
+          $ref: '#/components/schemas/LookupPaginationMeta'
+
+    ClockRequest:
+      type: object
+      properties:
+        clock_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        clock_out_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    InvitationActivate:
+      type: object
+      required: [token, password, password_confirmation]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+
+paths:
+  /invitations/activate:
+    post:
+      tags: [Identity]
+      summary: Activate invitation (public)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationActivate'
+      responses:
+        '200':
+          description: Account activated
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /attendance/dashboard:
+    get:
+      tags: [Attendance]
+      summary: Employee attendance dashboard
+      description: Requires ess.access permission and linked employee record
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Dashboard data or empty state
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AttendanceDashboard'
+                  - $ref: '#/components/schemas/EmptyState'
+        '403':
+          description: Missing permission
+
+  /attendance/check-in:
+    post:
+      tags: [Attendance]
+      summary: Check in
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clock_in_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Checked in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  record:
+                    $ref: '#/components/schemas/AttendanceRecord'
+                  dashboard:
+                    $ref: '#/components/schemas/AttendanceDashboard'
+        '422':
+          description: Business rule or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /attendance/check-out:
+    post:
+      tags: [Attendance]
+      summary: Check out
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clock_out_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Checked out
+        '422':
+          description: Business rule or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /attendance/team-summary:
+    get:
+      tags: [Attendance]
+      summary: Manager team attendance summary
+      description: Requires manager.dashboard permission
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Team KPIs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TeamSummary'
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Full dashboard payload
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Dashboard sections and widgets
+
+  /dashboard/widgets:
+    get:
+      tags: [Dashboard]
+      summary: List available widgets
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Widget list
+
+  /dashboard/widgets/{widgetKey}/data:
+    get:
+      tags: [Dashboard]
+      summary: Widget data by key
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: widgetKey
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - mark_attendance
+              - employee_attendance
+              - working_hours
+              - shift_information
+              - leave_balance
+              - manager_attendance
+              - notifications
+      responses:
+        '200':
+          description: Widget-specific data payload
+
+  /dashboard/quick-actions:
+    get:
+      tags: [Dashboard]
+      summary: Quick action links
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Quick actions list
+
+  /lookups/{entity}:
+    get:
+      tags: [Lookups]
+      summary: Search lookup entities
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: entity
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [users, employees, departments, designations, branches, shifts]
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: id
+          in: query
+          schema:
+            type: integer
+          description: Resolve single record by ID
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LookupResponse'
+        '403':
+          description: Missing permission or module not licensed
+        '422':
+          description: Organization context required
+
+  /rbac/authorization:
+    get:
+      tags: [RBAC]
+      summary: Effective permissions
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: permission
+          in: query
+          schema:
+            type: string
+          description: Check single permission
+      responses:
+        '200':
+          description: Permission list or check result
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      description: Requires api.access permission
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: assigned_to
+          in: query
+          schema:
+            type: integer
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum: [overdue]
+      responses:
+        '200':
+          description: Paginated task list
+
+  /tasks/{task}:
+    get:
+      tags: [Tasks]
+      summary: Task detail
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: task
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task resource
+
+  /tasks/{task}/complete:
+    post:
+      tags: [Tasks]
+      summary: Complete task
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: task
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task completed
+
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Paginated project list
+
+  /notification-preferences:
+    get:
+      tags: [Notifications]
+      summary: Get notification preferences
+      description: Project-scoped preferences. Requires projects.notifications.manage
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+      responses:
+        '200':
+          description: Preferences resource
+
+tags:
+  - name: Identity
+    description: User identity and invitation
+  - name: Attendance
+    description: ESS attendance APIs
+  - name: Dashboard
+    description: Dashboard and widgets
+  - name: Lookups
+    description: Entity search and pickers
+  - name: RBAC
+    description: Authorization lookup
+  - name: Tasks
+    description: Task management (requires api.access)
+  - name: Projects
+    description: Project management (requires api.access)
+  - name: Notifications
+    description: Notification preferences

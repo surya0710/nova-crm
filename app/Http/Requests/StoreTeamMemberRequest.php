@@ -7,7 +7,6 @@ use App\Services\OrganizationMemberService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class StoreTeamMemberRequest extends FormRequest
 {
@@ -19,8 +18,6 @@ class StoreTeamMemberRequest extends FormRequest
     public function rules(): array
     {
         $organization = app(TenantContext::class)->get();
-        $email = strtolower(trim($this->input('email', '')));
-        $userExists = $email !== '' && User::query()->where('email', $email)->exists();
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -42,7 +39,7 @@ class StoreTeamMemberRequest extends FormRequest
                 },
             ],
             'role' => ['required', 'string', Rule::in(OrganizationMemberService::assignableRoleSlugs())],
-            'password' => [$userExists ? 'nullable' : 'required', 'confirmed', Password::defaults()],
+            'send_invitation' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -50,6 +47,10 @@ class StoreTeamMemberRequest extends FormRequest
     {
         if ($this->has('email')) {
             $this->merge(['email' => strtolower(trim($this->email))]);
+        }
+
+        if (! $this->has('send_invitation')) {
+            $this->merge(['send_invitation' => true]);
         }
     }
 }

@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SendOrganizationTestMailRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $organization = app(\App\Services\TenantContext::class)->get();
+        $organization = app(TenantContext::class)->get();
 
         return $organization && ($this->user()?->can('update', $organization) ?? false);
     }

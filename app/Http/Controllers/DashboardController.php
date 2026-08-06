@@ -3,23 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Lead;
 use App\Models\Product;
 use App\Models\Task;
+use App\Services\Dashboard\WorkspaceService;
+use App\Services\LeadVisibilityService;
 use App\Services\TenantContext;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(TenantContext $tenant): View
-    {
+    public function __invoke(
+        TenantContext $tenant,
+        WorkspaceService $workspace,
+        LeadVisibilityService $leadVisibility,
+    ): View {
         $organization = $tenant->get();
+        $user = auth()->user();
+
+        $workspaceData = $workspace->build($user, $organization);
 
         $leadStats = [
-            'total' => Lead::query()->count(),
-            'open' => Lead::query()->whereNotIn('status', ['won', 'lost'])->count(),
-            'won' => Lead::query()->where('status', 'won')->count(),
-            'new' => Lead::query()->where('status', 'new')->count(),
+            'total' => $leadVisibility->visibleQuery($user, $organization)->count(),
+            'open' => $leadVisibility->visibleQuery($user, $organization)->whereNotIn('status', ['won', 'lost'])->count(),
+            'won' => $leadVisibility->visibleQuery($user, $organization)->where('status', 'won')->count(),
+            'new' => $leadVisibility->visibleQuery($user, $organization)->where('status', 'new')->count(),
         ];
 
         $customerStats = [
@@ -32,7 +39,7 @@ class DashboardController extends Controller
             'active' => Product::query()->where('status', 'active')->count(),
         ];
 
-        $recentLeads = Lead::query()
+        $recentLeads = $leadVisibility->visibleQuery($user, $organization)
             ->with('assignee')
             ->latest()
             ->limit(5)
@@ -61,6 +68,11 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'organization' => $organization,
+            'workspace' => $workspaceData,
+            'widgets' => $workspaceData['dashboard']['widgets'] ?? [],
+            'quickActions' => $workspaceData['quick_actions'] ?? [],
+            'notifications' => $workspaceData['notifications'] ?? [],
+            'recentActivities' => $workspaceData['recent_activities'] ?? [],
             'leadStats' => $leadStats,
             'customerStats' => $customerStats,
             'productStats' => $productStats,

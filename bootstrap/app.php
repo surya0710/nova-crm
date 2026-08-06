@@ -1,8 +1,28 @@
 <?php
 
+use App\Http\Middleware\ConfigurePlatformSession;
+use App\Http\Middleware\ConfigureSubdirectory;
+use App\Http\Middleware\EnsureOrganizationApiAccess;
+use App\Http\Middleware\EnsureOrganizationIsSet;
+use App\Http\Middleware\EnsureOrganizationLifecycle;
+use App\Http\Middleware\EnsurePlatformAuthenticated;
+use App\Http\Middleware\EnsurePlatformPermission;
+use App\Http\Middleware\EnsureUserHasPermission;
+use App\Http\Middleware\MarketingTrackingMiddleware;
+use App\Http\Middleware\PreventPlatformSessionOnTenant;
+use App\Http\Middleware\RecordRecentPage;
+use App\Http\Middleware\RedirectIfPlatformAuthenticated;
+use App\Http\Middleware\SetCurrentOrganization;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,38 +31,58 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            \Illuminate\Support\Facades\Route::middleware('platform.web')
+            Route::middleware('platform.web')
                 ->prefix('platform')
                 ->name('platform.')
                 ->group(base_path('routes/platform.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/careers.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(prepend: [
-            \App\Http\Middleware\ConfigureSubdirectory::class,
+            ConfigureSubdirectory::class,
+        ]);
+
+        $middleware->web(append: [
+            RecordRecentPage::class,
         ]);
 
         $middleware->group('platform.web', [
-            \App\Http\Middleware\ConfigurePlatformSession::class,
-            \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\ConfigureSubdirectory::class,
+            ConfigurePlatformSession::class,
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            ShareErrorsFromSession::class,
+            ValidateCsrfToken::class,
+            SubstituteBindings::class,
+            ConfigureSubdirectory::class,
         ]);
 
         $middleware->alias([
-            'set.organization' => \App\Http\Middleware\SetCurrentOrganization::class,
-            'ensure.organization' => \App\Http\Middleware\EnsureOrganizationIsSet::class,
-            'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
-            'platform.auth' => \App\Http\Middleware\EnsurePlatformAuthenticated::class,
-            'platform.guest' => \App\Http\Middleware\RedirectIfPlatformAuthenticated::class,
-            'platform.permission' => \App\Http\Middleware\EnsurePlatformPermission::class,
-            'prevent.platform.tenant' => \App\Http\Middleware\PreventPlatformSessionOnTenant::class,
-            'organization.lifecycle' => \App\Http\Middleware\EnsureOrganizationLifecycle::class,
-            'organization.api' => \App\Http\Middleware\EnsureOrganizationApiAccess::class,
+            'set.organization' => SetCurrentOrganization::class,
+            'ensure.organization' => EnsureOrganizationIsSet::class,
+            'permission' => EnsureUserHasPermission::class,
+            'platform.auth' => EnsurePlatformAuthenticated::class,
+            'platform.guest' => RedirectIfPlatformAuthenticated::class,
+            'platform.permission' => EnsurePlatformPermission::class,
+            'prevent.platform.tenant' => PreventPlatformSessionOnTenant::class,
+            'organization.lifecycle' => EnsureOrganizationLifecycle::class,
+            'organization.api' => EnsureOrganizationApiAccess::class,
+            'module' => \App\Http\Middleware\EnsureOrganizationHasModule::class,
+            'marketing.tracking' => MarketingTrackingMiddleware::class,
+            'careers.organization' => \App\Http\Middleware\ResolveCareerOrganization::class,
+            'careers.candidate' => \App\Http\Middleware\EnsureCandidateBelongsToOrganization::class,
+        ]);
+
+        // Beacon-style endpoint hit by anonymous browsers that hold no CSRF
+        // token; protected instead by throttling and strict payload validation.
+        // Provider webhooks are signed (e.g. Meta X-Hub-Signature-256) and
+        // similarly cannot carry a Laravel CSRF cookie.
+        $middleware->validateCsrfTokens(except: [
+            'marketing/track',
+            'webhooks/marketing/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

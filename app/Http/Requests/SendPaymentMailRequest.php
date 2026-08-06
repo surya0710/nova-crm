@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesClientEmailFields;
+use App\Models\Payment;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SendPaymentMailRequest extends FormRequest
@@ -13,7 +14,7 @@ class SendPaymentMailRequest extends FormRequest
     {
         $payment = $this->route('payment');
 
-        return $payment && ($this->user()?->can('create', \App\Models\Payment::class) ?? false);
+        return $payment && ($this->user()?->can('create', Payment::class) ?? false);
     }
 
     public function rules(): array

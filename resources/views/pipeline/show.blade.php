@@ -1,206 +1,269 @@
 @php
-    $stageColors = [
-        'qualification' => 'bg-blue-100 text-blue-800',
-        'proposal' => 'bg-violet-100 text-violet-800',
-        'negotiation' => 'bg-amber-100 text-amber-800',
-        'closed_won' => 'bg-emerald-100 text-emerald-800',
-        'closed_lost' => 'bg-slate-100 text-slate-600',
+    $stageVariant = [
+        'qualification' => 'info',
+        'proposal' => 'primary',
+        'negotiation' => 'warning',
+        'closed_won' => 'success',
+        'closed_lost' => 'neutral',
     ];
+    $weightedForecast = ($opportunity->amount !== null && $opportunity->probability !== null)
+        ? ((float) $opportunity->amount * (int) $opportunity->probability / 100)
+        : null;
+    $subtitle = $opportunity->customer?->display_name;
 @endphp
 
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <h1 class="text-lg font-semibold text-slate-900">{{ $opportunity->title }}</h1>
-                    <span class="inline-flex text-xs font-medium px-2 py-0.5 rounded-full {{ $stageColors[$opportunity->stage] ?? 'bg-slate-100 text-slate-600' }}">
-                        {{ $opportunity->stage_label }}
-                    </span>
-                </div>
-                @if ($opportunity->customer)
-                    <p class="text-sm text-slate-500">{{ $opportunity->customer->display_name }}</p>
-                @endif
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-                @can('update', $opportunity)
-                    <a href="{{ route('pipeline.edit', $opportunity) }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">{{ __('Edit') }}</a>
-                @endcan
-                @can('delete', $opportunity)
-                    <form method="POST" action="{{ route('pipeline.destroy', $opportunity) }}" onsubmit="return confirm('{{ __('Delete this deal?') }}')">
-                        @csrf @method('DELETE')
-                        <x-danger-button type="submit">{{ __('Delete') }}</x-danger-button>
-                    </form>
-                @endcan
-            </div>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    @can('update', $opportunity)
-        @if ($opportunity->isOpen())
-            <div class="mb-6 rounded-xl bg-white border border-slate-200 shadow-sm p-5 sm:p-6">
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                        <h3 class="text-sm font-semibold text-slate-900">{{ __('Pipeline Stage') }}</h3>
-                        <p class="mt-0.5 text-sm text-slate-500">{{ __('Move this deal through your pipeline.') }}</p>
-                    </div>
-                    <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}" class="flex items-center gap-3">
-                        @csrf @method('PATCH')
-                        <select name="stage" onchange="this.form.submit()" class="text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg shadow-sm py-2.5 px-3 min-w-[200px]">
+    <x-layouts.entity-detail
+        :title="$opportunity->title"
+        :subtitle="$subtitle"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('pipeline'), 'href' => route('pipeline.index')],
+                ['label' => $opportunity->title, 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <x-slot:actions>
+            @can('update', $opportunity)
+                <x-ui.button :href="route('pipeline.edit', $opportunity)" variant="secondary" size="sm">{{ __('Edit') }}</x-ui.button>
+            @endcan
+            @can('delete', $opportunity)
+                <form method="POST" action="{{ route('pipeline.destroy', $opportunity) }}" onsubmit="return confirm('{{ __('Delete this deal?') }}')">
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.button type="submit" variant="danger" size="sm">{{ __('Delete') }}</x-ui.button>
+                </form>
+            @endcan
+        </x-slot:actions>
+
+        <x-slot:tabs>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-ui.badge :variant="$stageVariant[$opportunity->stage] ?? 'neutral'">{{ $opportunity->stage_label }}</x-ui.badge>
+                @if ($opportunity->assignee)
+                    <span class="text-xs text-ink-muted">{{ __('Assigned to :name', ['name' => $opportunity->assignee->name]) }}</span>
+                @endif
+            </div>
+        </x-slot:tabs>
+
+        @can('update', $opportunity)
+            @if ($opportunity->isOpen())
+                <x-entity.section :title="__('Pipeline Stage')" :subtitle="__('Move this deal through your pipeline.')">
+                    <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}" class="mb-4 flex flex-wrap items-center gap-3">
+                        @csrf
+                        @method('PATCH')
+                        <label for="opportunity-stage" class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Stage') }}</label>
+                        <x-forms.select id="opportunity-stage" name="stage" onchange="this.form.submit()" class="min-w-[12rem]">
                             @foreach (config('pipeline.open_stages') as $value)
                                 <option value="{{ $value }}" @selected($opportunity->stage === $value)>{{ config('pipeline.stages.'.$value) }}</option>
                             @endforeach
-                        </select>
+                        </x-forms.select>
                     </form>
-                </div>
-                <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                    <span class="text-xs font-medium text-slate-500 self-center mr-1">{{ __('Quick set:') }}</span>
-                    @foreach (config('pipeline.open_stages') as $stage)
-                        @if ($opportunity->stage !== $stage)
-                            <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="stage" value="{{ $stage }}">
-                                <button type="submit" class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition">
-                                    {{ config('pipeline.stages.'.$stage) }}
-                                </button>
-                            </form>
-                        @endif
-                    @endforeach
-                </div>
-                <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        x-data=""
-                        x-on:click="$dispatch('open-modal', 'opportunity-mark-won')"
-                        class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 transition"
-                    >
-                        {{ __('Mark as Won') }}
-                    </button>
-                    <button
-                        type="button"
-                        x-data=""
-                        x-on:click="$dispatch('open-modal', 'opportunity-mark-lost')"
-                        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-                    >
-                        {{ __('Mark as Lost') }}
-                    </button>
-                </div>
-            </div>
-            <x-opportunity-close-modal :opportunity="$opportunity" />
-        @else
-            <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-                <p class="text-sm text-slate-600">
-                    {{ __('This deal is closed and cannot be moved to another stage.') }}
-                </p>
-            </div>
-        @endif
-    @endcan
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div class="xl:col-span-2 space-y-6">
-            <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 class="font-semibold text-slate-900">{{ __('Deal Details') }}</h3></div>
-                <dl class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                    <div class="mb-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+                        <span class="mr-1 self-center text-xs font-medium text-ink-muted">{{ __('Quick set:') }}</span>
+                        @foreach (config('pipeline.open_stages') as $stage)
+                            @if ($opportunity->stage !== $stage)
+                                <form method="POST" action="{{ route('pipeline.stage.update', $opportunity) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="stage" value="{{ $stage }}">
+                                    <x-ui.button type="submit" variant="ghost" size="sm">{{ config('pipeline.stages.'.$stage) }}</x-ui.button>
+                                </form>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 border-t border-line pt-4">
+                        <x-ui.button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            x-data
+                            x-on:click="$dispatch('open-modal', 'opportunity-mark-won')"
+                        >{{ __('Mark as Won') }}</x-ui.button>
+                        <x-ui.button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            x-data
+                            x-on:click="$dispatch('open-modal', 'opportunity-mark-lost')"
+                        >{{ __('Mark as Lost') }}</x-ui.button>
+                    </div>
+                </x-entity.section>
+            @else
+                <x-entity.section :title="__('Pipeline Stage')">
+                    <p class="text-sm text-ink-muted">{{ __('This deal is closed and cannot be moved to another stage.') }}</p>
+                </x-entity.section>
+            @endif
+        @endcan
+
+        <x-entity.section :title="__('Deal details')">
+            <x-entity.definition-list>
+                <x-entity.definition-item :label="__('Value')">
+                    @if ($opportunity->amount)
+                        {{ $opportunity->currency }} {{ number_format($opportunity->amount, 2) }}
+                    @else
+                        —
+                    @endif
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="__('Probability')">
+                    {{ $opportunity->probability !== null ? $opportunity->probability.'%' : '—' }}
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="__('Weighted forecast')">
+                    @if ($weightedForecast !== null)
+                        {{ $opportunity->currency }} {{ number_format($weightedForecast, 2) }}
+                    @else
+                        —
+                    @endif
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="__('Expected Close')">
+                    {{ $opportunity->expected_close_date?->format('M j, Y') ?? '—' }}
+                </x-entity.definition-item>
+                @if ($opportunity->isWon())
+                    <x-entity.definition-item :label="__('Won Date')">
+                        <span class="font-semibold text-success">{{ $opportunity->won_at?->format('M j, Y') ?? '—' }}</span>
+                    </x-entity.definition-item>
+                @endif
+                @if ($opportunity->isLost())
+                    <x-entity.definition-item :label="__('Lost Reason')" :span="2">
+                        <span class="whitespace-pre-wrap">{{ $opportunity->lost_reason ?? '—' }}</span>
+                    </x-entity.definition-item>
+                @endif
+                <x-entity.definition-item :label="__('Assigned To')">
+                    {{ $opportunity->assignee?->name ?? __('Unassigned') }}
+                </x-entity.definition-item>
+                @if ($opportunity->customer)
+                    <x-entity.definition-item :label="__('Customer')">
+                        <a href="{{ route('customers.show', $opportunity->customer) }}" class="text-primary-600 hover:text-primary-700">{{ $opportunity->customer->display_name }}</a>
+                    </x-entity.definition-item>
+                @endif
+                @if ($opportunity->lead)
+                    <x-entity.definition-item :label="__('Related Lead')">
+                        <a href="{{ route('leads.show', $opportunity->lead) }}" class="text-primary-600 hover:text-primary-700">{{ $opportunity->lead->name }}</a>
+                    </x-entity.definition-item>
+                @endif
+                @if ($opportunity->description)
+                    <x-entity.definition-item :label="__('Description')" :span="2">
+                        <span class="whitespace-pre-wrap">{{ $opportunity->description }}</span>
+                    </x-entity.definition-item>
+                @endif
+            </x-entity.definition-list>
+        </x-entity.section>
+
+        @include('metadata-fields._runtime_detail', [
+            'metadataFields' => $metadataFields ?? collect(),
+            'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+            'record' => $opportunity,
+        ])
+
+        <x-entity.section :title="__('Activity')" :subtitle="__('Notes and updates')" :padding="true">
+            <x-activity.timeline
+                :empty="$opportunity->notes->isEmpty()"
+                :empty-title="__('No activity yet')"
+                :empty-description="__('Add a note to start the timeline.')"
+            >
+                @can('update', $opportunity)
+                    <x-slot:composer>
+                        <form id="opportunity-note-form" method="POST" action="{{ route('pipeline.notes.store', $opportunity) }}" class="space-y-3">
+                            @csrf
+                            <x-forms.field :label="__('Add a note')" name="body" required>
+                                <x-forms.textarea id="body" name="body" rows="3" required placeholder="{{ __('Follow-up call scheduled, sent proposal…') }}">{{ old('body') }}</x-forms.textarea>
+                            </x-forms.field>
+                            <div class="flex justify-end">
+                                <x-ui.button type="submit" form="opportunity-note-form" variant="primary" size="sm">{{ __('Add Note') }}</x-ui.button>
+                            </div>
+                        </form>
+                    </x-slot:composer>
+                @endcan
+
+                @foreach ($opportunity->notes as $note)
+                    <x-activity.timeline-item
+                        :actor="$note->user->name"
+                        :timestamp="$note->created_at"
+                    >{{ $note->body }}</x-activity.timeline-item>
+                @endforeach
+            </x-activity.timeline>
+        </x-entity.section>
+
+        <x-attachments-panel
+            attachable-type="opportunity"
+            :attachable-id="$opportunity->id"
+            :attachments="$opportunity->attachments"
+            :can-upload="auth()->user()->can('attachments.create')"
+            :can-delete="auth()->user()->can('attachments.delete')"
+        />
+
+        <x-tasks-panel
+            taskable-type="opportunity"
+            :taskable-id="$opportunity->id"
+            :tasks="$opportunity->tasks"
+            :can-create="auth()->user()->can('tasks.create')"
+        />
+
+        <x-slot:aside>
+            <x-entity.section :title="__('Forecast')">
+                <dl class="space-y-3 text-sm">
                     <div>
-                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Value') }}</dt>
-                        <dd class="mt-1 text-sm font-semibold text-slate-900">
-                            @if ($opportunity->amount){{ $opportunity->currency }} {{ number_format($opportunity->amount, 2) }}@else—@endif
+                        <dt class="text-xs text-ink-muted">{{ __('Deal value') }}</dt>
+                        <dd class="mt-1 font-medium text-ink-heading">
+                            @if ($opportunity->amount)
+                                {{ $opportunity->currency }} {{ number_format($opportunity->amount, 2) }}
+                            @else
+                                —
+                            @endif
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Probability') }}</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ $opportunity->probability !== null ? $opportunity->probability.'%' : '—' }}</dd>
+                        <dt class="text-xs text-ink-muted">{{ __('Probability') }}</dt>
+                        <dd class="mt-1 text-ink-heading">{{ $opportunity->probability !== null ? $opportunity->probability.'%' : '—' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Expected Close') }}</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ $opportunity->expected_close_date?->format('M j, Y') ?? '—' }}</dd>
+                        <dt class="text-xs text-ink-muted">{{ __('Weighted forecast') }}</dt>
+                        <dd class="mt-1 font-semibold text-ink-heading">
+                            @if ($weightedForecast !== null)
+                                {{ $opportunity->currency }} {{ number_format($weightedForecast, 2) }}
+                            @else
+                                —
+                            @endif
+                        </dd>
                     </div>
-                    @if ($opportunity->isWon())
-                        <div>
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Won Date') }}</dt>
-                            <dd class="mt-1 text-sm font-semibold text-emerald-700">{{ $opportunity->won_at?->format('M j, Y') ?? '—' }}</dd>
-                        </div>
-                    @endif
-                    @if ($opportunity->isLost())
-                        <div class="sm:col-span-2">
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Lost Reason') }}</dt>
-                            <dd class="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{{ $opportunity->lost_reason ?? '—' }}</dd>
-                        </div>
-                    @endif
                     <div>
-                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Assigned To') }}</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ $opportunity->assignee?->name ?? __('Unassigned') }}</dd>
+                        <dt class="text-xs text-ink-muted">{{ __('Expected close') }}</dt>
+                        <dd class="mt-1 text-ink-heading">{{ $opportunity->expected_close_date?->format('M j, Y') ?? '—' }}</dd>
                     </div>
-                    @if ($opportunity->customer)
+                </dl>
+            </x-entity.section>
+
+            <x-entity.section :title="__('Audit')">
+                <dl class="space-y-3 text-sm">
+                    <div>
+                        <dt class="text-xs text-ink-muted">{{ __('Created') }}</dt>
+                        <dd class="text-ink-heading">{{ $opportunity->created_at->format('M j, Y g:i A') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs text-ink-muted">{{ __('Last updated') }}</dt>
+                        <dd class="text-ink-heading">{{ $opportunity->updated_at->format('M j, Y g:i A') }}</dd>
+                    </div>
+                    @if ($opportunity->creator)
                         <div>
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Customer') }}</dt>
-                            <dd class="mt-1 text-sm"><a href="{{ route('customers.show', $opportunity->customer) }}" class="text-indigo-600 hover:text-indigo-800">{{ $opportunity->customer->display_name }}</a></dd>
-                        </div>
-                    @endif
-                    @if ($opportunity->lead)
-                        <div>
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Related Lead') }}</dt>
-                            <dd class="mt-1 text-sm"><a href="{{ route('leads.show', $opportunity->lead) }}" class="text-indigo-600 hover:text-indigo-800">{{ $opportunity->lead->name }}</a></dd>
-                        </div>
-                    @endif
-                    @if ($opportunity->description)
-                        <div class="sm:col-span-2">
-                            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ __('Description') }}</dt>
-                            <dd class="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{{ $opportunity->description }}</dd>
+                            <dt class="text-xs text-ink-muted">{{ __('Created by') }}</dt>
+                            <dd class="text-ink-heading">{{ $opportunity->creator->name }}</dd>
                         </div>
                     @endif
                 </dl>
-            </div>
+            </x-entity.section>
 
-            @include('metadata-fields._runtime_detail', [
-                'metadataFields' => $metadataFields ?? collect(),
-                'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
-                'record' => $opportunity,
-            ])
+            <x-ui.button :href="route('pipeline.index')" variant="link" size="sm">← {{ __('Back to pipeline') }}</x-ui.button>
+        </x-slot:aside>
+    </x-layouts.entity-detail>
 
-            <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 class="font-semibold text-slate-900">{{ __('Activity') }}</h3></div>
-                <div class="p-6">
-                    @can('update', $opportunity)
-                        <form method="POST" action="{{ route('pipeline.notes.store', $opportunity) }}" class="mb-6">
-                            @csrf
-                            <textarea name="body" rows="3" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" placeholder="{{ __('Add a note…') }}" required>{{ old('body') }}</textarea>
-                            <div class="mt-3 flex justify-end"><x-primary-button type="submit">{{ __('Add Note') }}</x-primary-button></div>
-                        </form>
-                    @endcan
-                    @forelse ($opportunity->notes as $note)
-                        <div class="flex gap-3 {{ ! $loop->last ? 'mb-4 pb-4 border-b border-slate-100' : '' }}">
-                            <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">{{ strtoupper(substr($note->user->name, 0, 1)) }}</div>
-                            <div>
-                                <p class="text-sm font-medium text-slate-900">{{ $note->user->name }} <span class="text-xs text-slate-400 font-normal">{{ $note->created_at->diffForHumans() }}</span></p>
-                                <p class="mt-1 text-sm text-slate-600 whitespace-pre-wrap">{{ $note->body }}</p>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-slate-500 text-center py-4">{{ __('No activity yet.') }}</p>
-                    @endforelse
-                </div>
-            </div>
-
-            <x-attachments-panel
-                attachable-type="opportunity"
-                :attachable-id="$opportunity->id"
-                :attachments="$opportunity->attachments"
-                :can-upload="auth()->user()->can('attachments.create')"
-                :can-delete="auth()->user()->can('attachments.delete')"
-            />
-
-            <x-tasks-panel
-                taskable-type="opportunity"
-                :taskable-id="$opportunity->id"
-                :tasks="$opportunity->tasks"
-                :can-create="auth()->user()->can('tasks.create')"
-            />
-        </div>
-        <div>
-            <a href="{{ route('pipeline.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800">← {{ __('Back to pipeline') }}</a>
-        </div>
-    </div>
+    @can('update', $opportunity)
+        @if ($opportunity->isOpen())
+            <x-opportunity-close-modal :opportunity="$opportunity" />
+        @endif
+    @endcan
 </x-app-layout>

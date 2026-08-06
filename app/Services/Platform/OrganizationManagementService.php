@@ -108,6 +108,22 @@ class OrganizationManagementService
             'recent_audit' => $recentAudit,
             'api_tokens' => $apiTokens,
             'template_application' => $organization->initialTemplateApplication(),
+            'administrators' => $this->administrators($organization),
+            'subscription' => $organization->settings['subscription'] ?? [
+                'status' => $organization->isActive() ? 'active' : (string) $organization->status->value,
+                'plan' => $organization->plan,
+            ],
+            'modules' => app(\App\Services\Platform\PlatformLicensingService::class)
+                ->organizationLicensing($organization),
+            'usage' => [
+                'users' => $organization->users_count,
+                'storage_bytes' => $organization->storage_used_bytes,
+                'storage_mb' => round(($organization->storage_used_bytes ?? 0) / 1048576, 2),
+                'leads' => $counts['leads'],
+                'customers' => $counts['customers'],
+                'opportunities' => $counts['opportunities'],
+                'invoices' => $counts['invoices'],
+            ],
         ];
     }
 
@@ -244,6 +260,46 @@ class OrganizationManagementService
         return $organization->fresh();
     }
 
+    public function restore(Organization $organization, PlatformUser $actor): Organization
+    {
+        return $this->activate($organization, $actor);
+    }
+
+    public function update(Organization $organization, array $data, PlatformUser $actor): Organization
+    {
+        $organization->update([
+            'name' => $data['name'] ?? $organization->name,
+            'email' => $data['email'] ?? $organization->email,
+            'phone' => $data['phone'] ?? $organization->phone,
+            'website' => $data['website'] ?? $organization->website,
+            'plan' => $data['plan'] ?? $organization->plan,
+            'timezone' => $data['timezone'] ?? $organization->timezone,
+            'currency' => isset($data['currency']) ? strtoupper($data['currency']) : $organization->currency,
+            'tax_name' => $data['tax_name'] ?? $organization->tax_name,
+        ]);
+
+        $this->audit->log('organization.updated', $actor, $organization, [
+            'organization_name' => $organization->name,
+            'changed' => array_keys($data),
+        ]);
+
+        $this->dashboard->clearCache();
+
+        return $organization->fresh();
+    }
+
+    public function delete(Organization $organization, PlatformUser $actor): Organization
+    {
+        $organization = $this->archive($organization, $actor);
+
+        $this->audit->log('organization.deleted', $actor, $organization, [
+            'organization_name' => $organization->name,
+            'note' => 'Soft-deleted via archive lifecycle',
+        ]);
+
+        return $organization;
+    }
+
     public function updatePlan(Organization $organization, string $plan, PlatformUser $actor): Organization
     {
         $previous = $organization->plan;
@@ -256,5 +312,19 @@ class OrganizationManagementService
         ]);
 
         return $organization->fresh();
+    }
+
+    public function administrators(Organization $organization)
+    {
+        return $organization->users()
+            ->where(function ($q) {
+                $q->where('organization_user.is_owner', true)
+                    ->orWhereIn('organization_user.role', [
+                        'organization-owner',
+                        'organization-admin',
+                        'admin',
+                    ]);
+            })
+            ->get(['users.id', 'users.name', 'users.email']);
     }
 }

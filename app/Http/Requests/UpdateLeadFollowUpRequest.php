@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\LeadFollowUpService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateLeadFollowUpRequest extends FormRequest
@@ -15,7 +16,7 @@ class UpdateLeadFollowUpRequest extends FormRequest
 
     public function rules(): array
     {
-        return app(\App\Services\LeadFollowUpService::class)->validationRules();
+        return app(LeadFollowUpService::class)->validationRules();
     }
 
     protected function prepareForValidation(): void

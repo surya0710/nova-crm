@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,7 @@ class UpdateOrganizationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $organization = app(\App\Services\TenantContext::class)->get();
+        $organization = app(TenantContext::class)->get();
 
         return $organization && ($this->user()?->can('update', $organization) ?? false);
     }
@@ -68,6 +69,10 @@ class UpdateOrganizationRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->mailEnabled()),
                 'nullable', 'string', 'max:255',
             ],
+            'locale' => ['nullable', 'string', 'max:20'],
+            'fiscal_year_start_month' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'date_format' => ['nullable', 'string', 'max:32'],
+            'time_format' => ['nullable', 'string', Rule::in(['H:i', 'h:i A', 'g:i A'])],
         ];
     }
 }

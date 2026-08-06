@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Customer;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -10,7 +11,7 @@ class StoreCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Customer::class) ?? false;
+        return $this->user()?->can('create', Customer::class) ?? false;
     }
 
     public function rules(): array
@@ -27,10 +28,10 @@ class StoreCustomerRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(array_keys(config('customers.statuses')))],
             'address_line_1' => ['nullable', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:100'],
+            'country' => ['nullable', 'string', 'max:255'],
             'tax_number' => ['nullable', 'string', 'max:50'],
             'assigned_to' => [
                 'nullable',
@@ -44,6 +45,13 @@ class StoreCustomerRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        foreach (['address_line_1', 'address_line_2', 'city', 'state', 'country', 'postal_code'] as $field) {
+            if ($this->has($field) && is_string($this->input($field))) {
+                $value = trim($this->input($field));
+                $this->merge([$field => $value === '' ? null : $value]);
+            }
+        }
+
         if ($this->has('tags') && is_string($this->tags)) {
             $tags = trim($this->tags);
 

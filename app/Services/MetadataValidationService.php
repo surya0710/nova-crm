@@ -7,6 +7,10 @@ use App\Models\Lead;
 use App\Models\MetadataFieldDefinition;
 use App\Models\Opportunity;
 use App\Models\Organization;
+use App\Models\ProgressUpdate;
+use App\Models\Project;
+use App\Models\ResourceAllocation;
+use App\Models\Task;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
@@ -20,6 +24,10 @@ class MetadataValidationService
         'customer' => Customer::class,
         'opportunity' => Opportunity::class,
         'organization' => Organization::class,
+        'project' => Project::class,
+        'task' => Task::class,
+        'resource_allocation' => ResourceAllocation::class,
+        'project_progress_update' => ProgressUpdate::class,
     ];
 
     protected array $supportedRuleKeys = [
@@ -62,6 +70,7 @@ class MetadataValidationService
 
             if ($enforceRequired && $field->is_required && (! $submitted && ! $hasExisting)) {
                 $errors[$errorKey][] = __('The :attribute field is required.', ['attribute' => $field->label]);
+
                 continue;
             }
 
@@ -71,11 +80,13 @@ class MetadataValidationService
 
             if ($enforceRequired && $field->is_required && $this->isEmptyValue($field, $value)) {
                 $errors[$errorKey][] = __('The :attribute field is required.', ['attribute' => $field->label]);
+
                 continue;
             }
 
             if (! $field->is_required && $this->isEmptyValue($field, $value)) {
                 $validated[$key] = $this->clearValueFor($field, $value);
+
                 continue;
             }
 
@@ -89,6 +100,7 @@ class MetadataValidationService
 
             if ($validator->fails()) {
                 $errors[$errorKey] = array_values($validator->errors()->get($errorKey));
+
                 continue;
             }
 
@@ -128,6 +140,7 @@ class MetadataValidationService
         foreach ($rules as $key => $value) {
             if (! in_array($key, $this->supportedRuleKeys, true)) {
                 $errors["validation_rules.{$key}"][] = __('Unsupported metadata validation rule: :rule', ['rule' => $key]);
+
                 continue;
             }
 
@@ -180,6 +193,7 @@ class MetadataValidationService
                 foreach ((array) $value as $item) {
                     if (! in_array((string) $item, $allowed, true)) {
                         $fail(__('The selected :attribute is invalid.'));
+
                         return;
                     }
                 }

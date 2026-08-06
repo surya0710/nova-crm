@@ -2,13 +2,18 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Task;
+
 class StoreTaskRequest extends TaskRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Task::class) ?? false;
+        return $this->user()?->can('create', Task::class) ?? false;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return $this->baseRules();
@@ -16,11 +21,13 @@ class StoreTaskRequest extends TaskRequest
 
     protected function prepareForValidation(): void
     {
-        if (! $this->filled('status')) {
+        parent::prepareForValidation();
+
+        if (! $this->filled('status') && ! $this->filled('status_id')) {
             $this->merge(['status' => 'pending']);
         }
 
-        if (! $this->filled('priority')) {
+        if (! $this->filled('priority') && ! $this->filled('priority_id')) {
             $this->merge(['priority' => 'medium']);
         }
     }

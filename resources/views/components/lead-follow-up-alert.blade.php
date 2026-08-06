@@ -1,13 +1,21 @@
 @php
+    use App\Services\Dashboard\ModuleSubscriptionService;
     use App\Services\LeadFollowUpService;
+    use App\Services\TenantContext;
 
-    $followUpService = app(LeadFollowUpService::class);
-    $initialDueFollowUps = Auth::check() && Auth::user()->hasPermission('leads.view')
-        ? $followUpService->dueForAlertPayloads()->values()->all()
+    $user = Auth::user();
+    $organization = app(TenantContext::class)->get();
+    $crmAllowed = $user
+        && $organization
+        && $user->hasPermission('leads.view', $organization)
+        && app(ModuleSubscriptionService::class)->moduleAllowed($organization, 'crm');
+
+    $initialDueFollowUps = $crmAllowed
+        ? app(LeadFollowUpService::class)->dueForAlertPayloads($user)->values()->all()
         : [];
 @endphp
 
-@if (Auth::check() && Auth::user()->hasPermission('leads.view'))
+@if ($crmAllowed)
     <div
         x-data="leadFollowUpAlerts({
             pollUrl: @js(route('leads.follow-ups.due')),

@@ -11,6 +11,7 @@ export function registerLeadFollowUpAlerts() {
             timer: null,
             exactTimer: null,
             polling: false,
+            disabled: false,
 
             init() {
                 for (const lead of config.initial ?? []) {
@@ -23,6 +24,18 @@ export function registerLeadFollowUpAlerts() {
 
                 this.check();
                 this.timer = setInterval(() => this.check(), this.pollIntervalMs);
+            },
+
+            stopPolling() {
+                this.disabled = true;
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+                if (this.exactTimer) {
+                    clearTimeout(this.exactTimer);
+                    this.exactTimer = null;
+                }
             },
 
             enqueue(lead) {
@@ -39,7 +52,7 @@ export function registerLeadFollowUpAlerts() {
             },
 
             scheduleExactCheck(lead) {
-                if (! lead?.next_follow_up_at) {
+                if (! lead?.next_follow_up_at || this.disabled) {
                     return;
                 }
 
@@ -58,7 +71,7 @@ export function registerLeadFollowUpAlerts() {
             },
 
             async check() {
-                if (this.polling) {
+                if (this.polling || this.disabled || ! this.pollUrl) {
                     return;
                 }
 
@@ -76,6 +89,12 @@ export function registerLeadFollowUpAlerts() {
                         this.showNext();
                     }
                 } catch (error) {
+                    const status = error?.response?.status;
+                    // Permission / module / auth failures: stop permanently — do not spam the console.
+                    if (status === 401 || status === 403 || status === 404) {
+                        this.stopPolling();
+                        return;
+                    }
                     console.error('Follow-up poll failed', error);
                 } finally {
                     this.polling = false;

@@ -1,52 +1,42 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <h1 class="text-lg font-semibold text-slate-900">{{ $payment->number }}</h1>
-                <p class="text-sm text-slate-500">{{ $payment->formatted_amount }} · {{ $payment->payment_date->format('M j, Y') }}</p>
-            </div>
-        </div>
-    </x-slot>
-
     <x-flash-messages />
 
-    <div class="max-w-2xl space-y-6">
-        <div class="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <dl class="p-6 space-y-4 text-sm">
-            <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">{{ __('Amount') }}</dt>
-                <dd class="font-semibold text-slate-900">{{ $payment->formatted_amount }}</dd>
-            </div>
-            <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">{{ __('Method') }}</dt>
-                <dd>{{ $payment->method_label }}</dd>
-            </div>
-            @if ($payment->reference)
-                <div class="flex justify-between gap-4">
-                    <dt class="text-slate-500">{{ __('Reference') }}</dt>
-                    <dd>{{ $payment->reference }}</dd>
-                </div>
-            @endif
-            <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">{{ crm_term('invoice') }}</dt>
-                <dd><a href="{{ route('invoices.show', $payment->invoice) }}" class="text-indigo-600">{{ $payment->invoice->number }}</a></dd>
-            </div>
-            <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">{{ crm_term('customer') }}</dt>
-                <dd>{{ $payment->customer->display_name }}</dd>
-            </div>
-            <div class="flex justify-between gap-4">
-                <dt class="text-slate-500">{{ __('Recorded By') }}</dt>
-                <dd>{{ $payment->recorder?->name ?? '—' }}</dd>
-            </div>
-            @if ($payment->notes)
-                <div>
-                    <dt class="text-slate-500 mb-1">{{ __('Notes') }}</dt>
-                    <dd class="text-slate-700 whitespace-pre-line">{{ $payment->notes }}</dd>
-                </div>
-            @endif
-        </dl>
-        </div>
+    <x-layouts.entity-detail
+        :title="$payment->number"
+        :subtitle="$payment->formatted_amount.' · '.$payment->payment_date->format('M j, Y')"
+    >
+        <x-slot:breadcrumbs>
+            <x-nav.breadcrumbs :items="[
+                ['label' => __('CRM'), 'href' => route('crm.home')],
+                ['label' => crm_term('payments'), 'href' => route('payments.index')],
+                ['label' => $payment->number, 'current' => true],
+            ]" />
+        </x-slot:breadcrumbs>
+
+        <x-entity.section :title="__('Payment details')">
+            <x-entity.definition-list>
+                <x-entity.definition-item :label="__('Amount')">
+                    <span class="font-semibold text-ink-heading">{{ $payment->formatted_amount }}</span>
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="__('Method')">{{ $payment->method_label }}</x-entity.definition-item>
+                @if ($payment->reference)
+                    <x-entity.definition-item :label="__('Reference')" :span="2">{{ $payment->reference }}</x-entity.definition-item>
+                @endif
+                <x-entity.definition-item :label="crm_term('invoice')" :span="2">
+                    <a href="{{ route('invoices.show', $payment->invoice) }}" class="text-primary-600 hover:text-primary-700">{{ $payment->invoice->number }}</a>
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="crm_term('customer')" :span="2">
+                    <a href="{{ route('customers.show', $payment->customer) }}" class="text-primary-600 hover:text-primary-700">{{ $payment->customer->display_name }}</a>
+                </x-entity.definition-item>
+                <x-entity.definition-item :label="__('Recorded By')">{{ $payment->recorder?->name ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Payment Date')">{{ $payment->payment_date->format('M j, Y') }}</x-entity.definition-item>
+                @if ($payment->notes)
+                    <x-entity.definition-item :label="__('Notes')" :span="2">
+                        <div class="whitespace-pre-line text-ink">{{ $payment->notes }}</div>
+                    </x-entity.definition-item>
+                @endif
+            </x-entity.definition-list>
+        </x-entity.section>
 
         @can('create', App\Models\Payment::class)
             <x-client-email-form
@@ -59,7 +49,9 @@
                 :missing-email-hint="! $payment->customer->email"
             />
         @endcan
-    </div>
 
-    <a href="{{ route('payments.index') }}" class="inline-block mt-6 text-sm font-medium text-indigo-600">← {{ __('Back to :label', ['label' => strtolower(crm_term('payments'))]) }}</a>
+        <x-slot:aside>
+            <x-ui.button :href="route('payments.index')" variant="link" size="sm">← {{ __('Back to :label', ['label' => strtolower(crm_term('payments'))]) }}</x-ui.button>
+        </x-slot:aside>
+    </x-layouts.entity-detail>
 </x-app-layout>
