@@ -3,8 +3,10 @@
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\RolePermission;
 use App\Services\OrganizationRoleService;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -39,9 +41,23 @@ return new class extends Migration
                     ? $permissions->pluck('id')->all()
                     : $permissions->only($configured)->pluck('id')->all();
 
-                if ($ids !== []) {
-                    $role->permissions()->syncWithoutDetaching($ids);
+                if ($ids === []) {
+                    continue;
                 }
+
+                if (Schema::hasTable('role_permissions') && Schema::hasColumn('role_permissions', 'organization_id')) {
+                    foreach ($ids as $permissionId) {
+                        RolePermission::query()->firstOrCreate([
+                            'organization_id' => $organization->id,
+                            'role_id' => $role->id,
+                            'permission_id' => $permissionId,
+                        ]);
+                    }
+
+                    continue;
+                }
+
+                $role->permissions()->syncWithoutDetaching($ids);
             }
         }
     }
