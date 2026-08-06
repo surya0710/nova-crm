@@ -79,7 +79,12 @@ class BulkOperationsService
         $this->assertAuthorized($actor, $organization, $action);
         $this->assertLicensed($organization, $action->entityType());
 
-        $query = $action->resolveQuery($organization, $selection);
+        // Propagate the actor into the selection context so entity-specific
+        // visibility services (e.g. LeadVisibilityService) can rely on it even
+        // when there is no HTTP auth() user set (API / background bulk flows).
+        $selectionForQuery = $selection + ['actor_id' => $actor->id];
+
+        $query = $action->resolveQuery($organization, $selectionForQuery);
         $ids = (clone $query)->limit((int) config('bulk.max_selection', 10000) + 1)->pluck(
             $query->getModel()->getKeyName()
         )->map(fn ($id) => (int) $id)->all();
@@ -167,10 +172,18 @@ class BulkOperationsService
 
         try {
             foreach (array_chunk($ids, $chunkSize) as $chunk) {
-                $records = $action->resolveQuery($organization, [
+                $selection = [
                     'mode' => 'ids',
                     'ids' => $chunk,
-                ])->get()->keyBy(fn ($model) => (int) $model->getKey());
+                ];
+
+                if ($actor) {
+                    $selection['actor_id'] = $actor->id;
+                }
+
+                $records = $action->resolveQuery($organization, $selection)
+                    ->get()
+                    ->keyBy(fn ($model) => (int) $model->getKey());
 
                 foreach ($chunk as $id) {
                     $record = $records->get((int) $id);
