@@ -3,6 +3,7 @@
 namespace App\Services\Hrms;
 
 use App\Events\PayrollApproved;
+use App\Events\PayrollPaid;
 use App\Events\PayrollPublished;
 use App\Events\PayslipEmailed;
 use App\Events\PayslipGenerated;
@@ -36,7 +37,8 @@ class PayrollPublicationService
         'running' => ['calculated'],
         'calculated' => ['approved'],
         'approved' => ['published'],
-        'published' => [],
+        'published' => ['paid'],
+        'paid' => [],
     ];
 
     public function __construct(
@@ -97,6 +99,12 @@ class PayrollPublicationService
                 'approval_id' => $approval->id,
                 'approval_type' => $approvalType,
             ]));
+
+            $this->notifyPayrollActors(
+                $run->fresh(),
+                __('Payroll approved'),
+                __('Payroll run for :period was approved.', ['period' => $run->period?->name ?? '#'.$run->id]),
+            );
 
             return $approval->load(['approvedBy', 'payrollRun']);
         });
@@ -169,6 +177,55 @@ class PayrollPublicationService
             ]));
 
             return $publication->fresh(['payslips', 'publishedBy', 'payrollRun']);
+        });
+    }
+
+    /**
+     * @param  array{payment_reference?: string, payment_date?: string, payment_notes?: string|null}  $data
+     */
+    public function markPaid(PayrollRun $run, User $actor, array $data = []): PayrollRun
+    {
+        return DB::transaction(function () use ($run, $actor, $data): PayrollRun {
+            $run->refresh()->load('period');
+            $this->assertTransition($run, 'paid');
+
+            $paymentReference = trim((string) ($data['payment_reference'] ?? ''));
+            if ($paymentReference === '') {
+                throw ValidationException::withMessages([
+                    'payment_reference' => 'A payment reference is required.',
+                ]);
+            }
+
+            $run->update([
+                'status' => 'paid',
+                'payment_reference' => $paymentReference,
+                'payment_date' => $data['payment_date'] ?? now()->toDateString(),
+                'paid_at' => now(),
+                'paid_by' => $actor->id,
+                'payment_notes' => $data['payment_notes'] ?? null,
+            ]);
+
+            $this->auditLogger->log($run, 'payroll_paid', [
+                'payment_reference' => $paymentReference,
+                'payment_date' => $run->payment_date?->toDateString(),
+            ], $actor);
+
+            event(PayrollPaid::forModel($run->fresh(), [
+                'actor_id' => $actor->id,
+                'payment_reference' => $paymentReference,
+            ]));
+
+            $this->notifyPayrollActors(
+                $run->fresh(['results.employee.user', 'period']),
+                __('Salary credited'),
+                __('Salary for :period has been credited. Reference: :ref', [
+                    'period' => $run->period?->name ?? '#'.$run->id,
+                    'ref' => $paymentReference,
+                ]),
+                notifyEmployees: true,
+            );
+
+            return $run->fresh(['period', 'paidBy']);
         });
     }
 
@@ -423,6 +480,50 @@ class PayrollPublicationService
             );
         } catch (\Throwable) {
             // In-app notification is best-effort; publication must not fail.
+        }
+    }
+
+    protected function notifyPayrollActors(
+        PayrollRun $run,
+        string $title,
+        string $message,
+        bool $notifyEmployees = false,
+    ): void {
+        try {
+            if ($run->triggered_by) {
+                $this->notificationService->send(
+                    $run->organization_id,
+                    (int) $run->triggered_by,
+                    $title,
+                    $message,
+                    '/hrms/payroll/runs/'.$run->id,
+                );
+            }
+        } catch (\Throwable) {
+            // best-effort
+        }
+
+        if (! $notifyEmployees) {
+            return;
+        }
+
+        $run->loadMissing('results.employee');
+        foreach ($run->results as $result) {
+            $userId = $result->employee?->user_id;
+            if (! $userId) {
+                continue;
+            }
+            try {
+                $this->notificationService->send(
+                    $run->organization_id,
+                    (int) $userId,
+                    $title,
+                    $message,
+                    '/hrms/ess/payroll',
+                );
+            } catch (\Throwable) {
+                // best-effort
+            }
         }
     }
 }

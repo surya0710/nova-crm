@@ -1,6 +1,6 @@
 # Security
 
-Security model for NovaCRM HRMS mobile integration.
+Security model for Konnect Nex HRMS mobile integration.
 
 ---
 

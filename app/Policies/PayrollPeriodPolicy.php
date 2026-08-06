@@ -34,6 +34,7 @@ class PayrollPeriodPolicy
 
     public function lock(User $user, PayrollPeriod $payrollPeriod): bool
     {
-        return $user->hasPermission('payroll.manage', $payrollPeriod->organization);
+        return $user->hasPermission('payroll.lock', $payrollPeriod->organization)
+            || $user->hasPermission('payroll.manage', $payrollPeriod->organization);
     }
 }

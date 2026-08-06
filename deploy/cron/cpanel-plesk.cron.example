@@ -1,4 +1,4 @@
-# NovaCRM Release 1.2.x shared-hosting cron template.
+# Konnect Nex Release 1.2.x shared-hosting cron template.
 # Replace every path. Confirm `flock`, PHP CLI, lock directory, and log directory exist.
 # cPanel commonly uses /usr/local/bin/php; Plesk commonly exposes a versioned PHP binary.
 

@@ -1,6 +1,6 @@
 # Deliverable 11 — Primary Business Flows
 
-End-to-end journeys across NovaCRM modules. Decision points, pain points, and cross-module interactions.
+End-to-end journeys across Konnect Nex modules. Decision points, pain points, and cross-module interactions.
 
 ---
 

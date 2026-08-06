@@ -27,11 +27,13 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\ConfiguresOrganizationMail;
+use Tests\Support\LocksAttendanceForPayroll;
 use Tests\TestCase;
 
 class HrmsPayrollPublicationTest extends TestCase
 {
     use ConfiguresOrganizationMail;
+    use LocksAttendanceForPayroll;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -310,6 +312,8 @@ class HrmsPayrollPublicationTest extends TestCase
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-31',
         ]);
+
+        $this->lockAttendanceForPayrollPeriod($period, $hr);
 
         $calc = app(PayrollCalculationService::class);
         $run = $calc->createRun($period, $hr);

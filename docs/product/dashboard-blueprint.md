@@ -1,6 +1,6 @@
 # Deliverable 2 — Dashboard Experience Blueprint
 
-Dashboard philosophy for NovaCRM. Complements [dashboard-ownership.md](./dashboard-ownership.md) (who owns what) with **how dashboards behave**.
+Dashboard philosophy for Konnect Nex. Complements [dashboard-ownership.md](./dashboard-ownership.md) (who owns what) with **how dashboards behave**.
 
 ---
 

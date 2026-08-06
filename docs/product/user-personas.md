@@ -1,6 +1,6 @@
 # Deliverable 10 — User Personas
 
-Personas for NovaCRM product design. Aligned with system roles in `config/dynamic_rbac.php` and operational reality.
+Personas for Konnect Nex product design. Aligned with system roles in `config/dynamic_rbac.php` and operational reality.
 
 ---
 

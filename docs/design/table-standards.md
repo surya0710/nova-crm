@@ -1,6 +1,6 @@
 # Deliverable 8 — Table Standards
 
-Standards for all data tables in NovaCRM.
+Standards for all data tables in Konnect Nex.
 
 ---
 

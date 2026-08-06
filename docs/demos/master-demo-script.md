@@ -21,7 +21,7 @@
 | Closing | 3 |
 
 ## 1. Company introduction
-- NovaCRM is a multi-tenant SaaS suite: CRM, Projects (EPM), HRMS/Recruitment, Marketing attribution, Analytics.
+- Konnect Nex is a multi-tenant SaaS suite: CRM, Projects (EPM), HRMS/Recruitment, Marketing attribution, Analytics.
 - Single organization context with role-based workspaces.
 - Today’s story: Nova Enterprises running growth + delivery + people on one platform.
 

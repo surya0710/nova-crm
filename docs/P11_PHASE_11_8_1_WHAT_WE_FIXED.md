@@ -91,10 +91,10 @@ No authorization failure when the user simply has no managed records.
 ## 6. Sidebar was long, branded, and mixed concerns
 
 **Problem**  
-NovaCRM logo block in the sidebar, deep nesting, and config pages cluttered HR.
+Konnect Nex logo block in the sidebar, deep nesting, and config pages cluttered HR.
 
 **Fix**  
-- Removed NovaCRM branding/logo from the sidebar (org identity remains)  
+- Removed Konnect Nex branding/logo from the sidebar (org identity remains)  
 - Shortened HR to operational pages  
 - Pointed configuration at Organization Settings  
 - Hid Assets from nav as a **future module** (DB/routes kept)  

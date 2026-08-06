@@ -16,7 +16,7 @@
 
 ## Purpose
 
-Provision compute, OS baselines, and host prerequisites required to run NovaCRM.
+Provision compute, OS baselines, and host prerequisites required to run Konnect Nex.
 
 ## Scope
 

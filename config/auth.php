@@ -3,6 +3,7 @@
 use App\Models\PlatformUser;
 use App\Models\User;
 use App\Models\CandidateAccount;
+use App\Models\ClientUser;
 
 return [
 
@@ -54,6 +55,11 @@ return [
             'driver' => 'session',
             'provider' => 'candidate_accounts',
         ],
+
+        'client' => [
+            'driver' => 'session',
+            'provider' => 'client_users',
+        ],
     ],
 
     /*
@@ -87,6 +93,11 @@ return [
         'candidate_accounts' => [
             'driver' => 'eloquent',
             'model' => CandidateAccount::class,
+        ],
+
+        'client_users' => [
+            'driver' => 'eloquent',
+            'model' => ClientUser::class,
         ],
     ],
 
@@ -127,6 +138,13 @@ return [
         'candidate_accounts' => [
             'provider' => 'candidate_accounts',
             'table' => 'candidate_password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'client_users' => [
+            'provider' => 'client_users',
+            'table' => 'client_password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

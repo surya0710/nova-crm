@@ -1,9 +1,9 @@
-# Company Profile — NovaCRM
+# Company Profile — Konnect Nex
 
 **Tagline:** One platform for customer revenue, project delivery, and people operations.
 
 ## Who we are
-NovaCRM is a multi-tenant SaaS platform that unifies CRM, enterprise project management, HRMS/recruitment, marketing attribution, and analytics for mid-market and growing enterprises.
+Konnect Nex is a multi-tenant SaaS platform that unifies CRM, enterprise project management, HRMS/recruitment, marketing attribution, and analytics for mid-market and growing enterprises.
 
 ## What we deliver
 - Faster quote-to-cash with CRM revenue lifecycle

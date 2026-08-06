@@ -1,6 +1,6 @@
 # Smoke Test Guide — Phase 14.9
 
-Fast validation that NovaCRM is alive after deploy or upgrade. Run automated smoke first, then manual checks for paths automation does not cover.
+Fast validation that Konnect Nex is alive after deploy or upgrade. Run automated smoke first, then manual checks for paths automation does not cover.
 
 **Related:** [production-readiness.md](./production-readiness.md) · [checklist.md](./checklist.md) · [UPGRADE.md](../../UPGRADE.md) · [Deployment](../deployment/overview.md)
 

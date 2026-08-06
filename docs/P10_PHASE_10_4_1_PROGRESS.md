@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Establish the Performance Management Foundation for NovaCRM — organization configuration, rating scales, competency categories, competencies, performance cycles, and review templates — without implementing employee reviews, scoring, KPIs, goals, or promotions.
+**Objective:** Establish the Performance Management Foundation for Konnect Nex — organization configuration, rating scales, competency categories, competencies, performance cycles, and review templates — without implementing employee reviews, scoring, KPIs, goals, or promotions.
 
 **Scope completed:** Full foundation slice with service-owned business logic, workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 
@@ -174,7 +174,7 @@ Regression suite and Pint executed as part of phase verification.
 
 ## 10. Architectural Notes
 
-- Follows NovaCRM HRMS contract: thin controllers, FormRequests, domain service, org-scoped models.
+- Follows Konnect Nex HRMS contract: thin controllers, FormRequests, domain service, org-scoped models.
 - No repository pattern, DDD, CQRS, or generic BaseService.
 - Review execution (self/manager/360), KPI/goal tracking, and promotion recommendations remain out of scope for later 10.4.x phases.
 

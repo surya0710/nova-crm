@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build the Goal & KPI Management Platform for NovaCRM — organization-configurable goal categories, reusable goal and KPI libraries, employee/team/department goal assignment, immutable progress history, check-ins, and weight validation — without implementing employee reviews, scoring, or promotions.
+**Objective:** Build the Goal & KPI Management Platform for Konnect Nex — organization-configurable goal categories, reusable goal and KPI libraries, employee/team/department goal assignment, immutable progress history, check-ins, and weight validation — without implementing employee reviews, scoring, or promotions.
 
 **Scope completed:** Full planning-layer slice with service-owned business logic, workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 
@@ -188,7 +188,7 @@ Regression suite and Pint executed as part of phase verification.
 
 ## 10. Architectural Notes
 
-- Follows NovaCRM HRMS contract: thin controllers, FormRequests, domain service, org-scoped models.
+- Follows Konnect Nex HRMS contract: thin controllers, FormRequests, domain service, org-scoped models.
 - Dedicated `GoalManagementService` (not folded into `PerformanceService`) as specified for this phase.
 - No repository pattern, DDD, CQRS, or generic BaseService.
 - Employee reviews, self/manager/360 feedback, scoring, calibration, promotions, and compensation recommendations remain out of scope for later 10.4.x phases.

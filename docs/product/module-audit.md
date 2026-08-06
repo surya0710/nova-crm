@@ -1,6 +1,6 @@
 # Deliverable 1 — Product Module Audit
 
-Audit of modules available in NovaCRM as of Phase 13.1. Based on tenant sidebar, routes (`routes/web.php`, `platform.php`, `careers.php`), settings catalog, and RBAC groups.
+Audit of modules available in Konnect Nex as of Phase 13.1. Based on tenant sidebar, routes (`routes/web.php`, `platform.php`, `careers.php`), settings catalog, and RBAC groups.
 
 Complexity scale: **Low** | **Medium** | **High** | **Very High**
 

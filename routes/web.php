@@ -44,6 +44,8 @@ use App\Http\Controllers\Hrms\AppraisalSessionController as HrmsAppraisalSession
 use App\Http\Controllers\Hrms\AssetController as HrmsAssetController;
 use App\Http\Controllers\Hrms\AttendanceCalendarController as HrmsAttendanceCalendarController;
 use App\Http\Controllers\Hrms\AttendanceController as HrmsAttendanceController;
+use App\Http\Controllers\Hrms\AttendanceOvertimeController as HrmsAttendanceOvertimeController;
+use App\Http\Controllers\Hrms\AttendancePeriodController as HrmsAttendancePeriodController;
 use App\Http\Controllers\Hrms\AttendanceReportController as HrmsAttendanceReportController;
 use App\Http\Controllers\Hrms\BranchController as HrmsBranchController;
 use App\Http\Controllers\Hrms\CandidateAccountAdminController;
@@ -94,6 +96,7 @@ use App\Http\Controllers\Hrms\OfferLetterController as HrmsOfferLetterController
 use App\Http\Controllers\Hrms\OfferNegotiationController as HrmsOfferNegotiationController;
 use App\Http\Controllers\Hrms\OfferTemplateController as HrmsOfferTemplateController;
 use App\Http\Controllers\Hrms\OrganizationCalendarController;
+use App\Http\Controllers\Hrms\PayrollAdjustmentController as HrmsPayrollAdjustmentController;
 use App\Http\Controllers\Hrms\PayrollConfigurationController as HrmsPayrollConfigurationController;
 use App\Http\Controllers\Hrms\PayrollDashboardController as HrmsPayrollDashboardController;
 use App\Http\Controllers\Hrms\PayrollFinanceController as HrmsPayrollFinanceController;
@@ -101,6 +104,7 @@ use App\Http\Controllers\Hrms\PayrollPeriodController as HrmsPayrollPeriodContro
 use App\Http\Controllers\Hrms\PayrollResultController as HrmsPayrollResultController;
 use App\Http\Controllers\Hrms\PayrollRunController as HrmsPayrollRunController;
 use App\Http\Controllers\Hrms\PayslipController as HrmsPayslipController;
+use App\Http\Controllers\Hrms\SalaryRevisionController as HrmsSalaryRevisionController;
 use App\Http\Controllers\Hrms\PerformanceConfigurationController as HrmsPerformanceConfigurationController;
 use App\Http\Controllers\Hrms\PerformanceCycleController as HrmsPerformanceCycleController;
 use App\Http\Controllers\Hrms\PerformanceDashboardController as HrmsPerformanceDashboardController;
@@ -125,7 +129,15 @@ use App\Http\Controllers\Hrms\SalaryComponentController as HrmsSalaryComponentCo
 use App\Http\Controllers\Hrms\SalaryStructureController as HrmsSalaryStructureController;
 use App\Http\Controllers\Hrms\ShiftAssignmentController as HrmsShiftAssignmentController;
 use App\Http\Controllers\Hrms\ShiftController as HrmsShiftController;
+use App\Http\Controllers\Hrms\Form16Controller as HrmsForm16Controller;
+use App\Http\Controllers\Hrms\IncomeTaxDashboardController as HrmsIncomeTaxDashboardController;
 use App\Http\Controllers\Hrms\StatutoryComplianceController as HrmsStatutoryComplianceController;
+use App\Http\Controllers\Hrms\TaxDeclarationController as HrmsTaxDeclarationController;
+use App\Http\Controllers\Hrms\TaxFinancialYearController as HrmsTaxFinancialYearController;
+use App\Http\Controllers\Hrms\TaxProjectionController as HrmsTaxProjectionController;
+use App\Http\Controllers\Hrms\TaxProofController as HrmsTaxProofController;
+use App\Http\Controllers\Hrms\TaxRegimeController as HrmsTaxRegimeController;
+use App\Http\Controllers\Hrms\TaxReportController as HrmsTaxReportController;
 use App\Http\Controllers\Hrms\TalentMatrixController as HrmsTalentMatrixController;
 use App\Http\Controllers\Hrms\TeamController as HrmsTeamController;
 use App\Http\Controllers\IntegrationController;
@@ -168,6 +180,8 @@ use App\Http\Controllers\ProjectBudgetController;
 use App\Http\Controllers\ProjectCalendarController;
 use App\Http\Controllers\ProjectCategoryController;
 use App\Http\Controllers\ProjectCollaborationController;
+use App\Http\Controllers\ClientPortalAdminController;
+use App\Http\Controllers\DeliverableController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectDependencyController;
 use App\Http\Controllers\ProjectExecutiveDashboardController;
@@ -496,6 +510,63 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::get('/reports/export', [HrmsAttendanceReportController::class, 'export'])
                 ->middleware('permission:attendance.view')
                 ->name('hrms.attendance.reports.export');
+
+            Route::get('/periods', [HrmsAttendancePeriodController::class, 'index'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.periods.index');
+            Route::get('/periods/create', [HrmsAttendancePeriodController::class, 'create'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.periods.create');
+            Route::post('/periods', [HrmsAttendancePeriodController::class, 'store'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.periods.store');
+            Route::get('/periods/{period}', [HrmsAttendancePeriodController::class, 'show'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.periods.show');
+            Route::post('/periods/{period}/freeze', [HrmsAttendancePeriodController::class, 'freeze'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.periods.freeze');
+            Route::post('/periods/{period}/lock', [HrmsAttendancePeriodController::class, 'lock'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.periods.lock');
+            Route::post('/periods/{period}/reopen', [HrmsAttendancePeriodController::class, 'reopen'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.periods.reopen');
+            Route::get('/periods/{period}/validate', [HrmsAttendancePeriodController::class, 'validatePeriod'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.periods.validate');
+
+            Route::get('/overtime/rules', [HrmsAttendanceOvertimeController::class, 'rulesIndex'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules');
+            Route::get('/overtime/rules/create', [HrmsAttendanceOvertimeController::class, 'createRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.create');
+            Route::post('/overtime/rules', [HrmsAttendanceOvertimeController::class, 'storeRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.store');
+            Route::get('/overtime/rules/{rule}/edit', [HrmsAttendanceOvertimeController::class, 'editRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.edit');
+            Route::put('/overtime/rules/{rule}', [HrmsAttendanceOvertimeController::class, 'updateRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.update');
+            Route::post('/overtime/rules/{rule}/activate', [HrmsAttendanceOvertimeController::class, 'activateRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.activate');
+            Route::post('/overtime/rules/{rule}/deactivate', [HrmsAttendanceOvertimeController::class, 'deactivateRule'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.overtime.rules.deactivate');
+            Route::get('/overtime/entries', [HrmsAttendanceOvertimeController::class, 'entriesIndex'])
+                ->middleware('permission:attendance.approve,attendance.manage,attendance.correct')
+                ->name('hrms.attendance.overtime.entries');
+            Route::post('/overtime/entries/{entry}/approve', [HrmsAttendanceOvertimeController::class, 'approveEntry'])
+                ->middleware('permission:attendance.approve,attendance.manage,attendance.correct')
+                ->name('hrms.attendance.overtime.entries.approve');
+            Route::post('/overtime/entries/{entry}/reject', [HrmsAttendanceOvertimeController::class, 'rejectEntry'])
+                ->middleware('permission:attendance.approve,attendance.manage,attendance.correct')
+                ->name('hrms.attendance.overtime.entries.reject');
+
             Route::post('/clock-in', [HrmsAttendanceController::class, 'clockIn'])
                 ->middleware('permission:attendance.manage')
                 ->name('hrms.attendance.clock-in');
@@ -1065,7 +1136,7 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->middleware('permission:payroll.view')
             ->names('hrms.payroll.periods');
         Route::post('hrms/payroll/periods/{period}/lock', [HrmsPayrollPeriodController::class, 'lock'])
-            ->middleware('permission:payroll.manage')
+            ->middleware('permission:payroll.lock')
             ->name('hrms.payroll.periods.lock');
         Route::get('hrms/payroll/configuration', [HrmsPayrollConfigurationController::class, 'edit'])
             ->middleware('permission:payroll.configuration')
@@ -1097,6 +1168,24 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('hrms/payroll/runs/{run}/publish', [HrmsPayrollRunController::class, 'publish'])
             ->middleware('permission:payroll.publish')
             ->name('hrms.payroll.runs.publish');
+        Route::post('hrms/payroll/runs/{run}/mark-paid', [HrmsPayrollRunController::class, 'markPaid'])
+            ->middleware('permission:payroll.pay,payroll.manage')
+            ->name('hrms.payroll.runs.pay');
+        Route::get('hrms/payroll/adjustments', [HrmsPayrollAdjustmentController::class, 'index'])
+            ->middleware('permission:payroll.view')
+            ->name('hrms.payroll.adjustments.index');
+        Route::post('hrms/payroll/adjustments', [HrmsPayrollAdjustmentController::class, 'store'])
+            ->middleware('permission:payroll.adjustment.manage')
+            ->name('hrms.payroll.adjustments.store');
+        Route::post('hrms/payroll/adjustments/{adjustment}/approve', [HrmsPayrollAdjustmentController::class, 'approve'])
+            ->middleware('permission:payroll.adjustment.approve')
+            ->name('hrms.payroll.adjustments.approve');
+        Route::post('hrms/payroll/adjustments/{adjustment}/reject', [HrmsPayrollAdjustmentController::class, 'reject'])
+            ->middleware('permission:payroll.adjustment.approve')
+            ->name('hrms.payroll.adjustments.reject');
+        Route::get('hrms/payroll/revisions', [HrmsSalaryRevisionController::class, 'index'])
+            ->middleware('permission:payroll.view')
+            ->name('hrms.payroll.revisions.index');
         Route::get('hrms/payroll/results', [HrmsPayrollResultController::class, 'index'])
             ->middleware('permission:payroll.view')
             ->name('hrms.payroll.results.index');
@@ -1149,6 +1238,70 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('hrms/payroll/statutory/validation', [HrmsStatutoryComplianceController::class, 'runValidation'])
             ->middleware('permission:payroll.statutory.manage')
             ->name('hrms.payroll.statutory.validation.run');
+
+        Route::get('hrms/payroll/tax', HrmsIncomeTaxDashboardController::class)
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.index');
+        Route::get('hrms/payroll/tax/financial-years', [HrmsTaxFinancialYearController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.financial-years.index');
+        Route::post('hrms/payroll/tax/financial-years', [HrmsTaxFinancialYearController::class, 'store'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.financial-years.store');
+        Route::post('hrms/payroll/tax/financial-years/{financialYear}/activate', [HrmsTaxFinancialYearController::class, 'activate'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.financial-years.activate');
+        Route::get('hrms/payroll/tax/regimes', [HrmsTaxRegimeController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.regimes.index');
+        Route::post('hrms/payroll/tax/regimes', [HrmsTaxRegimeController::class, 'store'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.regimes.store');
+        Route::get('hrms/payroll/tax/declarations', [HrmsTaxDeclarationController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.declarations.index');
+        Route::post('hrms/payroll/tax/declarations', [HrmsTaxDeclarationController::class, 'store'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.declarations.store');
+        Route::post('hrms/payroll/tax/declarations/{declaration}/submit', [HrmsTaxDeclarationController::class, 'submit'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.declarations.submit');
+        Route::post('hrms/payroll/tax/declarations/{declaration}/verify', [HrmsTaxDeclarationController::class, 'verify'])
+            ->middleware('permission:tax.verify')
+            ->name('hrms.payroll.tax.declarations.verify');
+        Route::post('hrms/payroll/tax/declarations/{declaration}/reject', [HrmsTaxDeclarationController::class, 'reject'])
+            ->middleware('permission:tax.verify')
+            ->name('hrms.payroll.tax.declarations.reject');
+        Route::get('hrms/payroll/tax/proofs', [HrmsTaxProofController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.proofs.index');
+        Route::post('hrms/payroll/tax/proofs', [HrmsTaxProofController::class, 'store'])
+            ->middleware('permission:tax.manage')
+            ->name('hrms.payroll.tax.proofs.store');
+        Route::post('hrms/payroll/tax/proofs/{proof}/verify', [HrmsTaxProofController::class, 'verify'])
+            ->middleware('permission:tax.verify')
+            ->name('hrms.payroll.tax.proofs.verify');
+        Route::post('hrms/payroll/tax/proofs/{proof}/reject', [HrmsTaxProofController::class, 'reject'])
+            ->middleware('permission:tax.verify')
+            ->name('hrms.payroll.tax.proofs.reject');
+        Route::get('hrms/payroll/tax/projections', [HrmsTaxProjectionController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.projections.index');
+        Route::post('hrms/payroll/tax/projections/calculate', [HrmsTaxProjectionController::class, 'calculate'])
+            ->middleware('permission:tax.calculate')
+            ->name('hrms.payroll.tax.projections.calculate');
+        Route::get('hrms/payroll/tax/form16', [HrmsForm16Controller::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.form16.index');
+        Route::post('hrms/payroll/tax/form16', [HrmsForm16Controller::class, 'store'])
+            ->middleware('permission:form16.generate')
+            ->name('hrms.payroll.tax.form16.store');
+        Route::get('hrms/payroll/tax/reports', [HrmsTaxReportController::class, 'index'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.reports.index');
+        Route::get('hrms/payroll/tax/reports/export', [HrmsTaxReportController::class, 'export'])
+            ->middleware('permission:tax.view')
+            ->name('hrms.payroll.tax.reports.export');
 
         Route::get('hrms/payroll/ledger', [HrmsPayrollFinanceController::class, 'ledgerIndex'])
             ->middleware('permission:payroll.finance.view')
@@ -1216,6 +1369,9 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::get('hrms/payroll/reports', [HrmsPayrollFinanceController::class, 'reportsIndex'])
             ->middleware('permission:payroll.finance.view')
             ->name('hrms.payroll.reports.index');
+        Route::get('hrms/payroll/reports/export', [HrmsPayrollFinanceController::class, 'reportsExport'])
+            ->middleware('permission:payroll.finance.view')
+            ->name('hrms.payroll.reports.export');
         Route::post('hrms/payroll/runs/{run}/reverse', [HrmsPayrollFinanceController::class, 'reverseRun'])
             ->middleware('permission:payroll.finance.manage')
             ->name('hrms.payroll.runs.reverse');
@@ -1423,6 +1579,17 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('projects/{project}/collaboration/pins', [ProjectCollaborationController::class, 'pin'])->name('projects.collaboration.pins.store');
         Route::delete('projects/{project}/collaboration/pins/{pin}', [ProjectCollaborationController::class, 'unpin'])->name('projects.collaboration.pins.destroy');
         Route::post('projects/{project}/calendar/sync', [ProjectCalendarController::class, 'sync'])->name('projects.calendar.sync');
+
+        Route::get('projects/{project}/portal/clients', [ClientPortalAdminController::class, 'index'])->name('projects.portal.clients');
+        Route::post('projects/{project}/portal/clients', [ClientPortalAdminController::class, 'invite'])->name('projects.portal.clients.invite');
+        Route::post('projects/{project}/portal/clients/{client}/grant', [ClientPortalAdminController::class, 'grant'])->name('projects.portal.clients.grant');
+        Route::delete('projects/{project}/portal/clients/{client}', [ClientPortalAdminController::class, 'revoke'])->name('projects.portal.clients.revoke');
+
+        Route::get('projects/{project}/deliverables', [DeliverableController::class, 'index'])->name('projects.deliverables.index');
+        Route::post('projects/{project}/deliverables', [DeliverableController::class, 'store'])->name('projects.deliverables.store');
+        Route::get('projects/{project}/deliverables/{deliverable}', [DeliverableController::class, 'show'])->name('projects.deliverables.show');
+        Route::post('projects/{project}/deliverables/{deliverable}/submit', [DeliverableController::class, 'submit'])->name('projects.deliverables.submit');
+        Route::post('projects/{project}/deliverables/{deliverable}/request-approval', [DeliverableController::class, 'requestApproval'])->name('projects.deliverables.request-approval');
 
         Route::get('projects/{project}/risks', [ProjectRiskController::class, 'projectIndex'])->name('projects.risks.index');
         Route::post('projects/{project}/risks', [ProjectRiskController::class, 'store'])->name('projects.risks.store');

@@ -6,7 +6,7 @@ Phase 13.4 — Frontend Architecture & Implementation Standards
 
 ## Outcome
 
-NovaCRM has a complete Frontend Architecture and Implementation Standard covering Blade structure, Alpine.js, Tailwind conventions, component organization, page assembly, performance, accessibility implementation, responsive rules, naming, UI testing, code review, and Phase 14 migration mechanics.
+Konnect Nex has a complete Frontend Architecture and Implementation Standard covering Blade structure, Alpine.js, Tailwind conventions, component organization, page assembly, performance, accessibility implementation, responsive rules, naming, UI testing, code review, and Phase 14 migration mechanics.
 
 Together with Phases **13.1–13.3**, the platform now has:
 

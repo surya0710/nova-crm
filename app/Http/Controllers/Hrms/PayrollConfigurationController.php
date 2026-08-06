@@ -22,6 +22,7 @@ class PayrollConfigurationController extends Controller
             'frequencies' => config('hrms.payroll_frequencies', []),
             'overtimeOptions' => config('hrms.payroll_overtime_handling', []),
             'roundingPolicies' => config('hrms.payroll_rounding_policies', []),
+            'salaryModes' => config('hrms.payroll.salary_modes', []),
         ]);
     }
 

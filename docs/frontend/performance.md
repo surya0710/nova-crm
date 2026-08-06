@@ -1,6 +1,6 @@
 # Deliverable 7 — Performance Standards
 
-Frontend performance requirements for NovaCRM.
+Frontend performance requirements for Konnect Nex.
 
 ---
 

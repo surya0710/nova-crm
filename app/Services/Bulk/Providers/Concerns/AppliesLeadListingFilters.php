@@ -24,6 +24,13 @@ trait AppliesLeadListingFilters
     protected function resolveLeadQuery(Organization $organization, array $selection, ?User $actor = null): Builder
     {
         $query = $this->baseOrganizationQuery(Lead::class, $organization, $selection);
+        // Prefer the explicitly passed actor, then an actor propagated via selection,
+        // and finally fall back to the current auth user. This lets bulk/exports
+        // enforce LeadVisibilityService consistently even when HTTP auth() is not set.
+        if (! $actor && array_key_exists('actor_id', $selection)) {
+            $actor = User::query()->find((int) $selection['actor_id']);
+        }
+
         $actor ??= auth()->user();
 
         if ($actor instanceof User) {

@@ -1,6 +1,6 @@
-# NovaCRM — Frontend Documentation
+# Konnect Nex — Frontend Documentation
 
-Everything you need to run, build, and extend the NovaCRM user interface.
+Everything you need to run, build, and extend the Konnect Nex user interface.
 
 ---
 
@@ -64,7 +64,7 @@ This writes hashed files to `public/build/` and updates `public/build/manifest.j
 
 ### XAMPP subdirectory (e.g. `http://localhost/nova-crm/public`)
 
-NovaCRM auto-detects the subdirectory via `ConfigureSubdirectory` middleware:
+Konnect Nex auto-detects the subdirectory via `ConfigureSubdirectory` middleware:
 
 - Sets `app.asset_url`, session path, and public disk URL
 - Vite assets use the prefixed path: `http://localhost/nova-crm/public/build/assets/…`
@@ -262,7 +262,7 @@ Standard content card:
 
 ## Blade components
 
-### NovaCRM-specific
+### Product-specific
 
 | Component | Props / notes |
 |-----------|----------------|

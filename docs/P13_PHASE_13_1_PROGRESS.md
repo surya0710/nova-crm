@@ -6,7 +6,7 @@ Phase 13.1 — Information Architecture & Product Organization Blueprint
 
 ## Outcome
 
-NovaCRM has an authoritative product IA blueprint: workspaces, module classification, screen ownership, navigation hierarchy, sidebar design, Configuration Hub, search behavior, dashboard ownership, personas, business journeys, terminology, navigation pain points, and a prioritized Phase 14 backlog.
+Konnect Nex has an authoritative product IA blueprint: workspaces, module classification, screen ownership, navigation hierarchy, sidebar design, Configuration Hub, search behavior, dashboard ownership, personas, business journeys, terminology, navigation pain points, and a prioritized Phase 14 backlog.
 
 **No production code, routes, or UI were modified.** Documentation only.
 

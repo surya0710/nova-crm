@@ -5,7 +5,7 @@
 **Effective Date:** 2026-07-25  
 **Status:** Active  
 
-Centralized, version-controlled operational procedures for selling, provisioning, deploying, onboarding, supporting, upgrading, and offboarding NovaCRM customers.
+Centralized, version-controlled operational procedures for selling, provisioning, deploying, onboarding, supporting, upgrading, and offboarding Konnect Nex customers.
 
 This library is the **single source of truth** for internal operations. Every SOP is written so a trained employee can execute it without tribal knowledge.
 

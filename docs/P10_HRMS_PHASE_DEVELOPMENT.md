@@ -1,6 +1,6 @@
 # Phase 10 — Enterprise HRMS Platform: Complete Phase Development Guide
 
-**Project:** NovaCRM  
+**Project:** Konnect Nex  
 **Platform:** Human Resource Management System (HRMS)  
 **Last updated:** 2026-07-20
 
@@ -8,9 +8,9 @@
 
 ## 1. Overview
 
-Phase 10 introduces a production-grade HRMS as a **first-class platform** inside NovaCRM. The HRMS manages the employee lifecycle — from hire to exit — including organization structure, profiles, documents, attendance, leave, and employee self-service.
+Phase 10 introduces a production-grade HRMS as a **first-class platform** inside Konnect Nex. The HRMS manages the employee lifecycle — from hire to exit — including organization structure, profiles, documents, attendance, leave, and employee self-service.
 
-It is built **additively** on top of existing NovaCRM platforms:
+It is built **additively** on top of existing Konnect Nex platforms:
 
 | Platform | HRMS use |
 | --- | --- |
@@ -246,7 +246,7 @@ All approval flows reuse the Workflow Platform; business logic stays in HRMS ser
 
 ## 5. Phase 10.3 — Payroll
 
-**Status:** ✅ Complete (10.3.1–10.3.5) — Payroll platform complete
+**Status:** ✅ Complete (10.3.1–10.3.6) — Payroll platform enterprise complete
 
 | Module | Description | Status |
 | --- | --- | --- |
@@ -260,7 +260,8 @@ All approval flows reuse the Workflow Platform; business logic stays in HRMS ser
 | Payroll preview / validation / recalculation | Shared engine, immutable completed runs | ✅ 10.3.2 |
 | Statutory profiles & rule packs | Versioned org rule sets + employee profiles | ✅ 10.3.3 |
 | PF / ESI / Professional Tax engines | Configuration-driven statutory components | ✅ 10.3.3 |
-| TDS preparation | Regime/PAN/taxable snapshot (calculation deferred) | ✅ 10.3.3 |
+| TDS preparation | Regime/PAN/taxable snapshot (engine-backed) | ✅ 10.3.7 |
+| Income tax / TDS engine | FY slabs, projections, declarations, proofs, Form-16 foundation | ✅ 10.3.7 |
 | Compliance validation | Missing PAN/UAN/ESI/profile/rule set | ✅ 10.3.3 |
 | Payroll approval & publication | State machine, locking, distribution | ✅ 10.3.4 |
 | Payslip generation + PDF | Immutable payslips with stored PDF | ✅ 10.3.4 |
@@ -273,8 +274,11 @@ All approval flows reuse the Workflow Platform; business logic stays in HRMS ser
 | Full & final settlement | Exit settlement statement | ✅ 10.3.5 |
 | Payroll reversal | Controlled reversing entries | ✅ 10.3.5 |
 | Financial reports | Summary, statutory, register, department, ledger | ✅ 10.3.5 |
-| Government filing / challans / Form 16 | Portal integrations | Deferred |
-| Income tax computation | Full TDS engine | Deferred |
+| Net-pay recoveries + attendance modes | Calculation-time loan/advance + salary modes | ✅ 10.3.6 |
+| Payroll adjustments | Bonus/incentive/penalty/arrears lifecycle | ✅ 10.3.6 |
+| Paid lifecycle + APIs + dashboard | Payment confirmation, REST, enterprise widgets | ✅ 10.3.6 |
+| Government filing / challans / e-filing | Portal integrations (TRACES/AIS) | Deferred |
+| Form 16 PDF polish | Data foundation shipped in 10.3.7 | Deferred |
 | ERP / live banking APIs | Enterprise connectors | Deferred |
 
 See `docs/P10_PHASE_10_3_1_PROGRESS.md` through `docs/P10_PHASE_10_3_5_PROGRESS.md`.
@@ -474,7 +478,7 @@ php artisan migrate
 | 10.1.5 Leave | ⬜ Pending |
 | 10.1.6 ESS & Dashboards | ⬜ Pending |
 | 10.2 HR Operations | ⬜ Not started |
-| 10.3 Payroll | ✅ Complete (10.3.1–10.3.5 financial integration) |
+| 10.3 Payroll | ✅ Complete (10.3.1–10.3.6 enterprise enhancement) |
 | 10.4 Performance | ✅ 10.4.1 Foundation + 10.4.2 Goal & KPI Management + 10.4.3 Review Engine complete |
 | 11 Recruitment | ⬜ Not started |
 | 11.5 Learning & Engagement | ⬜ Not started |

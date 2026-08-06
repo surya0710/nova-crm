@@ -22,6 +22,10 @@ class AttendanceCorrection extends Model
         'requested_clock_out_at',
         'reason',
         'status',
+        'target_version',
+        'resulting_version',
+        'current_step',
+        'requires_hr_approval',
         'reviewed_by',
         'reviewed_at',
         'review_notes',
@@ -33,6 +37,9 @@ class AttendanceCorrection extends Model
             'requested_clock_in_at' => 'datetime',
             'requested_clock_out_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'target_version' => 'integer',
+            'resulting_version' => 'integer',
+            'requires_hr_approval' => 'boolean',
         ];
     }
 

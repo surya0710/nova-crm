@@ -1,6 +1,6 @@
 # Organization Onboarding Wizard
 
-NovaCRM Release **1.1.5** provides a guided Organization Onboarding Wizard for Platform Administrators.
+Konnect Nex Release **1.1.5** provides a guided Organization Onboarding Wizard for Platform Administrators.
 
 ## Architecture
 

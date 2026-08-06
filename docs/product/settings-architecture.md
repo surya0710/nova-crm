@@ -1,6 +1,6 @@
 # Deliverable 7 — Settings Architecture
 
-Centralized **Configuration Hub** for NovaCRM. Operational screens stay in workspaces; configuration converges here.
+Centralized **Configuration Hub** for Konnect Nex. Operational screens stay in workspaces; configuration converges here.
 
 ---
 

@@ -4,7 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>{{ __('Platform Login') }} — {{ config('app.name', 'NovaCRM') }}</title>
+        <meta name="application-name" content="{{ config('branding.product_name') }}">
+        <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
+        <title>{{ __('Platform Login') }} — {{ config('branding.product_name') }}</title>
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -14,7 +16,7 @@
             <div class="flex items-center gap-3 mb-6">
                 <div class="h-12 w-12 rounded-xl bg-violet-600 flex items-center justify-center font-bold text-white text-lg">P</div>
                 <div>
-                    <div class="font-semibold text-xl text-white">NovaCRM Platform</div>
+                    <div class="font-semibold text-xl text-white">{{ config('branding.product_name') }} {{ __('Platform') }}</div>
                     <div class="text-sm text-slate-400">{{ __('SaaS Administration') }}</div>
                 </div>
             </div>

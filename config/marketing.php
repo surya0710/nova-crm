@@ -95,7 +95,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | PLATFORM credentials (app ID / app secret) live in .env — they identify
-    | NovaCRM's applications registered with Meta/Google/etc. There is one set
+    | Konnect Nex's applications registered with Meta/Google/etc. There is one set
     | per environment (dev/staging/production). They are NOT customer tokens.
     |
     | TENANT credentials (access tokens, refresh tokens, account IDs, status)
@@ -157,7 +157,7 @@ return [
         ],
 
         /*
-        | Meta — PLATFORM application config only (NovaCRM's Meta app).
+        | Meta — PLATFORM application config only (Konnect Nex's Meta app).
         | Tenant access tokens are NEVER stored here.
         */
         'meta' => [
@@ -180,7 +180,7 @@ return [
         ],
 
         /*
-        | Google Ads — PLATFORM application config only (NovaCRM's Google app).
+        | Google Ads — PLATFORM application config only (Konnect Nex's Google app).
         | Tenant access/refresh tokens and customer IDs are NEVER stored here.
         */
         'google_ads' => [

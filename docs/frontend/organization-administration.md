@@ -1,6 +1,6 @@
 # Organization Administration Workspace
 
-Phase **14.7** delivers the NovaCRM **tenant** administration workspace. It runs inside the normal organization AppShell (Blade + Alpine + Vite), not the SaaS `/platform` console.
+Phase **14.7** delivers the Konnect Nex **tenant** administration workspace. It runs inside the normal organization AppShell (Blade + Alpine + Vite), not the SaaS `/platform` console.
 
 Use with [crm-reference-implementation.md](./crm-reference-implementation.md), [projects-workspace.md](./projects-workspace.md), [hrms-workspace.md](./hrms-workspace.md), and [platform-administration.md](./platform-administration.md) for shared Enterprise UX patterns and isolation rules.
 

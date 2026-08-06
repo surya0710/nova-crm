@@ -9,7 +9,7 @@
 
 ## Scope
 
-Design the Marketing Attribution Platform: the single source of truth for every lead source entering NovaCRM. The platform captures anonymous traffic, records touches, attributes leads, follows attribution through the CRM revenue chain, and exposes canonical entities that all providers and reports consume.
+Design the Marketing Attribution Platform: the single source of truth for every lead source entering Konnect Nex. The platform captures anonymous traffic, records touches, attributes leads, follows attribution through the CRM revenue chain, and exposes canonical entities that all providers and reports consume.
 
 In scope for this document:
 
@@ -47,7 +47,7 @@ These boundaries are fixed and may not be renegotiated by later phases:
 
 ## Architectural Principles
 
-The platform follows the established NovaCRM stack exactly:
+The platform follows the established Konnect Nex stack exactly:
 
 ```
 Controllers (web + Api + public tracking endpoint)
@@ -418,4 +418,4 @@ The TDS is approved when reviewers confirm:
 
 ## Final Recommendation
 
-Approve the contract and this TDS, then proceed to P7B (Tracking Foundation) with the Option A storage recommendation carried into that phase's migration design review. The architecture reuses every proven NovaCRM pattern — organization scoping, service transactions, custom RBAC, explicit audit events, additive migrations — and concentrates all provider-specific knowledge behind a single small adapter interface, so Meta (7D) and Google (7E) become proofs of the boundary rather than special cases.
+Approve the contract and this TDS, then proceed to P7B (Tracking Foundation) with the Option A storage recommendation carried into that phase's migration design review. The architecture reuses every proven Konnect Nex pattern — organization scoping, service transactions, custom RBAC, explicit audit events, additive migrations — and concentrates all provider-specific knowledge behind a single small adapter interface, so Meta (7D) and Google (7E) become proofs of the boundary rather than special cases.

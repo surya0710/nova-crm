@@ -2,7 +2,7 @@
 
 **Status:** Complete  
 **Date:** 2026-07-24  
-**Scope:** Deliver the Platform Administration Workspace as the operational control center for NovaCRM SaaS, outside the tenant environment, on shared Enterprise UX components.
+**Scope:** Deliver the Platform Administration Workspace as the operational control center for Konnect Nex SaaS, outside the tenant environment, on shared Enterprise UX components.
 
 ---
 

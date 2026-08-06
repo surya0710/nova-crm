@@ -1,7 +1,7 @@
 # Progress User Guide
 
 ## Purpose
-How project managers and stakeholders track delivery progress, health, and reports in NovaCRM.
+How project managers and stakeholders track delivery progress, health, and reports in Konnect Nex.
 
 ## Posting a progress update
 1. Open a project → **Progress** (`projects/{project}/progress`) or Progress Center dashboard.

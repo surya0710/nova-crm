@@ -9,7 +9,7 @@
 
 ## Purpose
 
-The NovaCRM Marketing Platform is the **single source of truth** for anonymous traffic, channel classification, lead attribution, and conversion events.
+The Konnect Nex Marketing Platform is the **single source of truth** for anonymous traffic, channel classification, lead attribution, and conversion events.
 
 Future consumers — Meta Business, Google Ads, LinkedIn, Marketing Reporting, Workflow Automation, and the AI Platform — must consume these contracts. They must not invent parallel attribution, conversion vocabularies, or tracking writes.
 
@@ -66,7 +66,7 @@ As of Phase 7B.F:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-NovaCRM layering is preserved:
+Konnect Nex layering is preserved:
 
 ```
 Controllers / Middleware / Artisan

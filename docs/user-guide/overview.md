@@ -1,6 +1,6 @@
 # User Guide Overview
 
-Welcome to NovaCRM. This guide orients end users across workspaces.
+Welcome to Konnect Nex. This guide orients end users across workspaces.
 
 ## Quick links
 

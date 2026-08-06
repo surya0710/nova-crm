@@ -123,7 +123,7 @@ These events are the canonical feed for later Meta Offline Conversions, Google O
 ## Did Any Architectural Assumptions Change?
 
 - No. Conversions remain immutable business events; Marketing stays the source of truth for attribution; CRM services emit conversions additively.
-- One additive platform service (`OpportunityService`) was introduced because stage updates previously lived only in the controller; moving them into a service is required to keep conversion hooks out of controllers and observers, consistent with NovaCRM architecture.
+- One additive platform service (`OpportunityService`) was introduced because stage updates previously lived only in the controller; moving them into a service is required to keep conversion hooks out of controllers and observers, consistent with Konnect Nex architecture.
 
 ## Explicitly Deferred
 

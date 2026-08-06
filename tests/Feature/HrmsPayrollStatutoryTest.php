@@ -24,10 +24,12 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\LocksAttendanceForPayroll;
 use Tests\TestCase;
 
 class HrmsPayrollStatutoryTest extends TestCase
 {
+    use LocksAttendanceForPayroll;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -142,6 +144,7 @@ class HrmsPayrollStatutoryTest extends TestCase
             'start_date' => '2026-02-01',
             'end_date' => '2026-02-28',
         ]);
+        $this->lockAttendanceForPayrollPeriod($febPeriod, $hr);
         $feb = app(PayrollCalculationService::class)->calculateEmployeePayroll($employee, $febPeriod);
         $this->assertSame('exempt_month', $feb['snapshot']['statutory']['professional_tax']['status']);
         $this->assertSame(0.0, (float) $feb['snapshot']['statutory']['professional_tax']['amount']);
@@ -276,23 +279,25 @@ class HrmsPayrollStatutoryTest extends TestCase
         Event::assertDispatched(PayrollStatutoryCalculated::class);
     }
 
-    public function test_tds_preparation_placeholder(): void
+    public function test_tds_calculation_via_payroll_engine(): void
     {
         [$organization, $hr, $period, $employee] = $this->statutoryScenario([
-            'basic' => 10000,
-            'hra' => 0,
+            'basic' => 100000,
+            'hra' => 40000,
             'tax_regime' => 'new',
             'pan' => 'ABCDE1234F',
         ]);
         app(TenantContext::class)->set($organization);
+        app(\App\Services\Hrms\IncomeTaxService::class)->ensureDefaultFinancialYear($hr);
 
         $calculation = app(PayrollCalculationService::class)->calculateEmployeePayroll($employee, $period);
         $tds = $calculation['snapshot']['statutory']['tds'];
-        $this->assertSame('deferred', $tds['calculation']);
-        $this->assertSame(0.0, (float) $tds['amount']);
+        $this->assertSame('engine', $tds['calculation']);
+        $this->assertSame('calculated', $tds['status']);
         $this->assertTrue($tds['pan_available']);
         $this->assertSame('new', $tds['tax_regime']);
-        $this->assertSame(10000.0, (float) $tds['taxable_income_snapshot']);
+        $this->assertArrayHasKey('monthly_tds', $tds);
+        $this->assertSame(\App\Services\Hrms\TdsCalculationService::ENGINE_VERSION, $tds['engine_version']);
     }
 
     public function test_tenant_isolation_and_rbac(): void
@@ -418,6 +423,7 @@ class HrmsPayrollStatutoryTest extends TestCase
             'annual_ctc' => 300000,
         ], $hr);
 
+        app(TenantContext::class)->set($organization);
         $payroll->getOrCreateConfiguration();
 
         $period = PayrollPeriod::factory()->open()->create([
@@ -426,6 +432,9 @@ class HrmsPayrollStatutoryTest extends TestCase
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-31',
         ]);
+
+        $this->lockAttendanceForPayrollPeriod($period, $hr);
+        app(TenantContext::class)->set($organization);
 
         return [$organization, $hr, $period, $employee];
     }

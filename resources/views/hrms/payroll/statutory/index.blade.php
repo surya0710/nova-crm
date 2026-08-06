@@ -37,6 +37,7 @@
                     <x-ui.button :href="route('hrms.payroll.statutory.profiles')" variant="link" size="sm">{{ __('Profiles') }}</x-ui.button>
                     <x-ui.button :href="route('hrms.payroll.statutory.rules')" variant="link" size="sm">{{ __('Rules') }}</x-ui.button>
                     <x-ui.button :href="route('hrms.payroll.statutory.validation')" variant="link" size="sm">{{ __('Compliance') }}</x-ui.button>
+                    <x-ui.button :href="route('hrms.payroll.tax.index')" variant="link" size="sm">{{ __('Income Tax') }}</x-ui.button>
                 </div>
             </x-ui.card>
         </div>

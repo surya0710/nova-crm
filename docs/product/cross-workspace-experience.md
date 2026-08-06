@@ -6,7 +6,7 @@ How users move across workspaces without losing context. Aligns with [business-f
 
 ## Principle
 
-NovaCRM is one platform. Cross-links should feel like **continuing work**, not restarting in another app.
+Konnect Nex is one platform. Cross-links should feel like **continuing work**, not restarting in another app.
 
 Preserve: **who I am**, **which org**, **which record**, **why I came** (referrer).
 

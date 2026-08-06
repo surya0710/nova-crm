@@ -2,7 +2,7 @@
 
 ## Sprint outcome
 
-Phase 9.2 delivered NovaCRM's first production-grade workflow automation platform.
+Phase 9.2 delivered Konnect Nex's first production-grade workflow automation platform.
 
 The platform is an orchestration layer that decides:
 
@@ -27,12 +27,12 @@ Nested condition evaluation
     ↓
 Sequential action dispatch
     ↓
-Owning NovaCRM services
+Owning Konnect Nex services
     ↓
 Execution logs and audit trail
 ```
 
-The implementation follows NovaCRM's established flow:
+The implementation follows Konnect Nex's established flow:
 
 ```text
 Controllers → Form Requests → Services → Models
@@ -82,7 +82,7 @@ Added:
 - `WorkflowExecution`
 - `WorkflowExecutionLog`
 
-The models use NovaCRM's `BelongsToOrganization` convention, typed casts, explicit fillable fields, relationships, status constants, factories, and tenant-aware route binding.
+The models use Konnect Nex's `BelongsToOrganization` convention, typed casts, explicit fillable fields, relationships, status constants, factories, and tenant-aware route binding.
 
 ### Workflow configuration service
 
@@ -276,7 +276,7 @@ The UI includes:
 - execution snapshots, payloads, outcomes, and errors;
 - search and status/trigger filters.
 
-The workflow screens use Bootstrap 5 with Alpine.js. Bootstrap is loaded through workflow-specific Vite entries, while the existing Alpine instance and NovaCRM application layout are reused.
+The workflow screens use Bootstrap 5 with Alpine.js. Bootstrap is loaded through workflow-specific Vite entries, while the existing Alpine instance and Konnect Nex application layout are reused.
 
 To prevent PHP `max_input_vars` truncation and dynamic key corruption, the builder submits its complete definition through validated JSON payload fields with:
 
@@ -292,7 +292,7 @@ Advanced trigger configuration is intentionally unavailable in Phase 9.2. Trigge
 
 ## RBAC, policies, and audit
 
-Added workflow permissions to NovaCRM's existing RBAC system:
+Added workflow permissions to Konnect Nex's existing RBAC system:
 
 - `workflows.view`
 - `workflows.create`
@@ -422,4 +422,4 @@ Future external provider actions—such as webhooks, email, Meta, or Google—mu
 
 Phase 9.2 is implementation-complete and regression-verified.
 
-The Workflow Automation Platform now serves as NovaCRM's central orchestration backbone while preserving the ownership and separation of existing platforms.
+The Workflow Automation Platform now serves as Konnect Nex's central orchestration backbone while preserving the ownership and separation of existing platforms.

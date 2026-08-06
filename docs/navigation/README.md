@@ -1,6 +1,6 @@
 # Workspace & Navigation (Release 1.1.S.3 / S.3.2)
 
-NovaCRM’s enterprise shell is workspace-driven: users switch between CRM, HRMS, Projects, Operations, and Administration from the header, land on their preferred workspace after login, and get faster access through search, favorites, recents, and workspace-scoped quick actions.
+Konnect Nex’s enterprise shell is workspace-driven: users switch between CRM, HRMS, Projects, Operations, and Administration from the header, land on their preferred workspace after login, and get faster access through search, favorites, recents, and workspace-scoped quick actions.
 
 ## Header workspace switcher
 

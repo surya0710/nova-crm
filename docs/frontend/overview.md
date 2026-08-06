@@ -1,4 +1,4 @@
-# NovaCRM Frontend Architecture — Overview
+# Konnect Nex Frontend Architecture — Overview
 
 **Phase:** 13.4 standards + Phase 14.1 shell + Phase 14.2 CRM reference  
 **Status:** Authoritative engineering reference for UI implementation  
@@ -93,4 +93,4 @@ Phase report: [../P13_PHASE_13_4_PROGRESS.md](../P13_PHASE_13_4_PROGRESS.md)
 
 ## Phase outcome
 
-NovaCRM has a complete Frontend Architecture and Implementation Standard. With 13.1–13.4, the platform has IA, workspace UX, design system, and engineering build standards — the foundation for Phase 14 UI work.
+Konnect Nex has a complete Frontend Architecture and Implementation Standard. With 13.1–13.4, the platform has IA, workspace UX, design system, and engineering build standards — the foundation for Phase 14 UI work.

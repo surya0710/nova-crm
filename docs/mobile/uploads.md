@@ -1,6 +1,6 @@
 # File Upload APIs
 
-File upload capabilities in NovaCRM APIs.
+File upload capabilities in Konnect Nex APIs.
 
 ---
 

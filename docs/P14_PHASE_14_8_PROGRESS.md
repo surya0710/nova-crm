@@ -8,7 +8,7 @@
 
 ## Outcome
 
-NovaCRM exposes actionable insights across CRM, Projects, HRMS, Recruitment, Finance, and Marketing through Marketing and Analytics workspace homes, campaign management, provider health, cross-module analytics, AI-assisted insights (human review required), KPI library, reports center, search, and command palette.
+Konnect Nex exposes actionable insights across CRM, Projects, HRMS, Recruitment, Finance, and Marketing through Marketing and Analytics workspace homes, campaign management, provider health, cross-module analytics, AI-assisted insights (human review required), KPI library, reports center, search, and command palette.
 
 ---
 

@@ -1,7 +1,7 @@
 <x-platform-layout>
     <x-layouts.workspace-home
         :title="__('Platform Home')"
-        :subtitle="__('Operate NovaCRM as a commercial SaaS platform')"
+        :subtitle="__('Operate :product as a commercial SaaS platform', ['product' => config('branding.product_name')])"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[

@@ -45,6 +45,12 @@ class PayrollRunPolicy
             || $user->hasPermission('payroll.manage', $payrollRun->organization);
     }
 
+    public function pay(User $user, PayrollRun $payrollRun): bool
+    {
+        return $user->hasPermission('payroll.pay', $payrollRun->organization)
+            || $user->hasPermission('payroll.manage', $payrollRun->organization);
+    }
+
     public function reverse(User $user, PayrollRun $payrollRun): bool
     {
         return $user->hasPermission('payroll.finance.manage', $payrollRun->organization);

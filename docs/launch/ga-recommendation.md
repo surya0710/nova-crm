@@ -6,7 +6,7 @@
 
 ## Summary
 
-NovaCRM application onboarding, module licensing, RBAC, organization upgrade, CRM import path, and operational SOP coverage have been exercised through five representative pilot organizations (`pilot:seed`) and the Launch Evidence Pack under `docs/launch/`.
+Konnect Nex application onboarding, module licensing, RBAC, organization upgrade, CRM import path, and operational SOP coverage have been exercised through five representative pilot organizations (`pilot:seed`) and the Launch Evidence Pack under `docs/launch/`.
 
 No **Blocker** defects are open in the [issue register](./issue-register.md).
 

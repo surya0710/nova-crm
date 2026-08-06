@@ -2,9 +2,10 @@
 
 namespace App\Exceptions;
 
+use App\Support\Api\ApiResponse;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Soft empty-state signal when a user has access but no linked employee record.
@@ -31,12 +32,11 @@ class MissingEmployeeRecordException extends Exception
 
     public function render(Request $request): Response
     {
-        if ($request->expectsJson()) {
-            return response([
-                'message' => $this->getMessage(),
+        if ($request->is('api/*') || $request->expectsJson()) {
+            return ApiResponse::success([
                 'empty_state' => true,
                 'audience' => $this->audience,
-            ], 200);
+            ], $this->getMessage());
         }
 
         return response()->view('hrms.empty-states.missing-employee', [

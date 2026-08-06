@@ -1,12 +1,12 @@
-# NovaCRM — Development Status
+# Konnect Nex — Development Status
 
-Copy everything below the line into a new Cursor chat to continue building NovaCRM.
+Copy everything below the line into a new Cursor chat to continue building Konnect Nex.
 
 ---
 
 ## Context
 
-NovaCRM is a multi-tenant Laravel CRM. **Phases 1–5 and Tasks are complete.** Continue from the next items below using the existing codebase — do not rebuild what already exists.
+Konnect Nex is a multi-tenant Laravel CRM. **Phases 1–5 and Tasks are complete.** Continue from the next items below using the existing codebase — do not rebuild what already exists.
 
 ### Tech stack
 - **Backend:** Laravel 12, PHP 8.2, session auth (Breeze), Sanctum API

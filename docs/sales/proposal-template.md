@@ -6,7 +6,7 @@
 **Validity:** 30 days  
 
 ## 1. Executive summary
-[2–3 sentences on customer goals and NovaCRM fit]
+[2–3 sentences on customer goals and Konnect Nex fit]
 
 ## 2. Scope of modules
 | Module | In scope | Notes |

@@ -1,6 +1,6 @@
 # Deliverable 13 — Motion & Animation
 
-Motion principles for NovaCRM. Motion supports hierarchy and feedback — not decoration.
+Motion principles for Konnect Nex. Motion supports hierarchy and feedback — not decoration.
 
 ---
 

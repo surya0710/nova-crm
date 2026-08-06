@@ -1,7 +1,7 @@
 # Resource Planning User Guide
 
 ## Purpose
-Guide project managers and team leads through allocating capacity, reading workload, and spotting capacity risks in NovaCRM.
+Guide project managers and team leads through allocating capacity, reading workload, and spotting capacity risks in Konnect Nex.
 
 ## Who should use this feature
 - Delivery leads planning who works on which project or task

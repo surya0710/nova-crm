@@ -21,7 +21,7 @@ Organization ID: 42
 
 ## Authentication
 
-NovaCRM APIs use Bearer tokens created under **Settings → API Tokens**.
+Konnect Nex APIs use Bearer tokens created under **Settings → API Tokens**.
 
 ```http
 Authorization: Bearer {your_api_token}
@@ -64,7 +64,7 @@ Employee creation across UI, API, and import must go through `EmployeeProvisioni
 
 ## Postman
 
-Import `postman/NovaCRM-API.postman_collection.json`. Set collection variables:
+Import `postman/Konnect Nex-API.postman_collection.json`. Set collection variables:
 
 - `base_url`
 - `api_token`

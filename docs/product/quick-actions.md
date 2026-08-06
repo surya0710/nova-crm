@@ -1,6 +1,6 @@
 # Deliverable 4 — Quick Actions Framework
 
-Universal Quick Actions for NovaCRM: the fastest path to high-frequency creates and decisions.
+Universal Quick Actions for Konnect Nex: the fastest path to high-frequency creates and decisions.
 
 ---
 

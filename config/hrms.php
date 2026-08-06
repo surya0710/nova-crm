@@ -402,6 +402,41 @@ return [
         'rejected' => 'Rejected',
     ],
 
+    'attendance_overtime_rule_types' => [
+        'daily' => 'Daily overtime',
+        'holiday' => 'Holiday overtime',
+        'weekly_off' => 'Weekly off overtime',
+    ],
+
+    'attendance_overtime_entry_statuses' => [
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+    ],
+
+    'attendance_period_statuses' => [
+        'open' => 'Open',
+        'frozen' => 'Frozen',
+        'locked' => 'Locked',
+    ],
+
+    'attendance_approval_statuses' => [
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+    ],
+
+    'attendance_snapshot_statuses' => [
+        'active' => 'Active',
+        'superseded' => 'Superseded',
+    ],
+
+    'attendance_validation' => [
+        'long_working_minutes' => (int) env('HRMS_ATTENDANCE_LONG_WORKING_MINUTES', 720),
+    ],
+
+    'default_week_off_days' => [0, 6],
+
     'salary_component_types' => [
         'earning' => 'Earning',
         'deduction' => 'Deduction',
@@ -693,6 +728,28 @@ return [
         'default_working_days_per_month' => 26,
         'default_overtime_handling' => 'pay',
         'default_rounding_policy' => 'nearest',
+        'default_salary_mode' => 'calendar',
+        'default_salary_credit_day' => null,
+        'default_reminder_days_before_credit' => 3,
+        'salary_modes' => [
+            'calendar' => 'Calendar based',
+            'attendance' => 'Attendance based',
+            'leave' => 'Leave based',
+        ],
+        'adjustment_types' => [
+            'bonus' => 'Bonus',
+            'incentive' => 'Incentive',
+            'penalty' => 'Penalty',
+            'arrears' => 'Arrears',
+            'misc' => 'Miscellaneous',
+        ],
+        'adjustment_statuses' => [
+            'draft' => 'Draft',
+            'approved' => 'Approved',
+            'applied' => 'Applied',
+            'rejected' => 'Rejected',
+            'cancelled' => 'Cancelled',
+        ],
         'statutory_component_codes' => ['PF', 'ESI', 'PT', 'IT', 'TDS'],
         'run_statuses' => [
             'draft' => 'Draft',
@@ -700,6 +757,7 @@ return [
             'calculated' => 'Calculated',
             'approved' => 'Approved',
             'published' => 'Published',
+            'paid' => 'Paid',
             'reversed' => 'Reversed',
         ],
         'approval_types' => [
@@ -796,8 +854,95 @@ return [
             ],
             'tds' => [
                 'enabled' => true,
-                'calculation' => 'deferred',
+                'calculation' => 'engine',
+                'engine_version' => '10.3.7',
+                'cess_percent' => 4,
+                'standard_deduction' => [
+                    'old' => 50000,
+                    'new' => 75000,
+                ],
+                'rebate_87a' => [
+                    'old' => ['max_taxable_income' => 500000, 'max_rebate' => 12500],
+                    'new' => ['max_taxable_income' => 700000, 'max_rebate' => 25000],
+                ],
+                'surcharge_slabs' => [
+                    ['min' => 5000000, 'max' => 10000000, 'percent' => 10],
+                    ['min' => 10000001, 'max' => 20000000, 'percent' => 15],
+                    ['min' => 20000001, 'max' => 50000000, 'percent' => 25],
+                    ['min' => 50000001, 'max' => null, 'percent' => 37],
+                ],
+                'slabs' => [
+                    'old' => [
+                        ['min' => 0, 'max' => 250000, 'percent' => 0],
+                        ['min' => 250001, 'max' => 500000, 'percent' => 5],
+                        ['min' => 500001, 'max' => 1000000, 'percent' => 20],
+                        ['min' => 1000001, 'max' => null, 'percent' => 30],
+                    ],
+                    'new' => [
+                        ['min' => 0, 'max' => 300000, 'percent' => 0],
+                        ['min' => 300001, 'max' => 700000, 'percent' => 5],
+                        ['min' => 700001, 'max' => 1000000, 'percent' => 10],
+                        ['min' => 1000001, 'max' => 1200000, 'percent' => 15],
+                        ['min' => 1200001, 'max' => 1500000, 'percent' => 20],
+                        ['min' => 1500001, 'max' => null, 'percent' => 30],
+                    ],
+                ],
+                'section_limits' => [
+                    '80C' => 150000,
+                    '80CCD' => 50000,
+                    '80D' => 75000,
+                    'home_loan_interest' => 200000,
+                    'education_loan' => null,
+                    'nps' => 50000,
+                ],
             ],
+        ],
+    ],
+
+    'income_tax' => [
+        'regimes' => [
+            'old' => 'Old Regime',
+            'new' => 'New Regime',
+        ],
+        'declaration_statuses' => [
+            'draft' => 'Draft',
+            'submitted' => 'Submitted',
+            'verified' => 'Verified',
+            'rejected' => 'Rejected',
+        ],
+        'proof_statuses' => [
+            'uploaded' => 'Uploaded',
+            'verified' => 'Verified',
+            'partial' => 'Partially Approved',
+            'rejected' => 'Rejected',
+        ],
+        'declaration_categories' => [
+            '80C' => ['label' => 'Section 80C', 'section' => '80C'],
+            '80CCD' => ['label' => 'Section 80CCD (NPS)', 'section' => '80CCD'],
+            '80D' => ['label' => 'Section 80D (Medical Insurance)', 'section' => '80D'],
+            'home_loan_interest' => ['label' => 'Home Loan Interest (Sec 24)', 'section' => '24'],
+            'hra' => ['label' => 'House Rent Allowance', 'section' => '10(13A)'],
+            'lta' => ['label' => 'Leave Travel Allowance', 'section' => '10(5)'],
+            'nps' => ['label' => 'National Pension System', 'section' => '80CCD'],
+            'education_loan' => ['label' => 'Education Loan Interest (Sec 80E)', 'section' => '80E'],
+            'other' => ['label' => 'Other Deductions', 'section' => null],
+        ],
+        'report_types' => [
+            'tds_register' => 'TDS Register',
+            'tax_projection' => 'Tax Projection',
+            'employee_tax_summary' => 'Employee Tax Summary',
+            'declaration_status' => 'Declaration Status',
+            'proof_verification' => 'Proof Verification',
+            'form16_summary' => 'Form 16 Summary',
+        ],
+        'export_formats' => ['csv', 'xlsx', 'pdf'],
+        'default_financial_year' => [
+            'code' => 'FY2025-26',
+            'label' => 'Financial Year 2025-26',
+            'assessment_year' => 'AY2026-27',
+            'start_date' => '2025-04-01',
+            'end_date' => '2026-03-31',
+            'default_regime' => 'new',
         ],
     ],
 
@@ -1034,6 +1179,51 @@ return [
             'entity' => 'payroll_run',
             'label' => 'Payroll published',
             'description' => 'Runs when an approved payroll run is published.',
+        ],
+        'payroll.paid' => [
+            'entity' => 'payroll_run',
+            'label' => 'Payroll paid',
+            'description' => 'Runs when salary payment is confirmed for a published payroll run.',
+        ],
+        'salary.revised' => [
+            'entity' => 'employee_salary_assignment',
+            'label' => 'Salary revised',
+            'description' => 'Runs when an employee salary assignment revises a prior open assignment.',
+        ],
+        'payroll.adjustment.approved' => [
+            'entity' => 'payroll_adjustment',
+            'label' => 'Payroll adjustment approved',
+            'description' => 'Runs when a payroll adjustment is approved.',
+        ],
+        'tax.declaration.submitted' => [
+            'entity' => 'tax_declaration',
+            'label' => 'Tax declaration submitted',
+            'description' => 'Runs when an employee submits an investment declaration.',
+        ],
+        'tax.declaration.approved' => [
+            'entity' => 'tax_declaration',
+            'label' => 'Tax declaration approved',
+            'description' => 'Runs when HR verifies/approves an investment declaration.',
+        ],
+        'tax.declaration.rejected' => [
+            'entity' => 'tax_declaration',
+            'label' => 'Tax declaration rejected',
+            'description' => 'Runs when an investment declaration is rejected.',
+        ],
+        'tax.proof.uploaded' => [
+            'entity' => 'tax_proof',
+            'label' => 'Tax proof uploaded',
+            'description' => 'Runs when an investment proof document is uploaded.',
+        ],
+        'tax.proof.verified' => [
+            'entity' => 'tax_proof',
+            'label' => 'Tax proof verified',
+            'description' => 'Runs when an investment proof is verified, partially approved, or rejected.',
+        ],
+        'tds.calculated' => [
+            'entity' => 'tds_monthly_calculation',
+            'label' => 'TDS calculated',
+            'description' => 'Runs when monthly TDS is calculated for an employee.',
         ],
         'payslip.generated' => [
             'entity' => 'payslip',
@@ -1543,6 +1733,45 @@ return [
             'offer' => 'Offer Report',
             'source' => 'Source Report',
             'vacancy_aging' => 'Vacancy Aging',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mobile API (Phase 10.6)
+    |--------------------------------------------------------------------------
+    */
+    'mobile' => [
+        'access_token_ttl_minutes' => (int) env('HRMS_MOBILE_ACCESS_TTL', 60),
+        'refresh_token_ttl_days' => (int) env('HRMS_MOBILE_REFRESH_TTL_DAYS', 30),
+        'access_token_ability' => 'hrms-mobile',
+        'refresh_token_ability' => 'hrms-mobile-refresh',
+        'virus_scan_hook' => \App\Services\Security\NoopVirusScanHook::class,
+        'uploads' => [
+            'default' => [
+                'max_kb' => 5120,
+                'mimes' => ['jpeg', 'jpg', 'png', 'pdf', 'webp'],
+            ],
+            'profile_photo' => [
+                'max_kb' => 2048,
+                'mimes' => ['jpeg', 'jpg', 'png', 'webp'],
+            ],
+            'document' => [
+                'max_kb' => 10240,
+                'mimes' => ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx'],
+            ],
+            'tax_proof' => [
+                'max_kb' => 10240,
+                'mimes' => ['jpeg', 'jpg', 'png', 'pdf'],
+            ],
+            'leave_attachment' => [
+                'max_kb' => 5120,
+                'mimes' => ['jpeg', 'jpg', 'png', 'pdf'],
+            ],
+            'recruitment' => [
+                'max_kb' => 10240,
+                'mimes' => ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx'],
+            ],
         ],
     ],
 ];

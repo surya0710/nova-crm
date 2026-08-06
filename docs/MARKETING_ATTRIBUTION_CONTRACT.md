@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This contract defines the canonical semantics of marketing attribution in NovaCRM. It freezes the meaning of attribution data independently of any advertising provider, storage decision, or reporting feature.
+This contract defines the canonical semantics of marketing attribution in Konnect Nex. It freezes the meaning of attribution data independently of any advertising provider, storage decision, or reporting feature.
 
 Every producer (tracking scripts, landing pages, lead intake API, provider adapters, manual imports) and every consumer (reports, dashboards, exports, future analytics) must obey this contract. The Marketing Attribution Platform is the single attribution authority. Marketing providers consume the platform; they do not define it.
 

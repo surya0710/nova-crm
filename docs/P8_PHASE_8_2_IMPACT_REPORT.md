@@ -6,7 +6,7 @@ Phase 8.2 — Lead Import
 
 ## Outcome
 
-NovaCRM can import Leads from CSV and XLSX through the existing Import Platform.
+Konnect Nex can import Leads from CSV and XLSX through the existing Import Platform.
 Lead-specific rules live in `LeadImportAdapter`; persistence goes through
 `LeadService`. The Import Platform remains generic.
 

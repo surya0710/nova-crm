@@ -1,6 +1,6 @@
 # Deliverable 1 — Workspace Home Blueprints
 
-Landing-page specification for every NovaCRM workspace. Implementation deferred to Phase 14+. Aligns with [workspaces.md](./workspaces.md) and [dashboard-ownership.md](./dashboard-ownership.md).
+Landing-page specification for every Konnect Nex workspace. Implementation deferred to Phase 14+. Aligns with [workspaces.md](./workspaces.md) and [dashboard-ownership.md](./dashboard-ownership.md).
 
 ---
 

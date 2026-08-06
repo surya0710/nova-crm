@@ -1,6 +1,6 @@
 # Import Center
 
-NovaCRM Release **1.1.2** introduces a centralized **Universal Import Center** under Administration.
+Konnect Nex Release **1.1.2** introduces a centralized **Universal Import Center** under Administration.
 
 ## Architecture
 
@@ -64,7 +64,7 @@ Projects, Milestones, Tasks
 ### Administration
 Users (invitation workflow only)
 
-> Contacts are not currently modeled in NovaCRM and are not available as an import entity.
+> Contacts are not currently modeled in Konnect Nex and are not available as an import entity.
 
 ## Duplicate strategies
 

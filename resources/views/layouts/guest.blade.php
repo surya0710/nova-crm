@@ -4,8 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="application-name" content="{{ config('branding.product_name') }}">
+        <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
 
-        <title>{{ config('app.name', 'NovaCRM') }}</title>
+        <title>{{ config('branding.product_name') }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -16,8 +18,8 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-slate-50">
             <div>
                 <a href="{{ route('home') }}" class="flex items-center gap-2">
-                    <div class="h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-lg">N</div>
-                    <span class="font-semibold text-xl text-slate-900">NovaCRM</span>
+                    <div class="h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-lg">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
+                    <span class="font-semibold text-xl text-slate-900">{{ config('branding.product_name') }}</span>
                 </a>
             </div>
 

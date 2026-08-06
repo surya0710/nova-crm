@@ -9,10 +9,13 @@ use App\Models\PayrollResult;
 use App\Models\PayrollRun;
 use App\Models\SalaryComponent;
 use App\Models\SalaryStructure;
+use App\Services\Hrms\PayrollEnterpriseDashboardService;
 use Illuminate\View\View;
 
 class PayrollDashboardController extends Controller
 {
+    public function __construct(protected PayrollEnterpriseDashboardService $enterpriseDashboard) {}
+
     public function __invoke(): View
     {
         $this->authorize('viewAny', SalaryComponent::class);
@@ -25,6 +28,7 @@ class PayrollDashboardController extends Controller
             'runCount' => PayrollRun::query()->count(),
             'resultCount' => PayrollResult::query()->count(),
             'latestRuns' => PayrollRun::query()->with('period')->latest()->limit(5)->get(),
+            'enterprise' => $this->enterpriseDashboard->widgets(),
         ]);
     }
 }

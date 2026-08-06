@@ -1,6 +1,6 @@
 # Lead Intake API
 
-External systems can submit leads into NovaCRM using a secure REST API. This is the standard integration layer for landing pages, marketing websites, mobile apps, and third-party services such as MyVisaRoute.
+External systems can submit leads into Konnect Nex using a secure REST API. This is the standard integration layer for landing pages, marketing websites, mobile apps, and third-party services such as MyVisaRoute.
 
 ## Base URL
 
@@ -16,11 +16,11 @@ POST http://localhost/nova-crm/public/api/v1/leads
 
 ## Authentication
 
-NovaCRM uses **Laravel Sanctum Personal Access Tokens**.
+Konnect Nex uses **Laravel Sanctum Personal Access Tokens**.
 
 ### Generate a token
 
-1. Sign in to NovaCRM as a user with the **Manage personal API tokens** permission.
+1. Sign in to Konnect Nex as a user with the **Manage personal API tokens** permission.
 2. Open **Settings → API Tokens**.
 3. Create a token and copy the plain-text value immediately (it is shown only once).
 

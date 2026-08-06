@@ -24,11 +24,12 @@ use Illuminate\Support\Facades\DB;
 
 class StatutoryComplianceService
 {
-    public const ENGINE_VERSION = '10.3.3';
+    public const ENGINE_VERSION = '10.3.7';
 
     public function __construct(
         protected TenantContext $tenantContext,
         protected AuditLogger $auditLogger,
+        protected TdsCalculationService $tdsCalculationService,
     ) {}
 
     /**
@@ -85,7 +86,14 @@ class StatutoryComplianceService
         $pf = $this->calculatePf($profile, $config, $gross, $earnings, $roundingPolicy);
         $esi = $this->calculateEsi($profile, $config, $gross, $roundingPolicy);
         $pt = $this->calculateProfessionalTax($profile, $config, $gross, $month, $roundingPolicy);
-        $tds = $this->prepareTds($profile, $config, $gross);
+        $tds = $this->tdsCalculationService->calculateForPayroll(
+            $employee,
+            $period,
+            $profile,
+            $baseCalculation,
+            $config['tds'] ?? [],
+            $roundingPolicy,
+        );
 
         $components = $this->buildStatutoryComponents($pf, $esi, $pt, $tds);
         $employeeDeductions = collect($components)
@@ -577,7 +585,7 @@ class StatutoryComplianceService
             'code' => 'india_2026',
             'name' => 'India 2026',
             'jurisdiction' => 'IN',
-            'description' => 'Indian statutory payroll compliance (EPF, ESI, PT, TDS preparation)',
+            'description' => 'Indian statutory payroll compliance (EPF, ESI, PT, Income Tax TDS)',
             'version' => '2026.1',
             'effective_from' => '2026-01-01',
             'is_active' => true,
@@ -763,7 +771,7 @@ class StatutoryComplianceService
     }
 
     /**
-     * TDS preparation only — no tax calculation.
+     * @deprecated Prefer TdsCalculationService::calculateForPayroll via applyToPayrollCalculation.
      *
      * @param  array<string, mixed>  $config
      * @return array<string, mixed>
@@ -772,17 +780,33 @@ class StatutoryComplianceService
         EmployeeStatutoryProfile $profile,
         array $config,
         float $gross,
+        ?Employee $employee = null,
+        ?PayrollPeriod $period = null,
+        array $baseCalculation = [],
+        string $roundingPolicy = 'nearest',
     ): array {
-        $tdsConfig = $config['tds'] ?? [];
+        if ($employee && $period) {
+            return $this->tdsCalculationService->calculateForPayroll(
+                $employee,
+                $period,
+                $profile,
+                $baseCalculation ?: ['gross_salary' => $gross, 'snapshot' => ['earnings' => []]],
+                $config['tds'] ?? $config,
+                $roundingPolicy,
+            );
+        }
+
+        $tdsConfig = $config['tds'] ?? $config;
 
         return [
             'prepared' => (bool) ($tdsConfig['enabled'] ?? true),
-            'calculation' => 'deferred',
+            'calculation' => ($tdsConfig['calculation'] ?? 'engine') === 'deferred' ? 'deferred' : 'engine',
             'amount' => 0.0,
             'tax_regime' => $profile->tax_regime,
             'pan_available' => filled($profile->pan),
             'taxable_income_snapshot' => $this->roundAmount($gross, 'nearest'),
-            'status' => 'placeholder',
+            'status' => ($tdsConfig['calculation'] ?? 'engine') === 'deferred' ? 'placeholder' : 'pending_context',
+            'engine_version' => TdsCalculationService::ENGINE_VERSION,
         ];
     }
 
@@ -844,17 +868,22 @@ class StatutoryComplianceService
         );
         $components[] = $this->statutoryLine(
             'TDS',
-            'TDS Placeholder',
+            'Income Tax (TDS)',
             'deduction',
             (float) ($tds['amount'] ?? 0),
-            $tds['status'] ?? 'placeholder',
+            $tds['status'] ?? 'calculated',
             true,
             [
                 'source' => 'tds',
                 'tax_regime' => $tds['tax_regime'] ?? null,
                 'pan_available' => $tds['pan_available'] ?? false,
                 'taxable_income_snapshot' => $tds['taxable_income_snapshot'] ?? 0,
-                'calculation' => 'deferred',
+                'annual_tax_liability' => $tds['annual_tax_liability'] ?? null,
+                'monthly_tds' => $tds['monthly_tds'] ?? $tds['amount'] ?? 0,
+                'calculation' => $tds['calculation'] ?? 'engine',
+                'engine_version' => $tds['engine_version'] ?? TdsCalculationService::ENGINE_VERSION,
+                'projection_id' => $tds['projection_id'] ?? null,
+                'financial_year_code' => $tds['financial_year_code'] ?? null,
             ]
         );
 

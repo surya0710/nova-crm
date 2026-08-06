@@ -1,6 +1,6 @@
 # Marketing & Analytics Workspace
 
-Phase **14.8** delivers the NovaCRM **Marketing** and **Analytics / Business Intelligence** workspaces. Both run inside the tenant AppShell (Blade + Alpine + Vite) and reuse existing marketing platform, reporting, executive dashboard, and forecast services.
+Phase **14.8** delivers the Konnect Nex **Marketing** and **Analytics / Business Intelligence** workspaces. Both run inside the tenant AppShell (Blade + Alpine + Vite) and reuse existing marketing platform, reporting, executive dashboard, and forecast services.
 
 Use with [crm-reference-implementation.md](./crm-reference-implementation.md), [projects-workspace.md](./projects-workspace.md), [hrms-workspace.md](./hrms-workspace.md), and [organization-administration.md](./organization-administration.md) for shared Enterprise UX patterns.
 

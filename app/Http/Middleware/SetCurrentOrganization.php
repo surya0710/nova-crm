@@ -42,7 +42,10 @@ class SetCurrentOrganization
 
             if ($organization) {
                 $this->tenant->set($organization);
-                $this->syncSession($request, $organization);
+
+                if ($request->hasSession()) {
+                    $this->syncSession($request, $organization);
+                }
 
                 return $next($request);
             }

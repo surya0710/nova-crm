@@ -1,6 +1,6 @@
 # Deliverable 6 — Sidebar Blueprint
 
-Enterprise sidebar for NovaCRM. Complements [navigation-map.md](./navigation-map.md).
+Enterprise sidebar for Konnect Nex. Complements [navigation-map.md](./navigation-map.md).
 
 ---
 

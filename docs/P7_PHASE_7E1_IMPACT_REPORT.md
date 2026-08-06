@@ -6,7 +6,7 @@ Phase 7E.1 - Provider Diagnostics & Health Center
 
 ## Outcome
 
-NovaCRM now exposes a unified **Provider Diagnostics & Health Center** for all
+Konnect Nex now exposes a unified **Provider Diagnostics & Health Center** for all
 marketing integrations. The Provider Platform aggregates health, credential
 state, synchronization history, runtime statistics, and recent errors into one
 tenant-scoped dashboard.

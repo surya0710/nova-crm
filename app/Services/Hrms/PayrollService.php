@@ -6,9 +6,9 @@ use App\Contracts\Payroll\PayrollCalculationContract;
 use App\Events\EmployeeSalaryAssigned;
 use App\Events\PayrollPeriodCreated;
 use App\Events\PayrollPeriodLocked;
+use App\Events\SalaryRevised;
 use App\Events\SalaryStructureCreated;
 use App\Events\SalaryStructureUpdated;
-use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Models\EmployeeExitProcess;
 use App\Models\EmployeeSalaryAssignment;
@@ -22,6 +22,7 @@ use App\Services\AuditLogger;
 use App\Services\TenantContext;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,8 @@ class PayrollService implements PayrollCalculationContract
         protected TenantContext $tenantContext,
         protected AuditLogger $auditLogger,
         protected LeaveService $leaveService,
+        protected AttendanceLockService $attendanceLockService,
+        protected AttendanceSnapshotService $attendanceSnapshotService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -249,8 +252,69 @@ class PayrollService implements PayrollCalculationContract
                 'employee_id' => $employee->id,
             ]));
 
+            if ($openAssignments->isNotEmpty()) {
+                $this->auditLogger->log($assignment, 'salary_revised', [
+                    'employee_id' => $employee->id,
+                    'previous_assignment_ids' => $openAssignments->pluck('id')->all(),
+                    'salary_structure_id' => $structure->id,
+                    'effective_from' => $assignment->effective_from->toDateString(),
+                    'annual_ctc' => $assignment->annual_ctc,
+                ], $actor);
+
+                event(SalaryRevised::forModel($assignment, [
+                    'actor_id' => $actor->id,
+                    'employee_id' => $employee->id,
+                    'previous_assignment_ids' => $openAssignments->pluck('id')->all(),
+                ]));
+            }
+
             return $assignment->load(['salaryStructure', 'employee']);
         });
+    }
+
+    /**
+     * Historical salary assignments for revision UX.
+     *
+     * @return Collection<int, EmployeeSalaryAssignment>
+     */
+    public function salaryRevisionHistory(Employee $employee): Collection
+    {
+        return EmployeeSalaryAssignment::query()
+            ->where('employee_id', $employee->id)
+            ->with(['salaryStructure', 'assignedBy'])
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Compare two assignments for revision UX.
+     *
+     * @return array<string, mixed>
+     */
+    public function compareSalaryAssignments(EmployeeSalaryAssignment $current, EmployeeSalaryAssignment $previous): array
+    {
+        $current->loadMissing('salaryStructure.structureComponents.salaryComponent');
+        $previous->loadMissing('salaryStructure.structureComponents.salaryComponent');
+
+        return [
+            'employee_id' => $current->employee_id,
+            'current' => [
+                'id' => $current->id,
+                'structure' => $current->salaryStructure?->name,
+                'annual_ctc' => $current->annual_ctc,
+                'effective_from' => $current->effective_from?->toDateString(),
+                'effective_until' => $current->effective_until?->toDateString(),
+            ],
+            'previous' => [
+                'id' => $previous->id,
+                'structure' => $previous->salaryStructure?->name,
+                'annual_ctc' => $previous->annual_ctc,
+                'effective_from' => $previous->effective_from?->toDateString(),
+                'effective_until' => $previous->effective_until?->toDateString(),
+            ],
+            'ctc_delta' => round((float) $current->annual_ctc - (float) $previous->annual_ctc, 2),
+        ];
     }
 
     // -------------------------------------------------------------------------
@@ -355,6 +419,10 @@ class PayrollService implements PayrollCalculationContract
                 'week_off_days' => config('hrms.weekend_days', ['saturday', 'sunday']),
                 'overtime_handling' => config('hrms.payroll.default_overtime_handling', 'pay'),
                 'rounding_policy' => config('hrms.payroll.default_rounding_policy', 'nearest'),
+                'salary_mode' => config('hrms.payroll.default_salary_mode', 'calendar'),
+                'salary_credit_day' => config('hrms.payroll.default_salary_credit_day'),
+                'auto_generate' => false,
+                'reminder_days_before_credit' => config('hrms.payroll.default_reminder_days_before_credit'),
             ],
         );
     }
@@ -366,6 +434,7 @@ class PayrollService implements PayrollCalculationContract
             $before = $configuration->only([
                 'payroll_frequency', 'currency', 'working_days_per_month',
                 'week_off_days', 'overtime_handling', 'rounding_policy',
+                'salary_mode', 'salary_credit_day', 'auto_generate', 'reminder_days_before_credit',
             ]);
 
             $configuration->update($data);
@@ -408,10 +477,8 @@ class PayrollService implements PayrollCalculationContract
         $assignment = $this->getActiveSalaryAssignment($employee, $asOf);
         $configuration = $this->getOrCreateConfiguration();
 
-        $attendanceRecords = AttendanceRecord::query()
-            ->where('employee_id', $employee->id)
-            ->whereBetween('attendance_date', [$start->toDateString(), $end->toDateString()])
-            ->get();
+        $snapshot = $this->attendanceLockService->requireLockedSnapshotForPayroll($period);
+        $attendance = $this->attendanceSnapshotService->summarizeForEmployee($snapshot, $employee->id);
 
         $approvedLeave = $this->leaveService->getApprovedLeaveForDateRange($employee, $start, $end);
         $unpaidLeave = $approvedLeave->filter(fn ($application) => ! ($application->leaveType?->is_paid ?? true));
@@ -447,6 +514,9 @@ class PayrollService implements PayrollCalculationContract
                 'week_off_days' => $configuration->week_off_days,
                 'overtime_handling' => $configuration->overtime_handling,
                 'rounding_policy' => $configuration->rounding_policy,
+                'salary_mode' => $configuration->salary_mode ?? config('hrms.payroll.default_salary_mode', 'calendar'),
+                'salary_credit_day' => $configuration->salary_credit_day,
+                'auto_generate' => (bool) ($configuration->auto_generate ?? false),
             ],
             'salary_assignment' => $assignment ? [
                 'id' => $assignment->id,
@@ -466,12 +536,7 @@ class PayrollService implements PayrollCalculationContract
                     'formula' => $row->formula,
                 ])->all() ?? [],
             ] : null,
-            'attendance' => [
-                'working_days' => $attendanceRecords->whereIn('status', ['present', 'late', 'half_day'])->count(),
-                'overtime_minutes' => (int) $attendanceRecords->sum('overtime_minutes'),
-                'summary' => $attendanceRecords->countBy('status')->all(),
-                'record_count' => $attendanceRecords->count(),
-            ],
+            'attendance' => $attendance,
             'leave' => [
                 'approved_count' => $approvedLeave->count(),
                 'approved_days' => (float) $approvedLeave->sum('days'),
@@ -485,7 +550,7 @@ class PayrollService implements PayrollCalculationContract
             ],
             'calculation' => null,
             'calculation_status' => 'deferred',
-            'note' => 'Payroll calculation is not implemented in Phase 10.3.1.',
+            'note' => 'Attendance inputs are sourced exclusively from locked attendance snapshots.',
         ];
     }
 

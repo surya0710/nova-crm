@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get productive in NovaCRM in under an hour.
+Get productive in Konnect Nex in under an hour.
 
 ## 1. Sign in
 1. Open your organization URL (provided at onboarding).

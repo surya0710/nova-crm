@@ -7,7 +7,7 @@
 `GET | POST | PUT | PATCH | DELETE`
 
 ## Authentication
-Bearer token using NovaCRM API token permissions.
+Bearer token using Konnect Nex API token permissions.
 
 ## Request
 Document query parameters, payload schema, and supported filters.

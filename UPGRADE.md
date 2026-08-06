@@ -1,6 +1,6 @@
 # Upgrade Guide
 
-Forward-compatible upgrades for NovaCRM. Prefer additive migrations; **do not** run `migrate:fresh`, `migrate:refresh`, or `db:wipe` against shared environments.
+Forward-compatible upgrades for Konnect Nex. Prefer additive migrations; **do not** run `migrate:fresh`, `migrate:refresh`, or `db:wipe` against shared environments.
 
 ---
 

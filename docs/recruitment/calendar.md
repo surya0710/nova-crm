@@ -1,7 +1,7 @@
 # Recruitment Calendar Integrations
 
 ## Purpose
-Sync interview rounds to external calendars so interviewers receive events and optional meeting links without leaving NovaCRM.
+Sync interview rounds to external calendars so interviewers receive events and optional meeting links without leaving Konnect Nex.
 
 ## Supported Providers
 - **Google Calendar** — OAuth calendar events and meeting links
@@ -12,7 +12,7 @@ Meeting-only providers (Google Meet, Microsoft Teams, Zoom) are catalogued as co
 ## Lifecycle
 1. An interview round is scheduled (`recruitment.interview_scheduled`).
 2. Connected calendar providers create or update an external event via `RecruitmentCalendarService`.
-3. NovaCRM stores `external_event_id`, `meeting_link`, and sync status on `RecruitmentCalendarEvent`.
+3. Konnect Nex stores `external_event_id`, `meeting_link`, and sync status on `RecruitmentCalendarEvent`.
 4. Meeting link and provider are copied onto the interview round when available.
 5. Cancellation (`recruitment.interview_cancelled`) cancels the external event and marks the local record cancelled.
 6. Reschedule updates the existing external event when an `external_event_id` is already stored.

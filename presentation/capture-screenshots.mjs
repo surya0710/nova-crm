@@ -1,5 +1,5 @@
 /**
- * Capture NovaCRM presentation screenshots via Playwright.
+ * Capture Konnect Nex presentation screenshots via Playwright.
  * Usage: node presentation/capture-screenshots.mjs
  */
 import { chromium } from 'playwright';

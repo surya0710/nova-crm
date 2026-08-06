@@ -1,4 +1,4 @@
-# NovaCRM Implementation Status
+# Konnect Nex Implementation Status
 
 **As of:** 2026-07-31  
 **Branch:** `master` (`606287a` Operational fixes and earlier commits)  

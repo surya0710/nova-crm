@@ -1,6 +1,6 @@
 # Deliverable 4 — Grid & Layout System
 
-Layout rules for NovaCRM application shell and pages.
+Layout rules for Konnect Nex application shell and pages.
 
 ---
 

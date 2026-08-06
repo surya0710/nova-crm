@@ -1,6 +1,6 @@
 # Deployment Guide (Customer / Partner Facing)
 
-This guide summarizes how NovaCRM is deployed. Internal operators should prefer [overview.md](overview.md) and [../operations/production-deployment-checklist.md](../operations/production-deployment-checklist.md).
+This guide summarizes how Konnect Nex is deployed. Internal operators should prefer [overview.md](overview.md) and [../operations/production-deployment-checklist.md](../operations/production-deployment-checklist.md).
 
 ## Requirements
 PHP 8.2+ · Composer 2 · Node 18+ · MySQL 8+ · Queue worker · Cron scheduler · HTTPS

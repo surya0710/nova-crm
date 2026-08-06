@@ -21,7 +21,7 @@ Phase 7B.2 - Visitor Identification & Tracking Runtime
 ## Runtime Architecture
 
 ```
-Browser (NovaCRM-powered page)
+Browser (Konnect Nex-powered page)
     → POST /marketing/track  (throttle:marketing-tracking)
         → MarketingTrackingMiddleware
             reads visitor/session cookies

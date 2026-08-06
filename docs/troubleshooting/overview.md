@@ -1,6 +1,6 @@
 # Troubleshooting Overview
 
-Cross-cutting issues for NovaCRM production and staging. Module-specific guides live under `docs/crm/troubleshooting/`, `docs/hrms/`, etc.
+Cross-cutting issues for Konnect Nex production and staging. Module-specific guides live under `docs/crm/troubleshooting/`, `docs/hrms/`, etc.
 
 **Related:** [Deployment](../deployment/overview.md) · [Smoke tests](../release/smoke.md) · [Monitoring](../admin-guide/monitoring.md) · [UPGRADE.md](../../UPGRADE.md)
 
@@ -170,7 +170,7 @@ Details: [admin-guide/monitoring.md](../admin-guide/monitoring.md).
 
 ### Causes
 
-NovaCRM uses **separate guards** and session cookies for tenant (`web`) and platform (`platform`). Mixing tabs or shared browser profiles causes confusion.
+Konnect Nex uses **separate guards** and session cookies for tenant (`web`) and platform (`platform`). Mixing tabs or shared browser profiles causes confusion.
 
 ### Resolution
 
@@ -225,7 +225,7 @@ Forward-only policy: [UPGRADE.md](../../UPGRADE.md).
 
 ### Resolution
 
-1. Register exact callback URL from NovaCRM provider settings with the ad platform.
+1. Register exact callback URL from Konnect Nex provider settings with the ad platform.
 2. Confirm platform credentials (not tenant) for SaaS-level OAuth where applicable.
 3. Reconnect provider; check `storage/logs/laravel.log` for OAuth exceptions.
 4. Marketing attribution still works for manual UTM; ads sync is optional for core CRM.

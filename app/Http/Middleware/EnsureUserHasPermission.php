@@ -11,7 +11,7 @@ class EnsureUserHasPermission
 {
     public function __construct(protected TenantContext $tenant) {}
 
-    public function handle(Request $request, Closure $next, string $permission): Response
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
         $user = $request->user();
         $organization = $this->tenant->get();
@@ -24,7 +24,7 @@ class EnsureUserHasPermission
             return $next($request);
         }
 
-        if (! $user->hasPermission($permission, $organization)) {
+        if ($permissions === [] || ! $user->hasAnyPermission($permissions, $organization)) {
             abort(403);
         }
 

@@ -1,6 +1,6 @@
 # Production Readiness — Phase 14.9
 
-Master checklist for NovaCRM commercial deployment. Phase 14.9 adds **no major business modules**; it finalizes enterprise UX consistency, performance, security, observability, documentation, and QA across all workspaces built in Phases 1–14.
+Master checklist for Konnect Nex commercial deployment. Phase 14.9 adds **no major business modules**; it finalizes enterprise UX consistency, performance, security, observability, documentation, and QA across all workspaces built in Phases 1–14.
 
 **Related:** [README.md](../../README.md) · [UPGRADE.md](../../UPGRADE.md) · [Deployment overview](../deployment/overview.md) · [Smoke tests](./smoke.md) · [Release checklist](./checklist.md) · [Troubleshooting](../troubleshooting/overview.md)
 
@@ -306,6 +306,6 @@ See [deployment/overview.md](../deployment/overview.md) for full table. Minimum:
 
 ## Phase 14.9 outcome
 
-Completion of this checklist marks NovaCRM **production-ready** for commercial onboarding. Core product development (Phase 14) is complete; subsequent work is customer operations, Wave 8 alias cleanup, and optional observability tooling (Telescope/Horizon).
+Completion of this checklist marks Konnect Nex **production-ready** for commercial onboarding. Core product development (Phase 14) is complete; subsequent work is customer operations, Wave 8 alias cleanup, and optional observability tooling (Telescope/Horizon).
 
 Progress record: [P14_PHASE_14_9_PROGRESS.md](../P14_PHASE_14_9_PROGRESS.md).

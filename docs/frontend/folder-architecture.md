@@ -1,6 +1,6 @@
 # Deliverable 1 — Frontend Folder Architecture
 
-Target frontend structure for NovaCRM. Migrates incrementally from today’s flat module folders ([../FRONTEND.md](../FRONTEND.md)); do not big-bang move everything in one PR.
+Target frontend structure for Konnect Nex. Migrates incrementally from today’s flat module folders ([../FRONTEND.md](../FRONTEND.md)); do not big-bang move everything in one PR.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`MetadataValidationService` is the single authoritative entry point for dynamic metadata validation across NovaCRM.
+`MetadataValidationService` is the single authoritative entry point for dynamic metadata validation across Konnect Nex.
 
 Any channel that accepts metadata values must route validation through this service directly or through an orchestration service that delegates to it. This includes web forms, APIs, imports, automation, future AI-assisted data entry, and internal service workflows.
 

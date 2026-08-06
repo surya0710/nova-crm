@@ -25,10 +25,15 @@ class AttendanceRecord extends Model
         'status',
         'source',
         'working_minutes',
+        'break_minutes',
         'late_minutes',
         'early_departure_minutes',
         'overtime_minutes',
         'notes',
+        'version',
+        'approval_status',
+        'locked_at',
+        'locked_by',
     ];
 
     protected function casts(): array
@@ -38,9 +43,12 @@ class AttendanceRecord extends Model
             'clock_in_at' => 'datetime',
             'clock_out_at' => 'datetime',
             'working_minutes' => 'integer',
+            'break_minutes' => 'integer',
             'late_minutes' => 'integer',
             'early_departure_minutes' => 'integer',
             'overtime_minutes' => 'integer',
+            'version' => 'integer',
+            'locked_at' => 'datetime',
         ];
     }
 
@@ -57,6 +65,21 @@ class AttendanceRecord extends Model
     public function corrections(): HasMany
     {
         return $this->hasMany(AttendanceCorrection::class);
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(AttendanceRecordVersion::class);
+    }
+
+    public function lockedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
     }
 
     public function statusLabel(): string

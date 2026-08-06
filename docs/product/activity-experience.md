@@ -1,6 +1,6 @@
 # Deliverable 7 — Activity Experience
 
-Standardized activity feeds across NovaCRM.
+Standardized activity feeds across Konnect Nex.
 
 ---
 

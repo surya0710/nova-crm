@@ -66,6 +66,9 @@ Route::prefix('v1')->group(function () {
     require __DIR__.'/api_exports.php';
     require __DIR__.'/api_lookups.php';
     require __DIR__.'/api_attendance.php';
+    require __DIR__.'/api_payroll.php';
+    require __DIR__.'/api_income_tax.php';
+    require __DIR__.'/api_hrms.php';
 });
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organization', 'ensure.organization', 'organization.api'])->group(function () {
@@ -317,3 +320,13 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
         });
     });
 });
+
+Route::prefix('v1/portal/{organization:slug}')
+    ->middleware(['web', 'portal.organization', 'auth:client', 'portal.client', 'throttle:60,1'])
+    ->group(function () {
+        Route::get('dashboard', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'dashboard']);
+        Route::get('projects/{project}', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'project']);
+        Route::get('projects/{project}/deliverables', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'deliverables']);
+        Route::post('approvals/{approval}/approve', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'approve']);
+        Route::post('approvals/{approval}/reject', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'reject']);
+    });

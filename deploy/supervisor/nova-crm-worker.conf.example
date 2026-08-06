@@ -1,4 +1,4 @@
-; NovaCRM Release 1.2.x Supervisor template
+; Konnect Nex Release 1.2.x Supervisor template
 ; Copy to /etc/supervisor/conf.d/nova-crm-worker.conf and replace placeholders.
 [program:nova-crm-worker]
 process_name=%(program_name)s_%(process_num)02d

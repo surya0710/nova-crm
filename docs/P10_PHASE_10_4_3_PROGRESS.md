@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build NovaCRM's Performance Review Engine — review assignments, self and manager reviews, competency and goal evaluation, draft saving, submission workflow, and immutable review snapshots — without 360° feedback, calibration, promotions, or compensation decisions.
+**Objective:** Build Konnect Nex's Performance Review Engine — review assignments, self and manager reviews, competency and goal evaluation, draft saving, submission workflow, and immutable review snapshots — without 360° feedback, calibration, promotions, or compensation decisions.
 
 **Scope completed:** Full execution-layer slice with service-owned business logic, workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 

@@ -1,6 +1,6 @@
 # Platform Administration Workspace
 
-Phase **14.6** delivers the NovaCRM SaaS owner console. It is **outside the tenant environment** and uses the `platform` auth guard (`PlatformUser`), not the tenant AppShell.
+Phase **14.6** delivers the Konnect Nex SaaS owner console. It is **outside the tenant environment** and uses the `platform` auth guard (`PlatformUser`), not the tenant AppShell.
 
 Use with [crm-reference-implementation.md](./crm-reference-implementation.md), [projects-workspace.md](./projects-workspace.md), and [hrms-workspace.md](./hrms-workspace.md) for shared Enterprise UX patterns.
 

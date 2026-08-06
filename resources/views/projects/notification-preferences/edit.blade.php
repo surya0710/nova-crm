@@ -29,7 +29,7 @@
                 <label class="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3">
                     <span>
                         <span class="block text-sm font-medium text-slate-900">{{ __('In-app notifications') }}</span>
-                        <span class="block text-xs text-slate-500 mt-0.5">{{ __('Show alerts inside NovaCRM') }}</span>
+                        <span class="block text-xs text-slate-500 mt-0.5">{{ __('Show alerts inside :product', ['product' => config('branding.product_name')]) }}</span>
                     </span>
                     <input type="hidden" name="in_app_enabled" value="0" />
                     <input type="checkbox" name="in_app_enabled" value="1" @checked(old('in_app_enabled', $preference->in_app_enabled)) class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />

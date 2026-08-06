@@ -6,7 +6,7 @@ Phase 13.2 — Workspace Experience & Dashboard Blueprint
 
 ## Outcome
 
-NovaCRM has a complete Workspace Experience blueprint: landing pages per workspace, dashboard hierarchy, widget standards, Quick Actions, in-workspace navigation, personalization, activity feeds, workspace search/notifications, cross-workspace transitions, empty/first-time states, accessibility requirements, and dashboard success metrics.
+Konnect Nex has a complete Workspace Experience blueprint: landing pages per workspace, dashboard hierarchy, widget standards, Quick Actions, in-workspace navigation, personalization, activity feeds, workspace search/notifications, cross-workspace transitions, empty/first-time states, accessibility requirements, and dashboard success metrics.
 
 Combined with Phase 13.1, the platform now has both **organization (IA)** and **daily interaction (UX)** reference docs for Phase 14.
 

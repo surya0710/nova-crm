@@ -1,6 +1,6 @@
 # Deliverable 3 — Widget Design Standards
 
-Standards for all NovaCRM dashboard widgets. Compatible with the 12-column widths already used in `config/dashboard.php`.
+Standards for all Konnect Nex dashboard widgets. Compatible with the 12-column widths already used in `config/dashboard.php`.
 
 ---
 

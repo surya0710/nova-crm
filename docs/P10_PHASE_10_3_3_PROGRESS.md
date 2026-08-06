@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build a versioned, auditable, organization-aware Statutory Compliance Engine for NovaCRM that integrates with the Payroll Calculation Engine without owning payroll foundation logic.
+**Objective:** Build a versioned, auditable, organization-aware Statutory Compliance Engine for Konnect Nex that integrates with the Payroll Calculation Engine without owning payroll foundation logic.
 
 **Scope completed:** Employee statutory profiles, statutory rule sets + versions, India PF/ESI/Professional Tax engines, TDS preparation placeholder, compliance validation, payroll result component integration, workflow events, audit, RBAC, Blade UI, and feature tests.
 

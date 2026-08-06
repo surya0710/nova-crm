@@ -26,6 +26,10 @@ class UpdatePayrollConfigurationRequest extends FormRequest
             ])],
             'overtime_handling' => ['required', Rule::in(array_keys(config('hrms.payroll_overtime_handling', [])))],
             'rounding_policy' => ['required', Rule::in(array_keys(config('hrms.payroll_rounding_policies', [])))],
+            'salary_mode' => ['required', Rule::in(array_keys(config('hrms.payroll.salary_modes', [])))],
+            'salary_credit_day' => ['nullable', 'integer', 'min:1', 'max:28'],
+            'auto_generate' => ['sometimes', 'boolean'],
+            'reminder_days_before_credit' => ['nullable', 'integer', 'min:0', 'max:30'],
         ];
     }
 }

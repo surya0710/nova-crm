@@ -19,7 +19,7 @@ class JitsiMeetProvider extends AbstractMeetingProvider
 
     public function generateMeeting(RecruitmentProvider $provider, array $meeting): array
     {
-        $room = 'NovaCRM-'.Str::upper(Str::random(8));
+        $room = config('branding.filename_prefix', 'KonnectNex').'-'.Str::upper(Str::random(8));
         $id = $this->meetingId('jitsi');
 
         return [

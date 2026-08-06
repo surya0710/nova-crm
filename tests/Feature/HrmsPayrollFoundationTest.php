@@ -21,10 +21,12 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\LocksAttendanceForPayroll;
 use Tests\TestCase;
 
 class HrmsPayrollFoundationTest extends TestCase
 {
+    use LocksAttendanceForPayroll;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -344,6 +346,8 @@ class HrmsPayrollFoundationTest extends TestCase
             'end_date' => '2026-07-31',
             'status' => 'open',
         ]);
+
+        $this->lockAttendanceForPayrollPeriod($period, $hr);
 
         $context = app(PayrollService::class)->resolveCalculationContext($employee, $period);
 

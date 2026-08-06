@@ -2,7 +2,7 @@
 
 ## Overview
 
-Employees can optionally receive a NovaCRM login. Authentication uses email + password. After activation, employees use the **Employee Workspace** (ESS / My HR) at `/ess` — not a separate portal.
+Employees can optionally receive a Konnect Nex login. Authentication uses email + password. After activation, employees use the **Employee Workspace** (ESS / My HR) at `/ess` — not a separate portal.
 
 Administrators never create or share passwords. Users set their own password via invitation.
 

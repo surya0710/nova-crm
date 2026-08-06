@@ -101,7 +101,7 @@ raw_metadata: {
 }
 ```
 
-Catalog `status` is NovaCRM lifecycle (`active` / `inactive`). Meta’s form status is preserved in `raw_metadata.provider_status`.
+Catalog `status` is Konnect Nex lifecycle (`active` / `inactive`). Meta’s form status is preserved in `raw_metadata.provider_status`.
 
 ## Security & Multi-Tenancy
 

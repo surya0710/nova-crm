@@ -4,8 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="NovaCRM — Multi-tenant enterprise suite unifying CRM, Projects, HRMS, Marketing, and Analytics in one workspace.">
-    <title>NovaCRM — CRM, Projects, HR &amp; Analytics</title>
+    <meta name="description" content="{{ config('branding.product_name') }} — Multi-tenant enterprise suite unifying CRM, Projects, HRMS, Marketing, and Analytics in one workspace.">
+    <meta name="application-name" content="{{ config('branding.product_name') }}">
+    <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
+    <title>{{ config('branding.product_name') }} — CRM, Projects, HR &amp; Analytics</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -23,8 +25,8 @@
             <div class="max-w-6xl mx-auto px-5 sm:px-8">
                 <div class="flex items-center justify-between h-[72px]">
                     <a href="{{ route('home') }}" class="flex items-center gap-3 group">
-                        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-shadow">N</div>
-                        <span class="font-bold text-xl tracking-tight">NovaCRM</span>
+                        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-shadow">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
+                        <span class="font-bold text-xl tracking-tight">{{ config('branding.product_name') }}</span>
                     </a>
 
                     <nav class="hidden md:flex items-center gap-1">
@@ -119,9 +121,9 @@
                             <div class="hidden sm:flex flex-col w-52 bg-slate-950 border-r border-white/5 shrink-0">
                                 <div class="p-4 border-b border-white/5">
                                     <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold">N</div>
+                                        <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
                                         <div>
-                                            <p class="text-xs font-semibold text-white">NovaCRM</p>
+                                            <p class="text-xs font-semibold text-white">{{ config('branding.product_name') }}</p>
                                             <p class="text-[10px] text-slate-500">Enterprise Suite</p>
                                         </div>
                                     </div>
@@ -272,7 +274,7 @@
                 <div>
                     <p class="text-sm font-semibold uppercase tracking-wider text-indigo-400">Platform</p>
                     <h2 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">Modular enterprise architecture,<br>ready for production</h2>
-                    <p class="mt-4 text-lg text-slate-400 leading-relaxed">NovaCRM ships as a multi-tenant SaaS with an enterprise AppShell, workspace homes, Knowledge Center, and a SaaS owner console at <span class="text-slate-300">/platform</span>.</p>
+                    <p class="mt-4 text-lg text-slate-400 leading-relaxed">{{ config('branding.product_name') }} ships as a multi-tenant SaaS with an enterprise AppShell, workspace homes, Knowledge Center, and a SaaS owner console at <span class="text-slate-300">/platform</span>.</p>
                     <ul class="mt-8 space-y-3">
                         @foreach ([
                             'Organization & team management with RBAC',
@@ -341,8 +343,8 @@
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                 <div>
                     <div class="flex items-center gap-3">
-                        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white text-sm">N</div>
-                        <span class="font-bold text-lg text-slate-900">NovaCRM</span>
+                        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white text-sm">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
+                        <span class="font-bold text-lg text-slate-900">{{ config('branding.product_name') }}</span>
                     </div>
                     <p class="mt-3 text-sm text-slate-500 max-w-xs">Multi-tenant enterprise suite for CRM, Projects, HRMS, Marketing, and Analytics.</p>
                 </div>
@@ -364,7 +366,7 @@
                 </div>
             </div>
             <div class="mt-10 pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-                <p>&copy; {{ date('Y') }} NovaCRM. All rights reserved.</p>
+                <p>&copy; {{ date('Y') }} {{ config('branding.company_name') }}. All rights reserved.</p>
                 <p>Built with Laravel & Tailwind CSS</p>
             </div>
         </div>

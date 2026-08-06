@@ -2,7 +2,7 @@
 
 ## Overview
 
-NovaCRM Phase 11.7 introduces organization-scoped, dynamic Role Based Access Control (RBAC). Permissions, roles, groups, and templates are stored in the database and provisioned per organization.
+Konnect Nex Phase 11.7 introduces organization-scoped, dynamic Role Based Access Control (RBAC). Permissions, roles, groups, and templates are stored in the database and provisioned per organization.
 
 ## Core Tables
 

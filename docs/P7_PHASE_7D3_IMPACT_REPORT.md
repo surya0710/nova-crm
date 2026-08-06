@@ -210,7 +210,7 @@ for every outcome.
   explicitly organization/provider scoped.
 - Cross-tenant provider IDs and credentials are never resolved.
 - Tenant access/refresh tokens remain encrypted and are never rendered.
-- Tenant PII is normalized and SHA-256 hashed before leaving NovaCRM.
+- Tenant PII is normalized and SHA-256 hashed before leaving Konnect Nex.
 - Submitted conversion actions are re-read from Google before every upload;
   stale configuration cannot silently target a removed action.
 
