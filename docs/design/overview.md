@@ -1,4 +1,4 @@
-# NovaCRM Enterprise Design System — Overview
+# Konnect Nex Enterprise Design System — Overview
 
 **Phase:** 13.3 — Enterprise Design System & Component Blueprint  
 **Status:** Authoritative visual & interaction reference  
@@ -106,4 +106,4 @@ Every new screen must pass [design-review-checklist.md](./design-review-checklis
 
 ## Phase outcome
 
-NovaCRM has a complete Enterprise Design System: the single source of truth for visual and interactive decisions, ready for Phase 14 implementation alongside IA and workspace experience blueprints.
+Konnect Nex has a complete Enterprise Design System: the single source of truth for visual and interactive decisions, ready for Phase 14 implementation alongside IA and workspace experience blueprints.

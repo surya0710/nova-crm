@@ -1,4 +1,4 @@
-# Workflow Platform Technical Design And Runtime Contract
+        # Workflow Platform Technical Design And Runtime Contract
 
 ## Status
 
@@ -10,7 +10,7 @@
 
 ## Purpose
 
-This document is the production contract for defining, dispatching, executing, and operating NovaCRM workflows. It covers the implemented Phase 9.2 foundation and calls out fields that are reserved but not yet operational.
+This document is the production contract for defining, dispatching, executing, and operating Konnect Nex workflows. It covers the implemented Phase 9.2 foundation and calls out fields that are reserved but not yet operational.
 
 The canonical flow is:
 

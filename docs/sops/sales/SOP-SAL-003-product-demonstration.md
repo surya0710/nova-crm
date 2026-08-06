@@ -16,7 +16,7 @@
 
 ## Purpose
 
-Deliver a scoped, professional demo that maps NovaCRM capabilities to the prospect's agreed discovery outcomes without using production customer data.
+Deliver a scoped, professional demo that maps Konnect Nex capabilities to the prospect's agreed discovery outcomes without using production customer data.
 
 ## Scope
 

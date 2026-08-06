@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Monetary value helpers for NovaCRM.
+ * Monetary value helpers for Konnect Nex.
  *
  * Rounding strategy (all amounts stored as decimal 15,2):
  *

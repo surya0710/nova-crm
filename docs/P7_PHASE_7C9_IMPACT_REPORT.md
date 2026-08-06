@@ -152,7 +152,7 @@ Admin clicks Upload Conversions
 
 - Uses only the initiating organization's encrypted access token and configured `pixel_id`
 - Cross-tenant provider IDs cannot be resolved or uploaded against
-- PII is hashed before leaving NovaCRM; tokens never appear in UI
+- PII is hashed before leaving Konnect Nex; tokens never appear in UI
 - Invalid / expired credentials mark provider status without deleting history or conversion rows
 - Failed auth/API responses do not create upload registry rows
 

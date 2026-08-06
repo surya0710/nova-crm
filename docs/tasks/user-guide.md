@@ -1,7 +1,7 @@
 # Tasks User Guide
 
 ## Purpose
-Guide assignees, project members, and managers through everyday task work in NovaCRM.
+Guide assignees, project members, and managers through everyday task work in Konnect Nex.
 
 ## Who should use this feature
 - People assigned follow-ups and delivery work

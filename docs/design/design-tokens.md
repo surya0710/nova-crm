@@ -1,6 +1,6 @@
 # Deliverable 1 — Design Tokens
 
-Platform-wide design tokens for NovaCRM. Names are semantic; values are defaults for **light theme**. Dark and brand overrides: [theme-architecture.md](./theme-architecture.md), [color-system.md](./color-system.md).
+Platform-wide design tokens for Konnect Nex. Names are semantic; values are defaults for **light theme**. Dark and brand overrides: [theme-architecture.md](./theme-architecture.md), [color-system.md](./color-system.md).
 
 ---
 

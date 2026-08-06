@@ -6,7 +6,7 @@ Phase 10.1.1 — HRMS Foundation
 
 ## Outcome
 
-NovaCRM is **HRMS-ready**: additive schema, catalogs, RBAC, policies, Eloquent models, factories, service skeletons, sidebar navigation, and placeholder `/hrms` + `/ess` dashboards are in place. No employee-facing business functionality was implemented.
+Konnect Nex is **HRMS-ready**: additive schema, catalogs, RBAC, policies, Eloquent models, factories, service skeletons, sidebar navigation, and placeholder `/hrms` + `/ess` dashboards are in place. No employee-facing business functionality was implemented.
 
 ## Delivered
 

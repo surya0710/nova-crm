@@ -8,7 +8,7 @@
             </div>
         </div>
         <p class="text-sm text-gray-600">
-            {{ __('Create your company workspace to start using NovaCRM.') }}
+            {{ __('Create your company workspace to start using :product.', ['product' => config('branding.product_name')]) }}
         </p>
     </div>
 

@@ -3,14 +3,14 @@
 ## Status
 
 - Architectural correction (pre–provider OAuth expansion)
-- Applies to Marketing providers and future NovaCRM integration modules
+- Applies to Marketing providers and future Konnect Nex integration modules
 
 ## Principle
 
 Separate **platform configuration** from **tenant configuration**.
 
 ```
-.env / config          →  NovaCRM's applications at Meta, Google, …
+.env / config          →  Konnect Nex's applications at Meta, Google, …
 Database (per org)     →  Each customer's connected accounts & tokens
 ```
 
@@ -18,13 +18,13 @@ A SaaS instance must never share one customer Meta/Google account across all ten
 
 ## Platform Credentials (.env)
 
-Identify NovaCRM's registered applications for an environment (dev / staging / production).
+Identify Konnect Nex's registered applications for an environment (dev / staging / production).
 
 Examples:
 
 | Variable | Meaning |
 | --- | --- |
-| `META_APP_ID` / `META_APP_SECRET` | NovaCRM Meta app |
+| `META_APP_ID` / `META_APP_SECRET` | Konnect Nex Meta app |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Future Google app |
 | `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | Future LinkedIn app |
 

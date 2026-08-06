@@ -1,6 +1,6 @@
 # Deliverable 2 — Blade Component Standards
 
-Standards for Blade components in NovaCRM.
+Standards for Blade components in Konnect Nex.
 
 ---
 

@@ -1,6 +1,6 @@
 # Deliverable 15 — Responsive Strategy
 
-How NovaCRM adapts across viewports.
+How Konnect Nex adapts across viewports.
 
 ---
 

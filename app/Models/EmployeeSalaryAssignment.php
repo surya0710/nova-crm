@@ -24,6 +24,7 @@ class EmployeeSalaryAssignment extends Model
         'annual_ctc',
         'notes',
         'assigned_by',
+        'custom_fields',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class EmployeeSalaryAssignment extends Model
             'effective_from' => 'date',
             'effective_until' => 'date',
             'annual_ctc' => 'decimal:2',
+            'custom_fields' => 'array',
         ];
     }
 

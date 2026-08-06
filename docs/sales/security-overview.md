@@ -21,7 +21,7 @@
 ## Customer responsibilities
 - Protect admin credentials
 - Assign roles carefully
-- Notify NovaCRM of suspected compromise promptly
+- Notify Konnect Nex of suspected compromise promptly
 
 ## More detail
 Ask AE for DPA / security questionnaire responses as maintained by Legal/Security.

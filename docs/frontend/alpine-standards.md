@@ -1,6 +1,6 @@
 # Deliverable 3 — Alpine.js Standards
 
-Alpine.js usage standards for NovaCRM (v3).
+Alpine.js usage standards for Konnect Nex (v3).
 
 ---
 

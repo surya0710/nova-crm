@@ -1,6 +1,6 @@
-# NovaCRM — One-page Product Summary
+# Konnect Nex — One-page Product Summary
 
-**NovaCRM** unifies **CRM**, **Projects**, **HRMS**, **Marketing**, and **Analytics** in one multi-tenant SaaS platform.
+**Konnect Nex** unifies **CRM**, **Projects**, **HRMS**, **Marketing**, and **Analytics** in one multi-tenant SaaS platform.
 
 ## Outcomes
 - Shorten quote-to-cash

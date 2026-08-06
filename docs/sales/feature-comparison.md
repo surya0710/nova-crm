@@ -2,7 +2,7 @@
 
 Use this grid vs. typical point solutions (CRM-only, PM-only, HRIS-only). Customize competitor columns per deal.
 
-| Capability | NovaCRM | CRM-only | PM-only | HRIS-only |
+| Capability | Konnect Nex | CRM-only | PM-only | HRIS-only |
 |------------|---------|----------|---------|-----------|
 | Lead → cash lifecycle | Yes | Yes | Limited | No |
 | Portfolios / programs / risks | Yes | No | Partial | No |

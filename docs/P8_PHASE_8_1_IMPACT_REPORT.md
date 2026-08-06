@@ -6,7 +6,7 @@ Phase 8.1 — Import Platform Foundation
 
 ## Outcome
 
-NovaCRM now has a reusable **Import Platform** that owns file upload, spreadsheet
+Konnect Nex now has a reusable **Import Platform** that owns file upload, spreadsheet
 parsing, column detection, validation, preview, error reporting, and
 tenant-scoped import sessions.
 

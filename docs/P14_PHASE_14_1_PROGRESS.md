@@ -8,7 +8,7 @@
 
 ## Outcome
 
-NovaCRM now has a production Enterprise Application Shell implementing Phase 13.1–13.4 standards: design tokens, workspace-aware navigation, shared Blade UI library, theme engine, command palette / search / notification foundations, personalization storage, and an incremental migration layer.
+Konnect Nex now has a production Enterprise Application Shell implementing Phase 13.1–13.4 standards: design tokens, workspace-aware navigation, shared Blade UI library, theme engine, command palette / search / notification foundations, personalization storage, and an incremental migration layer.
 
 ---
 

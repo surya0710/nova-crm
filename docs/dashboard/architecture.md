@@ -1,6 +1,6 @@
 # Dashboard Architecture
 
-Phase 11.8 introduces a widget-based Dashboard & Workspace Platform for NovaCRM.
+Phase 11.8 introduces a widget-based Dashboard & Workspace Platform for Konnect Nex.
 
 ## Layers
 

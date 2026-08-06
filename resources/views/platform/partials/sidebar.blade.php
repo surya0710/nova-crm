@@ -4,7 +4,7 @@
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-xs font-bold text-white" aria-hidden="true">P</div>
             <div>
                 <div class="text-sm font-semibold text-ink-heading">{{ __('Platform') }}</div>
-                <div class="text-xs text-ink-muted">{{ config('app.name') }}</div>
+                <div class="text-xs text-ink-muted">{{ config('branding.product_name') }}</div>
             </div>
         </div>
     </div>

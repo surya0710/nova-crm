@@ -6,7 +6,7 @@ Phase 9.1 — Assignment Platform Foundation (v1)
 
 ## Outcome
 
-NovaCRM now has a reusable **Assignment Platform** that owns owner resolution for
+Konnect Nex now has a reusable **Assignment Platform** that owns owner resolution for
 any entity type. Lead is the first consumer. Assignment logic exists in exactly
 one place: `AssignmentService` → `AssignmentRuleEngine` → strategy → pool.
 

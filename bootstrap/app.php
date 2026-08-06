@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\MissingEmployeeRecordException;
 use App\Http\Middleware\ConfigurePlatformSession;
 use App\Http\Middleware\ConfigureSubdirectory;
 use App\Http\Middleware\EnsureOrganizationApiAccess;
@@ -13,16 +14,23 @@ use App\Http\Middleware\PreventPlatformSessionOnTenant;
 use App\Http\Middleware\RecordRecentPage;
 use App\Http\Middleware\RedirectIfPlatformAuthenticated;
 use App\Http\Middleware\SetCurrentOrganization;
+use App\Support\Api\ApiResponse;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -38,6 +46,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             Route::middleware('web')
                 ->group(base_path('routes/careers.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/portal.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -74,6 +85,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'marketing.tracking' => MarketingTrackingMiddleware::class,
             'careers.organization' => \App\Http\Middleware\ResolveCareerOrganization::class,
             'careers.candidate' => \App\Http\Middleware\EnsureCandidateBelongsToOrganization::class,
+            'portal.organization' => \App\Http\Middleware\ResolvePortalOrganization::class,
+            'portal.client' => \App\Http\Middleware\EnsureClientBelongsToOrganization::class,
         ]);
 
         // Beacon-style endpoint hit by anonymous browsers that hold no CSRF
@@ -86,5 +99,62 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $isApi = static function (Request $request): bool {
+            return $request->is('api/*') || $request->expectsJson();
+        };
+
+        $exceptions->render(function (ValidationException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error(
+                $e->getMessage() ?: __('The given data was invalid.'),
+                422,
+                $e->errors(),
+            );
+        });
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error($e->getMessage() ?: __('Unauthenticated.'), 401);
+        });
+
+        $exceptions->render(function (AuthorizationException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error($e->getMessage() ?: __('This action is unauthorized.'), 403);
+        });
+
+        $exceptions->render(function (ModelNotFoundException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error(__('Resource not found.'), 404);
+        });
+
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) use ($isApi) {
+            if (! $isApi($request)) {
+                return null;
+            }
+
+            return ApiResponse::error($e->getMessage() ?: __('Not found.'), 404);
+        });
+
+        $exceptions->render(function (MissingEmployeeRecordException $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            return ApiResponse::success([
+                'empty_state' => true,
+                'audience' => $e->audience,
+            ], $e->getMessage());
+        });
     })->create();

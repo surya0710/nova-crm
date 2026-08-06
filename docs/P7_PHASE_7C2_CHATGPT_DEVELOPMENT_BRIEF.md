@@ -1,4 +1,4 @@
-# NovaCRM Phase 7C.2 — ChatGPT Development Brief
+# Konnect Nex Phase 7C.2 — ChatGPT Development Brief
 
 > **Purpose of this document:** Give ChatGPT (or any reviewer) a complete, accurate explanation of what Phase 7C.2 built, why it was designed this way, what is in scope vs out of scope, and how the pieces fit together. Use this as context before answering questions, reviewing code, planning Phase 7C.3, or writing follow-up prompts.
 
@@ -12,7 +12,7 @@ Phase 7C.2 adds **Meta Business OAuth only**: an organization can securely conne
 
 ## Product / platform context
 
-NovaCRM has two related but separate platforms:
+Konnect Nex has two related but separate platforms:
 
 | Layer | Role | Status |
 | --- | --- | --- |

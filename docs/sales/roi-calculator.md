@@ -13,13 +13,13 @@ Fill with customer inputs. Share results in proposal appendix.
 | Project managers | |
 | HR admins | |
 | Current stack annual cost | |
-| NovaCRM annual subscription + impl (year 1) | |
+| Konnect Nex annual subscription + impl (year 1) | |
 
 ## Simple model
 1. **Time saved** = people × hours/week × 52 × hourly cost × adoption%  
 2. **Revenue lift** = extra deals closed × win-rate lift × avg value (use conservative 5–10% if unknown)  
 3. **Stack consolidation** = retired tools annual cost  
-4. **Year-1 ROI** = (time saved + revenue lift + consolidation − NovaCRM year-1 cost) / NovaCRM year-1 cost
+4. **Year-1 ROI** = (time saved + revenue lift + consolidation − Konnect Nex year-1 cost) / Konnect Nex year-1 cost
 
 ## Guardrails
 - Prefer customer-owned numbers

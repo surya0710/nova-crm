@@ -237,6 +237,23 @@ class ProjectPolicy
             || $user->hasPermission('projects.budgets.manage', $project->organization);
     }
 
+    public function manageDeliverables(User $user, Project $project): bool
+    {
+        return $user->hasPermission('deliverable.manage', $project->organization)
+            || $user->hasPermission('portal.manage', $project->organization)
+            || $user->hasPermission('projects.manage', $project->organization)
+            || $user->hasPermission('projects.edit', $project->organization)
+            || $user->hasPermission('projects.view', $project->organization);
+    }
+
+    public function managePortal(User $user, Project $project): bool
+    {
+        return $user->hasPermission('portal.manage', $project->organization)
+            || $user->hasPermission('portal.view', $project->organization)
+            || $user->hasPermission('projects.manage', $project->organization)
+            || $user->hasPermission('projects.view', $project->organization);
+    }
+
     public function viewDependencies(User $user, Project $project): bool
     {
         return $user->hasPermission('projects.dependencies.view', $project->organization)

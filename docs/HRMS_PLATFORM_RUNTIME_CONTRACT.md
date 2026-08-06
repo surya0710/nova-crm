@@ -5,7 +5,7 @@
 
 ## Purpose
 
-This document defines architectural boundaries for the Human Resource Management System (HRMS) platform within NovaCRM. Phase 10.1.1 establishes schema, configuration, RBAC, policies, models, service skeletons, navigation, and placeholder dashboards only.
+This document defines architectural boundaries for the Human Resource Management System (HRMS) platform within Konnect Nex. Phase 10.1.1 establishes schema, configuration, RBAC, policies, models, service skeletons, navigation, and placeholder dashboards only.
 
 ## Architecture
 

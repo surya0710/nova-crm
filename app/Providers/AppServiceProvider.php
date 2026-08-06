@@ -91,6 +91,7 @@ use App\Events\ProgressUpdated;
 use App\Events\OpportunityCreated;
 use App\Events\OpportunityStageChanged;
 use App\Events\PaymentReceived;
+use App\Events\PayrollAdjustmentApproved;
 use App\Events\PayrollApproved;
 use App\Events\PayrollBankExported;
 use App\Events\PayrollComplianceFailed;
@@ -98,6 +99,7 @@ use App\Events\PayrollEmployeeCalculated;
 use App\Events\PayrollLedgerGenerated;
 use App\Events\PayrollPeriodCreated;
 use App\Events\PayrollPeriodLocked;
+use App\Events\PayrollPaid;
 use App\Events\PayrollPublished;
 use App\Events\PayrollReversed;
 use App\Events\PayrollRunCompleted;
@@ -106,6 +108,12 @@ use App\Events\PayrollStatutoryCalculated;
 use App\Events\PayrollValidationFailed;
 use App\Events\PayslipEmailed;
 use App\Events\PayslipGenerated;
+use App\Events\TaxDeclarationApproved;
+use App\Events\TaxDeclarationRejected;
+use App\Events\TaxDeclarationSubmitted;
+use App\Events\TaxProofUploaded;
+use App\Events\TaxProofVerified;
+use App\Events\TdsCalculated;
 use App\Events\PerformanceConfigurationUpdated;
 use App\Events\PerformanceCycleActivated;
 use App\Events\PerformanceCycleCreated;
@@ -133,6 +141,7 @@ use App\Events\ResumeUploaded;
 use App\Events\ResourceAllocated;
 use App\Events\ResourceAllocationUpdated;
 use App\Events\ResourceReleased;
+use App\Events\SalaryRevised;
 use App\Events\SalaryStructureCreated;
 use App\Events\SalaryStructureUpdated;
 use App\Events\StatutoryProfileUpdated;
@@ -151,6 +160,9 @@ use App\Listeners\RunTriggeredWorkflows;
 use App\Models\AppraisalCalibration;
 use App\Models\AppraisalSession;
 use App\Models\AttendanceCorrection;
+use App\Models\AttendanceOvertimeEntry;
+use App\Models\AttendanceOvertimeRule;
+use App\Models\AttendancePeriod;
 use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\Competency;
@@ -167,11 +179,13 @@ use App\Models\EmployeeLoan;
 use App\Models\EmployeeSalaryAssignment;
 use App\Models\EmployeeSettlement;
 use App\Models\EmployeeStatutoryProfile;
+use App\Models\EmployeeTaxRegime;
 use App\Models\EvaluationTemplate;
 use App\Models\ExpenseReimbursement;
 use App\Models\FeedbackCampaign;
 use App\Models\FeedbackRequest;
 use App\Models\FeedbackTemplate;
+use App\Models\Form16Record;
 use App\Models\Goal;
 use App\Models\GoalCategory;
 use App\Models\GoalTemplate;
@@ -203,6 +217,7 @@ use App\Models\Permission;
 use App\Models\PermissionGroup;
 use App\Models\PermissionTemplate;
 use App\Models\Payment;
+use App\Models\PayrollAdjustment;
 use App\Models\PayrollBankExport;
 use App\Models\PayrollConfiguration;
 use App\Models\PayrollJournal;
@@ -257,6 +272,10 @@ use App\Models\TaskPriority;
 use App\Models\TaskRecurrence;
 use App\Models\TaskStatus;
 use App\Models\TaskTimeLog;
+use App\Models\TaxDeclaration;
+use App\Models\TaxFinancialYear;
+use App\Models\TaxProjection;
+use App\Models\TaxProof;
 use App\Models\User;
 use App\Models\WorkloadSnapshot;
 use App\Models\Workflow;
@@ -264,6 +283,8 @@ use App\Models\WorkflowExecution;
 use App\Policies\AppraisalCalibrationPolicy;
 use App\Policies\AppraisalSessionPolicy;
 use App\Policies\AttendanceCorrectionPolicy;
+use App\Policies\AttendanceOvertimePolicy;
+use App\Policies\AttendancePeriodPolicy;
 use App\Policies\AttendancePolicy;
 use App\Policies\BranchPolicy;
 use App\Policies\CompetencyCategoryPolicy;
@@ -280,10 +301,12 @@ use App\Policies\EmployeePolicy;
 use App\Policies\EmployeeSalaryAssignmentPolicy;
 use App\Policies\EmployeeSettlementPolicy;
 use App\Policies\EmployeeStatutoryProfilePolicy;
+use App\Policies\EmployeeTaxRegimePolicy;
 use App\Policies\ExpenseReimbursementPolicy;
 use App\Policies\FeedbackCampaignPolicy;
 use App\Policies\FeedbackRequestPolicy;
 use App\Policies\FeedbackTemplatePolicy;
+use App\Policies\Form16RecordPolicy;
 use App\Policies\GoalCategoryPolicy;
 use App\Policies\GoalPolicy;
 use App\Policies\GoalTemplatePolicy;
@@ -311,6 +334,7 @@ use App\Policies\OfferTemplatePolicy;
 use App\Policies\OpportunityPolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\PaymentPolicy;
+use App\Policies\PayrollAdjustmentPolicy;
 use App\Policies\PayrollBankExportPolicy;
 use App\Policies\PayrollConfigurationPolicy;
 use App\Policies\PayrollJournalPolicy;
@@ -332,7 +356,10 @@ use App\Policies\PortfolioPolicy;
 use App\Policies\PortfolioReportPolicy;
 use App\Policies\ProgramPolicy;
 use App\Policies\ProjectBaselinePolicy;
-use App\Policies\ProjectBudgetPolicy;
+use App\Models\Deliverable;
+use App\Models\ClientUser;
+use App\Policies\DeliverablePolicy;
+use App\Policies\ClientUserPolicy;
 use App\Policies\ProjectCategoryPolicy;
 use App\Policies\ProjectDependencyPolicy;
 use App\Policies\ProjectIssuePolicy;
@@ -366,6 +393,10 @@ use App\Policies\TaskPriorityPolicy;
 use App\Policies\TaskRecurrencePolicy;
 use App\Policies\TaskStatusPolicy;
 use App\Policies\TaskTimeLogPolicy;
+use App\Policies\TaxDeclarationPolicy;
+use App\Policies\TaxFinancialYearPolicy;
+use App\Policies\TaxProjectionPolicy;
+use App\Policies\TaxProofPolicy;
 use App\Policies\TeamPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\WorkloadPolicy;
@@ -526,6 +557,9 @@ class AppServiceProvider extends ServiceProvider
         HrmsTeam::class => TeamPolicy::class,
         AttendanceRecord::class => AttendancePolicy::class,
         AttendanceCorrection::class => AttendanceCorrectionPolicy::class,
+        AttendanceOvertimeRule::class => AttendanceOvertimePolicy::class,
+        AttendanceOvertimeEntry::class => AttendanceOvertimePolicy::class,
+        AttendancePeriod::class => AttendancePeriodPolicy::class,
         HrmsShift::class => ShiftPolicy::class,
         LeaveApplication::class => LeavePolicy::class,
         LeaveType::class => LeaveTypePolicy::class,
@@ -664,6 +698,12 @@ class AppServiceProvider extends ServiceProvider
 
             return $registry;
         });
+
+        $this->app->bind(\App\Contracts\VirusScanHook::class, function ($app) {
+            $class = config('hrms.mobile.virus_scan_hook', \App\Services\Security\NoopVirusScanHook::class);
+
+            return $app->make($class);
+        });
     }
 
     public function boot(): void
@@ -720,6 +760,7 @@ class AppServiceProvider extends ServiceProvider
             SalaryStructureCreated::class,
             SalaryStructureUpdated::class,
             EmployeeSalaryAssigned::class,
+            SalaryRevised::class,
             PayrollPeriodCreated::class,
             PayrollPeriodLocked::class,
             PayrollRunStarted::class,
@@ -732,6 +773,14 @@ class AppServiceProvider extends ServiceProvider
             PayrollComplianceFailed::class,
             PayrollApproved::class,
             PayrollPublished::class,
+            PayrollPaid::class,
+            PayrollAdjustmentApproved::class,
+            TaxDeclarationSubmitted::class,
+            TaxDeclarationApproved::class,
+            TaxDeclarationRejected::class,
+            TaxProofUploaded::class,
+            TaxProofVerified::class,
+            TdsCalculated::class,
             PayslipGenerated::class,
             PayslipEmailed::class,
             PayrollLedgerGenerated::class,
@@ -880,6 +929,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ProjectIssue::class, ProjectIssuePolicy::class);
         Gate::policy(ProjectBaseline::class, ProjectBaselinePolicy::class);
         Gate::policy(ProjectBudget::class, ProjectBudgetPolicy::class);
+        Gate::policy(Deliverable::class, DeliverablePolicy::class);
+        Gate::policy(ClientUser::class, ClientUserPolicy::class);
         Gate::policy(PortfolioReport::class, PortfolioReportPolicy::class);
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(SavedFilter::class, SavedFilterPolicy::class);
@@ -905,6 +956,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(HrmsTeam::class, TeamPolicy::class);
         Gate::policy(AttendanceRecord::class, AttendancePolicy::class);
         Gate::policy(AttendanceCorrection::class, AttendanceCorrectionPolicy::class);
+        Gate::policy(AttendanceOvertimeRule::class, AttendanceOvertimePolicy::class);
+        Gate::policy(AttendanceOvertimeEntry::class, AttendanceOvertimePolicy::class);
+        Gate::policy(AttendancePeriod::class, AttendancePeriodPolicy::class);
         Gate::policy(HrmsShift::class, ShiftPolicy::class);
         Gate::policy(LeaveApplication::class, LeavePolicy::class);
         Gate::policy(LeaveType::class, LeaveTypePolicy::class);
@@ -916,12 +970,19 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(SalaryComponent::class, SalaryComponentPolicy::class);
         Gate::policy(SalaryStructure::class, SalaryStructurePolicy::class);
         Gate::policy(EmployeeSalaryAssignment::class, EmployeeSalaryAssignmentPolicy::class);
+        Gate::policy(PayrollAdjustment::class, PayrollAdjustmentPolicy::class);
         Gate::policy(PayrollPeriod::class, PayrollPeriodPolicy::class);
         Gate::policy(PayrollConfiguration::class, PayrollConfigurationPolicy::class);
         Gate::policy(PayrollRun::class, PayrollRunPolicy::class);
         Gate::policy(PayrollResult::class, PayrollResultPolicy::class);
         Gate::policy(Payslip::class, PayslipPolicy::class);
         Gate::policy(EmployeeStatutoryProfile::class, EmployeeStatutoryProfilePolicy::class);
+        Gate::policy(EmployeeTaxRegime::class, EmployeeTaxRegimePolicy::class);
+        Gate::policy(Form16Record::class, Form16RecordPolicy::class);
+        Gate::policy(TaxFinancialYear::class, TaxFinancialYearPolicy::class);
+        Gate::policy(TaxDeclaration::class, TaxDeclarationPolicy::class);
+        Gate::policy(TaxProof::class, TaxProofPolicy::class);
+        Gate::policy(TaxProjection::class, TaxProjectionPolicy::class);
         Gate::policy(StatutoryRuleSet::class, StatutoryRuleSetPolicy::class);
         Gate::policy(StatutoryComplianceError::class, StatutoryComplianceErrorPolicy::class);
         Gate::policy(PayrollLedgerEntry::class, PayrollLedgerEntryPolicy::class);
@@ -990,17 +1051,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('api', function (Request $request) {
-            $tokenId = $request->user()?->currentAccessToken()?->id;
-
-            return Limit::perMinute(120)->by($tokenId ?? $request->ip());
+            return Limit::perMinute(120)->by($this->apiRateLimitKey($request));
         });
 
         RateLimiter::for('api-lead-intake', function (Request $request) {
-            $tokenId = $request->user()?->currentAccessToken()?->id;
-
-            return Limit::perMinute(60)->by($tokenId ?? $request->ip());
+            return Limit::perMinute(60)->by($this->apiRateLimitKey($request));
         });
-
         RateLimiter::for('marketing-tracking', function (Request $request) {
             return Limit::perMinute((int) config('marketing.tracking.rate_limit_per_minute'))
                 ->by($request->ip());
@@ -1024,6 +1080,26 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by('careers-apply|'.$orgKey.'|'.$request->ip());
         });
+
+        RateLimiter::for('hrms-mobile-auth', function (Request $request) {
+            return Limit::perMinute(10)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
+        });
+    }
+
+    /**
+     * Sanctum::actingAs() uses TransientToken which has no id — avoid undefined property access.
+     */
+    protected function apiRateLimitKey(Request $request): string|int
+    {
+        $user = $request->user();
+        if ($user && method_exists($user, 'currentAccessToken')) {
+            $token = $user->currentAccessToken();
+            if (is_object($token) && isset($token->id)) {
+                return $token->id;
+            }
+        }
+
+        return $user?->getAuthIdentifier() ?? $request->ip();
     }
 
     protected function registerBulkActions(): void

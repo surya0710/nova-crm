@@ -1,6 +1,6 @@
 # Universal Export Center
 
-NovaCRM Release **1.1.4** provides a centralized Universal Export Center.
+Konnect Nex Release **1.1.4** provides a centralized Universal Export Center.
 
 ## Architecture
 

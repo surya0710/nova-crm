@@ -28,6 +28,12 @@ class PayrollRun extends Model
         'success_count',
         'error_count',
         'engine_version',
+        'payment_reference',
+        'payment_date',
+        'paid_at',
+        'paid_by',
+        'payment_notes',
+        'custom_fields',
     ];
 
     protected function casts(): array
@@ -38,6 +44,9 @@ class PayrollRun extends Model
             'employee_count' => 'integer',
             'success_count' => 'integer',
             'error_count' => 'integer',
+            'payment_date' => 'date',
+            'paid_at' => 'datetime',
+            'custom_fields' => 'array',
         ];
     }
 
@@ -96,6 +105,11 @@ class PayrollRun extends Model
         return $this->hasOne(PayrollReversal::class);
     }
 
+    public function paidBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by');
+    }
+
     public function canRecalculate(): bool
     {
         return in_array($this->status, ['draft', 'running'], true);
@@ -103,7 +117,7 @@ class PayrollRun extends Model
 
     public function isImmutable(): bool
     {
-        return in_array($this->status, ['calculated', 'approved', 'published', 'reversed'], true);
+        return in_array($this->status, ['calculated', 'approved', 'published', 'paid', 'reversed'], true);
     }
 
     public function canApprove(): bool
@@ -116,9 +130,19 @@ class PayrollRun extends Model
         return $this->status === 'approved';
     }
 
-    public function isPublished(): bool
+    public function canPay(): bool
     {
         return $this->status === 'published';
+    }
+
+    public function isPublished(): bool
+    {
+        return in_array($this->status, ['published', 'paid'], true);
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === 'paid';
     }
 
     public function isReversed(): bool
@@ -128,6 +152,6 @@ class PayrollRun extends Model
 
     public function canReverse(): bool
     {
-        return $this->status === 'published';
+        return in_array($this->status, ['published', 'paid'], true);
     }
 }

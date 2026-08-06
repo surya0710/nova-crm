@@ -1,7 +1,7 @@
 # Getting Started
 
 ## Purpose
-This guide introduces the NovaCRM Knowledge Center and explains how documentation is organized and maintained.
+This guide introduces the Konnect Nex Knowledge Center and explains how documentation is organized and maintained.
 
 ## Audience
 - End users

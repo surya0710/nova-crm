@@ -63,7 +63,7 @@
             @if($careerSiteSettings?->custom_footer)
                 {!! nl2br(e($careerSiteSettings->custom_footer)) !!}
             @else
-                {{ __('Powered by NovaCRM Recruitment') }}
+                {{ __('Powered by :product Recruitment', ['product' => config('branding.product_name')]) }}
             @endif
         </div>
     </footer>

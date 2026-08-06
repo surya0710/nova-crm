@@ -8,7 +8,7 @@
 
 ## Outcome
 
-NovaCRM’s CRM workspace is the first production reference implementation of the Enterprise UX Platform (Phases 13.1–13.4 + 14.1 shell). Shared layouts, entity sections, tables, forms, timeline, empty states, and CRM home/nav patterns are available for Projects, HRMS, and other workspaces to reuse.
+Konnect Nex’s CRM workspace is the first production reference implementation of the Enterprise UX Platform (Phases 13.1–13.4 + 14.1 shell). Shared layouts, entity sections, tables, forms, timeline, empty states, and CRM home/nav patterns are available for Projects, HRMS, and other workspaces to reuse.
 
 Business logic, services (beyond thin CRM home aggregation), APIs, policies, workflows, metadata, and database schema were not changed.
 

@@ -1,6 +1,6 @@
 # Deliverable 8 — Search Architecture
 
-Defines Global Search behavior for NovaCRM. Current implementation: `SearchController` + `SearchService` (+ metadata search context).
+Defines Global Search behavior for Konnect Nex. Current implementation: `SearchController` + `SearchService` (+ metadata search context).
 
 ---
 

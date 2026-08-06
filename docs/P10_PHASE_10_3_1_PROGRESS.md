@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Establish the Payroll Foundation Platform for NovaCRM — salary components, salary structures, employee salary assignments, payroll periods, payroll configuration, and payroll calculation contracts — without implementing payroll processing, payslips, statutory filing, or accounting integration.
+**Objective:** Establish the Payroll Foundation Platform for Konnect Nex — salary components, salary structures, employee salary assignments, payroll periods, payroll configuration, and payroll calculation contracts — without implementing payroll processing, payslips, statutory filing, or accounting integration.
 
 **Scope completed:** Full foundation slice with service-owned business logic, workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 

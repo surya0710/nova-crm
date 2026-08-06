@@ -1,6 +1,6 @@
 # Deliverable 6 — Personalization
 
-User and org personalization strategy for NovaCRM daily experience.
+User and org personalization strategy for Konnect Nex daily experience.
 
 ---
 

@@ -296,6 +296,7 @@ class PayrollFinanceController extends Controller
             'statutory' => $this->service->reportStatutoryLiability($runId),
             'salary_register' => $this->service->reportSalaryRegister($runId),
             'department' => $this->service->reportDepartmentSalary($runId),
+            'branch' => $this->service->reportBranchSalary($runId),
             'cost_center' => $this->service->reportCostCenterSummary($runId),
             'ledger' => $this->service->reportLedger($runId),
             default => $this->service->reportPayrollSummary($runId),
@@ -305,12 +306,25 @@ class PayrollFinanceController extends Controller
             'report' => $report,
             'data' => $data,
             'publishedRuns' => PayrollRun::query()
-                ->whereIn('status', ['published', 'reversed'])
+                ->whereIn('status', ['published', 'paid', 'reversed'])
                 ->with('period')
                 ->orderByDesc('id')
                 ->get(),
             'filters' => $request->only(['report', 'payroll_run_id']),
         ]);
+    }
+
+    public function reportsExport(Request $request)
+    {
+        $this->authorize('viewAny', PayrollLedgerEntry::class);
+
+        $report = $request->string('report')->toString() ?: 'summary';
+        $format = $request->string('format')->toString() ?: 'csv';
+        $runId = $request->integer('payroll_run_id') ?: null;
+
+        $export = $this->service->exportReport($report, $format, $runId);
+
+        return Storage::disk($export['disk'])->download($export['path'], $export['filename']);
     }
 
     public function reverseRun(ReversePayrollRunRequest $request, PayrollRun $run): RedirectResponse

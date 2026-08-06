@@ -6,7 +6,7 @@ Phase 8.3 — Customer Import
 
 ## Outcome
 
-NovaCRM can import Customers from CSV and XLSX through the existing Import
+Konnect Nex can import Customers from CSV and XLSX through the existing Import
 Platform. Customer-specific rules live in `CustomerImportAdapter`; persistence
 goes through `CustomerService`. The Import Platform was **not modified**.
 

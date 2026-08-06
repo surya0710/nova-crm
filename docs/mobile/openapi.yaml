@@ -1,14 +1,14 @@
 openapi: 3.1.0
 info:
-  title: NovaCRM HRMS Mobile API
+  title: Konnect Nex HRMS Mobile API
   description: |
-    OpenAPI specification for NovaCRM HRMS mobile endpoints.
+    OpenAPI specification for Konnect Nex HRMS mobile endpoints.
     Extracted from Laravel implementation (routes/api*.php, controllers, form requests).
     
     **Note:** Many ESS features (leave, profile, documents, holidays) are not yet exposed via REST API.
   version: 1.0.0
   contact:
-    name: NovaCRM
+    name: Konnect Nex
 
 servers:
   - url: /api/v1

@@ -150,7 +150,7 @@
                     <div>
                         <h2 class="text-sm font-semibold text-slate-900">{{ __('Business assets') }}</h2>
                         <p class="mt-1 text-sm text-slate-500">
-                            {{ __('Choose which provider assets NovaCRM should manage. Nothing is assumed automatically.') }}
+                            {{ __('Choose which provider assets :product should manage. Nothing is assumed automatically.', ['product' => config('branding.product_name')]) }}
                         </p>
                     </div>
                     <form method="POST" action="{{ route('integrations.assets.refresh', ['provider' => $integration['slug']]) }}">

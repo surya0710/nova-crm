@@ -1,6 +1,6 @@
 # Deliverable 5 — Component Library
 
-Reusable UI components for NovaCRM. Documented as a **pattern catalog** for Phase 14 Blade/`x-` implementation (not built in this phase).
+Reusable UI components for Konnect Nex. Documented as a **pattern catalog** for Phase 14 Blade/`x-` implementation (not built in this phase).
 
 ---
 

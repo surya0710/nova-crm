@@ -6,7 +6,7 @@ Authentication model extracted from `routes/auth.php`, `routes/api_identity.php`
 
 ## Overview
 
-NovaCRM uses **Laravel Sanctum** for API authentication. There is **no REST API for login, logout, token refresh, password reset, change password, or user profile** as of the current implementation.
+Konnect Nex uses **Laravel Sanctum** for API authentication. There is **no REST API for login, logout, token refresh, password reset, change password, or user profile** as of the current implementation.
 
 | Capability | API | Web |
 |------------|-----|-----|
@@ -22,7 +22,7 @@ NovaCRM uses **Laravel Sanctum** for API authentication. There is **no REST API 
 
 ### Mobile Authentication Flow (Current)
 
-1. User logs into NovaCRM web application
+1. User logs into Konnect Nex web application
 2. Navigates to Settings → API Tokens (`/api-tokens`)
 3. Creates a token (requires `api.tokens` permission)
 4. Copies plaintext token into mobile app (shown once via session flash)

@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build NovaCRM's enterprise-grade 360° Feedback Platform — feedback campaigns, participant management, anonymous feedback, structured forms, response collection, aggregation, and summary reports — without calibration, final ratings, promotions, or compensation decisions.
+**Objective:** Build Konnect Nex's enterprise-grade 360° Feedback Platform — feedback campaigns, participant management, anonymous feedback, structured forms, response collection, aggregation, and summary reports — without calibration, final ratings, promotions, or compensation decisions.
 
 **Scope completed:** Full feedback platform slice with service-owned business logic, workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 

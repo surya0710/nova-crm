@@ -6,7 +6,7 @@ Phase 7C.7 - Meta Webhook Event Processing
 
 ## What Changed?
 
-Implemented **processing of stored Meta webhook events into CRM leads**, reusing the exact same import pipeline as manual import. A webhook is treated as a notification: it tells NovaCRM a lead exists; the complete lead is then fetched through the Graph API before a CRM Lead is created.
+Implemented **processing of stored Meta webhook events into CRM leads**, reusing the exact same import pipeline as manual import. A webhook is treated as a notification: it tells Konnect Nex a lead exists; the complete lead is then fetched through the Graph API before a CRM Lead is created.
 
 There is **one** lead-creation path. Manual import and webhook processing both call `MarketingProviderService::importNormalizedEntry()`.
 

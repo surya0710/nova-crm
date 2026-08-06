@@ -4,6 +4,7 @@
         'statutory' => __('Statutory Liability'),
         'salary_register' => __('Salary Register'),
         'department' => __('Department Salary'),
+        'branch' => __('Branch Salary'),
         'cost_center' => __('Cost Center'),
         'ledger' => __('Ledger'),
     ];
@@ -43,8 +44,10 @@
                         @endforeach
                     </x-forms.select>
                 </x-forms.field>
-                <div class="flex items-end">
+                <div class="flex items-end gap-2">
                     <x-ui.button type="submit" variant="primary" size="sm">{{ __('Apply') }}</x-ui.button>
+                    <x-ui.button :href="route('hrms.payroll.reports.export', array_merge($filters, ['format' => 'csv']))" variant="secondary" size="sm">{{ __('CSV') }}</x-ui.button>
+                    <x-ui.button :href="route('hrms.payroll.reports.export', array_merge($filters, ['format' => 'xlsx']))" variant="secondary" size="sm">{{ __('Excel') }}</x-ui.button>
                 </div>
             </form>
         </x-slot:filters>
@@ -91,14 +94,17 @@
                             @endforeach
                         </x-tables.table>
                     @endif
-                @elseif (in_array($activeReport, ['department', 'cost_center'], true))
+                @elseif (in_array($activeReport, ['department', 'branch', 'cost_center'], true))
                     @if (empty($data))
                         <div class="p-5"><x-ui.empty-state-preset variant="reports" :title="__('No data.')" /></div>
                     @else
-                        <x-tables.table :columns="[$activeReport === 'department' ? __('Department') : __('Cost center'), __('Employees'), __('Gross'), __('Net')]" :dense="$density === 'compact'">
+                        <x-tables.table :columns="[
+                            $activeReport === 'branch' ? __('Branch') : ($activeReport === 'department' ? __('Department') : __('Cost center')),
+                            __('Employees'), __('Gross'), __('Net')
+                        ]" :dense="$density === 'compact'">
                             @foreach ($data as $row)
                                 <tr class="hover:bg-surface-muted/60 transition">
-                                    <td class="px-4 py-3 text-sm text-ink-heading">{{ $row['department'] ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-sm text-ink-heading">{{ $row['branch'] ?? $row['department'] ?? '—' }}</td>
                                     <td class="px-4 py-3 text-sm text-ink-muted">{{ $row['employee_count'] ?? 0 }}</td>
                                     <td class="px-4 py-3 text-sm text-ink-muted">{{ number_format((float) ($row['gross_salary'] ?? 0), 2) }}</td>
                                     <td class="px-4 py-3 text-sm text-ink-muted">{{ number_format((float) ($row['net_salary'] ?? 0), 2) }}</td>

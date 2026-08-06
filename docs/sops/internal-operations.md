@@ -14,7 +14,7 @@
 | Status | Legacy reference (see INDEX) |
 
 ## Purpose
-Govern how NovaCRM ships changes: release management, versioning, QA, docs, security, and approvals.
+Govern how Konnect Nex ships changes: release management, versioning, QA, docs, security, and approvals.
 
 ## 1. Release management
 1. Scope freeze for release candidate

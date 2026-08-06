@@ -1,6 +1,6 @@
-# NovaCRM HRMS Mobile API & Development Documentation
+# Konnect Nex HRMS Mobile API & Development Documentation
 
-Implementation-driven reference for building the NovaCRM HRMS mobile application against the current Laravel backend.
+Implementation-driven reference for building the Konnect Nex HRMS mobile application against the current Laravel backend.
 
 **Source of truth:** `routes/api*.php`, controllers, form requests, services, policies, middleware, and config files in this repository.
 
@@ -25,7 +25,7 @@ Enable a mobile development team to build and test the HRMS mobile app with mini
 
 ### Platform Architecture
 
-NovaCRM is a multi-tenant SaaS platform. Each **organization** is an isolated tenant. Users may belong to multiple organizations.
+Konnect Nex is a multi-tenant SaaS platform. Each **organization** is an isolated tenant. Users may belong to multiple organizations.
 
 | Concern | Implementation |
 |---------|----------------|
@@ -93,7 +93,7 @@ See [api-index.md](./api-index.md) for the complete endpoint catalog and [Develo
 | [error-codes.md](./error-codes.md) | HTTP and business errors |
 | [permissions.md](./permissions.md) | RBAC and module licensing |
 | [security.md](./security.md) | Security guidelines |
-| [postman-collection.json](./postman-collection.json) | Postman collection (also at `postman/NovaCRM-HRMS-Mobile.postman_collection.json`) |
+| [postman-collection.json](./postman-collection.json) | Postman collection (also at `postman/Konnect Nex-HRMS-Mobile.postman_collection.json`) |
 | [openapi.yaml](./openapi.yaml) | OpenAPI 3.1 specification |
 
 ---

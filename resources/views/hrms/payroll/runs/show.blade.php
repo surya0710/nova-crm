@@ -73,6 +73,17 @@
                     @endif
                 @endcan
 
+                @can('pay', $run)
+                    @if ($run->canPay())
+                        <form method="POST" action="{{ route('hrms.payroll.runs.pay', $run) }}" class="flex flex-wrap items-end gap-2">
+                            @csrf
+                            <x-forms.input type="text" name="payment_reference" placeholder="{{ __('Payment reference') }}" required />
+                            <x-forms.input type="date" name="payment_date" value="{{ now()->toDateString() }}" />
+                            <x-ui.button type="submit" variant="primary" size="sm">{{ __('Mark Paid') }}</x-ui.button>
+                        </form>
+                    @endif
+                @endcan
+
                 @if ($run->isPublished())
                     <x-ui.button :href="route('hrms.payroll.payslips.index', ['payroll_run_id' => $run->id])" variant="secondary" size="sm">{{ __('View Payslips') }}</x-ui.button>
                     @can('viewAny', \App\Models\PayrollLedgerEntry::class)
@@ -81,6 +92,10 @@
                     @can('viewAny', \App\Models\PayrollBankExport::class)
                         <x-ui.button :href="route('hrms.payroll.bank-exports.index', ['payroll_run_id' => $run->id])" variant="secondary" size="sm">{{ __('Bank Export') }}</x-ui.button>
                     @endcan
+                @endif
+
+                @if ($run->isPaid())
+                    <span class="text-sm text-ink-muted">{{ __('Payment ref') }}: {{ $run->payment_reference }}</span>
                 @endif
 
                 @can('reverse', $run)

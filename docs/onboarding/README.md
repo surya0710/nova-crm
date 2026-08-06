@@ -1,6 +1,6 @@
 # Customer Onboarding
 
-Repeatable playbooks for provisioning, configuring, and launching NovaCRM customers.
+Repeatable playbooks for provisioning, configuring, and launching Konnect Nex customers.
 
 | Document | Purpose |
 |----------|---------|

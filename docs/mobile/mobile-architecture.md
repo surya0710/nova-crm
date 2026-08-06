@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Recommended architecture for the NovaCRM HRMS mobile application. **This section describes mobile client design patterns** — the Laravel backend does not ship a mobile app.
+Recommended architecture for the Konnect Nex HRMS mobile application. **This section describes mobile client design patterns** — the Laravel backend does not ship a mobile app.
 
 ---
 
@@ -201,7 +201,7 @@ Handle `MissingEmployeeRecordException` soft empty state (HTTP 200, not 403).
 
 | Variable | Description |
 |----------|-------------|
-| `API_BASE_URL` | NovaCRM host |
+| `API_BASE_URL` | Konnect Nex host |
 | `API_TIMEOUT_MS` | Request timeout (default 30000) |
 | `ENABLE_API_LOGGING` | Debug flag |
 

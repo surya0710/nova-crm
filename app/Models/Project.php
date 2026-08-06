@@ -122,6 +122,11 @@ class Project extends Model
         return $this->hasMany(ProjectMilestone::class)->orderBy('sequence');
     }
 
+    public function deliverables(): HasMany
+    {
+        return $this->hasMany(Deliverable::class)->latest();
+    }
+
     public function tasks(): MorphMany
     {
         return $this->morphMany(Task::class, 'taskable')->latest();

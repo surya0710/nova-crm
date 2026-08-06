@@ -1,4 +1,4 @@
-# NovaCRM Product Blueprint — Overview
+# Konnect Nex Product Blueprint — Overview
 
 **Phases:** 13.1 Information Architecture · 13.2 Workspace Experience · 13.3 Enterprise Design System · 13.4 Frontend Implementation Standards  
 **Status:** Authoritative product reference  
@@ -10,8 +10,8 @@
 
 | Phase | Answers |
 |-------|---------|
-| **13.1** | What is NovaCRM? How is the product organized? |
-| **13.2** | What does it feel like to work in NovaCRM every day? |
+| **13.1** | What is Konnect Nex? How is the product organized? |
+| **13.2** | What does it feel like to work in Konnect Nex every day? |
 | **13.3** | How does the product look and behave? → [../design/overview.md](../design/overview.md) |
 | **13.4** | How do engineers build the UI? → [../frontend/overview.md](../frontend/overview.md) |
 
@@ -112,7 +112,7 @@ See [../frontend/overview.md](../frontend/overview.md) for Blade/Alpine/Tailwind
 ## Target product hierarchy
 
 ```
-NovaCRM (Organization tenant)
+Konnect Nex (Organization tenant)
 ├── Workspaces
 │   ├── Home (personal command center)
 │   ├── CRM
@@ -156,7 +156,7 @@ Each workspace home shares: **Attention · KPIs · Widgets · Quick Actions · A
 
 ## Phase outcome
 
-NovaCRM has:
+Konnect Nex has:
 
 - **Information Architecture** — how the product is organized  
 - **Workspace Experience** — how users interact with it daily  

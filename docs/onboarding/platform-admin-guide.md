@@ -1,6 +1,6 @@
 # Platform Administrator Guide
 
-**Audience:** NovaCRM SaaS operators using `/platform` (not customer tenant admins).
+**Audience:** Konnect Nex SaaS operators using `/platform` (not customer tenant admins).
 
 ## Responsibilities
 - Organization provisioning and suspension

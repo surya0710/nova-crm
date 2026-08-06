@@ -1,6 +1,6 @@
 # Production Operations
 
-Executable checklists for running NovaCRM in production.
+Executable checklists for running Konnect Nex in production.
 
 | Checklist / plan | File |
 |------------------|------|

@@ -6,7 +6,7 @@ Phase 13.3 — Enterprise Design System & Component Blueprint
 
 ## Outcome
 
-NovaCRM has a complete Enterprise Design System documenting tokens, color, typography, layout, components, page templates, interactions, tables, forms, dashboards, navigation chrome, iconography, motion, accessibility, responsive behavior, theming, and a design review checklist.
+Konnect Nex has a complete Enterprise Design System documenting tokens, color, typography, layout, components, page templates, interactions, tables, forms, dashboards, navigation chrome, iconography, motion, accessibility, responsive behavior, theming, and a design review checklist.
 
 Together with Phases **13.1** (IA) and **13.2** (workspace experience), the platform has a full **Product Design Blueprint** before Phase 14 implementation.
 

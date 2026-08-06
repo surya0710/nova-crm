@@ -1,12 +1,12 @@
 # API Response Format
 
-Response conventions extracted from controllers across the NovaCRM API.
+Response conventions extracted from controllers across the Konnect Nex API.
 
 ---
 
 ## Important: No Global Envelope
 
-NovaCRM does **not** use a consistent `{ success, message, data }` wrapper on all endpoints. Response shape varies by controller.
+Konnect Nex does **not** use a consistent `{ success, message, data }` wrapper on all endpoints. Response shape varies by controller.
 
 ---
 

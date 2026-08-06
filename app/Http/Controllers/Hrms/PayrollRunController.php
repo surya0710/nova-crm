@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Hrms;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Hrms\ApprovePayrollRunRequest;
 use App\Http\Requests\Hrms\CreatePayrollRunRequest;
+use App\Http\Requests\Hrms\MarkPayrollPaidRequest;
 use App\Http\Requests\Hrms\PreviewPayrollRequest;
 use App\Http\Requests\Hrms\PublishPayrollRunRequest;
 use App\Models\Employee;
@@ -75,6 +76,14 @@ class PayrollRunController extends Controller
 
         return redirect()->route('hrms.payroll.runs.show', $run)
             ->with('status', 'hrms-payroll-run-published');
+    }
+
+    public function markPaid(MarkPayrollPaidRequest $request, PayrollRun $run): RedirectResponse
+    {
+        $this->publicationService->markPaid($run, $request->user(), $request->validated());
+
+        return redirect()->route('hrms.payroll.runs.show', $run)
+            ->with('status', 'hrms-payroll-run-paid');
     }
 
     public function calculate(Request $request, PayrollRun $run): RedirectResponse

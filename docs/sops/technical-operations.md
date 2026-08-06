@@ -14,7 +14,7 @@
 | Status | Legacy reference (see INDEX) |
 
 ## Purpose
-Operate NovaCRM platforms safely: deploy, configure, migrate, monitor, back up, upgrade, and roll back.
+Operate Konnect Nex platforms safely: deploy, configure, migrate, monitor, back up, upgrade, and roll back.
 
 ## Roles
 | Role | Responsibility |

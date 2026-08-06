@@ -1,6 +1,6 @@
 # Deliverable 3 — Typography System
 
-Typography for NovaCRM in-app UI.
+Typography for Konnect Nex in-app UI.
 
 ---
 

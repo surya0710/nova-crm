@@ -7,7 +7,7 @@ Theming, branding, and white-label readiness.
 ## Theme layers
 
 ```
-Platform defaults (NovaCRM tokens)
+Platform defaults (Konnect Nex tokens)
   → Organization branding (logo, accent)
     → User preference (theme mode, density)
 ```
@@ -88,7 +88,7 @@ Constraints:
 |------------|---------------|
 | CSS variable theming | Designed now; implement Phase 14+ |
 | Custom domain | Platform concern (out of design tokens) |
-| Remove “NovaCRM” wordmark | Allow via org setting later |
+| Remove “Konnect Nex” wordmark | Allow via org setting later |
 | Custom login background | Optional org asset |
 | Email templates branding | Separate but share palette |
 

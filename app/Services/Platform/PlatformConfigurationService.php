@@ -68,7 +68,7 @@ class PlatformConfigurationService
             'ai' => $this->group('ai'),
             'organization_defaults' => $this->group('organization_defaults'),
             'email_templates' => $this->get('configuration', 'email_templates', [
-                'welcome' => ['subject' => 'Welcome to NovaCRM', 'body' => 'Your organization is ready.'],
+                'welcome' => ['subject' => 'Welcome to '.config('branding.product_name', 'Konnect Nex'), 'body' => 'Your organization is ready.'],
                 'trial_ending' => ['subject' => 'Your trial is ending', 'body' => 'Upgrade to keep access.'],
             ]),
         ];

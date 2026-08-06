@@ -346,7 +346,7 @@ return [
 
     'configuration_defaults' => [
         'branding' => [
-            'product_name' => 'NovaCRM',
+            'product_name' => env('APP_NAME', 'Konnect Nex'),
             'primary_color' => '#2563eb',
             'accent_color' => '#0ea5e9',
         ],

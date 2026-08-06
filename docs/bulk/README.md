@@ -1,6 +1,6 @@
 # Bulk Operations Framework
 
-NovaCRM Release **1.1.3** provides a centralized Enterprise Bulk Operations Framework.
+Konnect Nex Release **1.1.3** provides a centralized Enterprise Bulk Operations Framework.
 
 ## Architecture
 

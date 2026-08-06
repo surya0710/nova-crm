@@ -1,6 +1,6 @@
 # Deliverable 7 — Interaction Patterns
 
-Shared interaction behavior across NovaCRM.
+Shared interaction behavior across Konnect Nex.
 
 ---
 

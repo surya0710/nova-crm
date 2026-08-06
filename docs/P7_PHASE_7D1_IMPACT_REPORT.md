@@ -145,7 +145,7 @@ Platform application configuration is environment-level:
 - `GOOGLE_ADS_DEVELOPER_TOKEN`
 - optional API version, timeout, scope, and endpoint overrides
 
-The developer token is platform-level because it identifies NovaCRM's Google
+The developer token is platform-level because it identifies Konnect Nex's Google
 Ads API application. Tenant access tokens, refresh tokens, and optional Google
 Ads customer IDs remain in encrypted organization-owned database records.
 

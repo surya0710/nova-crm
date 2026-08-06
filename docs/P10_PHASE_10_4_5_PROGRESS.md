@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build NovaCRM's Appraisal & Talent Decisions Platform — consolidating performance evidence into formal appraisals with final ratings, development plans, promotion/compensation recommendations, succession planning, calibration, and talent matrix classification.
+**Objective:** Build Konnect Nex's Appraisal & Talent Decisions Platform — consolidating performance evidence into formal appraisals with final ratings, development plans, promotion/compensation recommendations, succession planning, calibration, and talent matrix classification.
 
 **Scope completed:** Full appraisal platform slice with configuration-driven rating engine, recommendation-only outputs (no employee/payroll mutations), workflow events, audit logging, RBAC, tenant isolation, Blade UI, and feature tests.
 

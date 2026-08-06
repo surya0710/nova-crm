@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the canonical read-side contract for NovaCRM metadata values.
+This document is the canonical read-side contract for Konnect Nex metadata values.
 
 It defines how metadata becomes searchable, filterable, sortable, reportable, API-queryable, automation-ready, and AI-context-ready while preserving the existing metadata runtime and validation contracts.
 

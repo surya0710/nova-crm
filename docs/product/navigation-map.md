@@ -1,6 +1,6 @@
 # Deliverable 5 — Navigation Hierarchy
 
-Target navigation model for NovaCRM. Implementation deferred to Phase 14+.
+Target navigation model for Konnect Nex. Implementation deferred to Phase 14+.
 
 ---
 

@@ -1,6 +1,6 @@
 # Release Checklist — Operators
 
-Pre- and post-release checklist for NovaCRM Release 1.2.x deployments. Pair with [production-readiness.md](./production-readiness.md), [smoke.md](./smoke.md), and the [queue/scheduler runbook](../deployment/queues-and-scheduler.md).
+Pre- and post-release checklist for Konnect Nex Release 1.2.x deployments. Pair with [production-readiness.md](./production-readiness.md), [smoke.md](./smoke.md), and the [queue/scheduler runbook](../deployment/queues-and-scheduler.md).
 
 **Related:** [Deployment overview](../deployment/overview.md) · [UPGRADE.md](../../UPGRADE.md)
 

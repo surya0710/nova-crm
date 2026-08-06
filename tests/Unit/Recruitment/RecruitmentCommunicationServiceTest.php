@@ -81,14 +81,14 @@ class RecruitmentCommunicationServiceTest extends TestCase
 
         $rendered = $service->render($active, [
             'candidate_name' => 'Alex Doe',
-            'company_name' => 'NovaCRM',
+            'company_name' => 'Konnect Nex',
             'job_title' => 'Backend Engineer',
             'offer_salary' => '120000',
         ]);
 
         $this->assertSame('Offer for Alex Doe', $rendered['subject']);
         $this->assertSame(
-            'Join NovaCRM as Backend Engineer at 120000.',
+            'Join Konnect Nex as Backend Engineer at 120000.',
             $rendered['body']
         );
         $this->assertSame('email', $rendered['channel']);

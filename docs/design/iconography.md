@@ -1,6 +1,6 @@
 # Deliverable 12 — Iconography & Illustrations
 
-Visual asset rules for NovaCRM.
+Visual asset rules for Konnect Nex.
 
 ---
 

@@ -7,13 +7,19 @@ use App\Events\PayrollRunCompleted;
 use App\Events\PayrollRunStarted;
 use App\Events\PayrollValidationFailed;
 use App\Models\Employee;
+use App\Models\EmployeeLoan;
+use App\Models\EmployeeLoanRecovery;
+use App\Models\PayrollAdjustment;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollResult;
 use App\Models\PayrollRun;
 use App\Models\PayrollValidationError;
+use App\Models\SalaryAdvance;
+use App\Models\SalaryAdvanceRecovery;
 use App\Models\SalaryComponent;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\NotificationService;
 use App\Services\TenantContext;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -22,13 +28,15 @@ use Illuminate\Validation\ValidationException;
 
 class PayrollCalculationService
 {
-    public const ENGINE_VERSION = '10.3.3';
+    public const ENGINE_VERSION = '10.3.7';
 
     public function __construct(
         protected TenantContext $tenantContext,
         protected AuditLogger $auditLogger,
         protected PayrollService $payrollService,
         protected StatutoryComplianceService $statutoryComplianceService,
+        protected PayrollAdjustmentService $adjustmentService,
+        protected NotificationService $notificationService,
     ) {}
 
     public function createRun(PayrollPeriod $period, User $actor): PayrollRun
@@ -230,9 +238,16 @@ class PayrollCalculationService
         $attendanceWorkingDays = (float) ($context['attendance']['working_days'] ?? 0);
         $unpaidLeaveDays = (float) ($context['leave']['unpaid_days'] ?? 0);
         $overtimeMinutes = (int) ($context['attendance']['overtime_minutes'] ?? 0);
+        $salaryMode = $configuration['salary_mode']
+            ?? config('hrms.payroll.default_salary_mode', 'calendar');
 
-        $payableDays = max(0, round($periodWorkingDays - $unpaidLeaveDays, 2));
-        $proration = $periodWorkingDays > 0 ? min(1, $payableDays / $periodWorkingDays) : 0;
+        [$payableDays, $prorationBasis] = $this->resolvePayableDays(
+            $salaryMode,
+            $periodWorkingDays,
+            $attendanceWorkingDays,
+            $unpaidLeaveDays,
+        );
+        $proration = $prorationBasis > 0 ? min(1, $payableDays / $prorationBasis) : 0;
 
         $statutoryCodes = array_map('strtoupper', config('hrms.payroll.statutory_component_codes', [
             'PF', 'ESI', 'PT', 'IT', 'TDS',
@@ -347,14 +362,87 @@ class PayrollCalculationService
             );
         }
 
+        $rounding = $configuration['rounding_policy'] ?? 'nearest';
+
+        // E3 — approved payroll adjustments
+        $pendingAdjustments = $this->adjustmentService->approvedForEmployee($employee, $period);
+        $adjustmentMeta = [];
+        foreach ($pendingAdjustments as $adjustment) {
+            $amount = $this->roundAmount((float) $adjustment->amount, $rounding);
+            $line = [
+                'salary_component_id' => null,
+                'code' => strtoupper($adjustment->adjustment_type),
+                'name' => $adjustment->title,
+                'component_type' => $adjustment->isEarning() ? 'earning' : 'deduction',
+                'calculation_type' => 'adjustment',
+                'amount' => $amount,
+                'status' => 'calculated',
+                'meta' => [
+                    'payroll_adjustment_id' => $adjustment->id,
+                    'adjustment_number' => $adjustment->adjustment_number,
+                    'adjustment_type' => $adjustment->adjustment_type,
+                ],
+            ];
+            if ($adjustment->isEarning()) {
+                $earningsLines[] = $line;
+                $totalEarnings = $this->roundAmount($totalEarnings + $amount, $rounding);
+            } else {
+                $deductionLines[] = $line;
+            }
+            $adjustmentMeta[] = [
+                'id' => $adjustment->id,
+                'type' => $adjustment->adjustment_type,
+                'direction' => $adjustment->direction,
+                'amount' => $amount,
+            ];
+        }
+
+        // E1 — loan / advance recoveries (computed into net; applied on persist)
+        $recoveries = $this->pendingRecoveriesForEmployee($employee);
+        $recoveryTotal = 0.0;
+        foreach ($recoveries['loans'] as $loanRow) {
+            $amount = $this->roundAmount((float) $loanRow['amount'], $rounding);
+            $deductionLines[] = [
+                'salary_component_id' => null,
+                'code' => 'LOAN',
+                'name' => 'Loan Recovery',
+                'component_type' => 'deduction',
+                'calculation_type' => 'recovery',
+                'amount' => $amount,
+                'status' => 'calculated',
+                'meta' => [
+                    'employee_loan_id' => $loanRow['employee_loan_id'],
+                    'loan_number' => $loanRow['loan_number'],
+                ],
+            ];
+            $recoveryTotal += $amount;
+        }
+        foreach ($recoveries['advances'] as $advanceRow) {
+            $amount = $this->roundAmount((float) $advanceRow['amount'], $rounding);
+            $deductionLines[] = [
+                'salary_component_id' => null,
+                'code' => 'ADVANCE',
+                'name' => 'Advance Recovery',
+                'component_type' => 'deduction',
+                'calculation_type' => 'recovery',
+                'amount' => $amount,
+                'status' => 'calculated',
+                'meta' => [
+                    'salary_advance_id' => $advanceRow['salary_advance_id'],
+                    'advance_number' => $advanceRow['advance_number'],
+                ],
+            ];
+            $recoveryTotal += $amount;
+        }
+
         $totalDeductions = $this->roundAmount(
             collect($deductionLines)
                 ->filter(fn (array $line) => ($line['component_type'] ?? '') !== 'employer_contribution')
                 ->sum('amount'),
-            $configuration['rounding_policy'] ?? 'nearest'
+            $rounding
         );
         $gross = $totalEarnings;
-        $net = $this->roundAmount($gross - $totalDeductions, $configuration['rounding_policy'] ?? 'nearest');
+        $net = $this->roundAmount($gross - $totalDeductions, $rounding);
 
         $snapshot = [
             'engine_version' => self::ENGINE_VERSION,
@@ -373,11 +461,19 @@ class PayrollCalculationService
             'leave' => $context['leave'],
             'exit' => $context['exit'],
             'proration' => [
+                'salary_mode' => $salaryMode,
                 'period_working_days' => $periodWorkingDays,
                 'attendance_working_days' => $attendanceWorkingDays,
                 'unpaid_leave_days' => $unpaidLeaveDays,
                 'payable_days' => $payableDays,
+                'proration_basis' => $prorationBasis,
                 'factor' => $proration,
+            ],
+            'adjustments' => $adjustmentMeta,
+            'recoveries' => [
+                'loans' => $recoveries['loans'],
+                'advances' => $recoveries['advances'],
+                'total' => $this->roundAmount($recoveryTotal, $rounding),
             ],
             'earnings' => $earningsLines,
             'deductions' => $deductionLines,
@@ -388,6 +484,7 @@ class PayrollCalculationService
                 'net_salary' => $net,
                 'overtime_minutes' => $overtimeMinutes,
                 'overtime_amount' => $overtimeAmount,
+                'recovery_total' => $this->roundAmount($recoveryTotal, $rounding),
             ],
         ];
 
@@ -435,6 +532,8 @@ class PayrollCalculationService
             }
 
             if ($recalculating) {
+                $this->releaseRecoveriesForRun($run, $actor);
+                $this->adjustmentService->releaseAppliedForRun($run, $actor);
                 $run->results()->delete();
                 $run->validationErrors()->delete();
                 $this->auditLogger->log($run, 'payroll_recalculated', [
@@ -534,6 +633,16 @@ class PayrollCalculationService
                     'version' => $calculation['version'],
                 ]);
 
+                $this->persistRecoveriesFromSnapshot($employee, $period, $run, $calculation['snapshot'] ?? [], $actor);
+                $ids = collect($calculation['snapshot']['adjustments'] ?? [])->pluck('id')->filter()->all();
+                if ($ids !== []) {
+                    $this->adjustmentService->markApplied(
+                        PayrollAdjustment::query()->whereIn('id', $ids)->where('status', 'approved')->get(),
+                        $run,
+                        $actor,
+                    );
+                }
+
                 $this->statutoryComplianceService->recordPayrollStatutoryOutcome(
                     $employee,
                     $period,
@@ -573,6 +682,22 @@ class PayrollCalculationService
                 'error_count' => $errorCount,
             ]));
 
+            try {
+                $this->notificationService->send(
+                    $run->organization_id,
+                    $actor->id,
+                    __('Payroll generated'),
+                    __('Payroll calculation completed for :period (:success succeeded, :errors errors).', [
+                        'period' => $period->name,
+                        'success' => $success,
+                        'errors' => $errorCount,
+                    ]),
+                    '/hrms/payroll/runs/'.$run->id,
+                );
+            } catch (\Throwable) {
+                // best-effort
+            }
+
             return $run->fresh(['period', 'results', 'validationErrors']);
         });
     }
@@ -594,6 +719,211 @@ class PayrollCalculationService
             })
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * @return array{0: float, 1: float} [payableDays, prorationBasis]
+     */
+    protected function resolvePayableDays(
+        string $salaryMode,
+        float $periodWorkingDays,
+        float $attendanceWorkingDays,
+        float $unpaidLeaveDays,
+    ): array {
+        return match ($salaryMode) {
+            'attendance' => [
+                max(0, round($attendanceWorkingDays, 2)),
+                max($periodWorkingDays, $attendanceWorkingDays, 1),
+            ],
+            'leave' => [
+                max(0, round($periodWorkingDays - $unpaidLeaveDays, 2)),
+                $periodWorkingDays,
+            ],
+            default => [ // calendar
+                max(0, round($periodWorkingDays - $unpaidLeaveDays, 2)),
+                $periodWorkingDays,
+            ],
+        };
+    }
+
+    /**
+     * Preview-safe recovery amounts (does not mutate balances).
+     *
+     * @return array{loans: list<array<string, mixed>>, advances: list<array<string, mixed>>}
+     */
+    public function pendingRecoveriesForEmployee(Employee $employee): array
+    {
+        $loans = [];
+        foreach (EmployeeLoan::query()->where('employee_id', $employee->id)->where('status', 'active')->get() as $loan) {
+            $amount = min((float) $loan->monthly_recovery, (float) $loan->outstanding_balance);
+            if ($amount <= 0) {
+                continue;
+            }
+            $loans[] = [
+                'employee_loan_id' => $loan->id,
+                'loan_number' => $loan->loan_number,
+                'amount' => round($amount, 2),
+            ];
+        }
+
+        $advances = [];
+        foreach (SalaryAdvance::query()->where('employee_id', $employee->id)->where('status', 'active')->get() as $advance) {
+            $amount = min((float) $advance->monthly_recovery, (float) $advance->outstanding_balance);
+            if ($amount <= 0) {
+                continue;
+            }
+            $advances[] = [
+                'salary_advance_id' => $advance->id,
+                'advance_number' => $advance->advance_number,
+                'amount' => round($amount, 2),
+            ];
+        }
+
+        return ['loans' => $loans, 'advances' => $advances];
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    protected function persistRecoveriesFromSnapshot(
+        Employee $employee,
+        PayrollPeriod $period,
+        PayrollRun $run,
+        array $snapshot,
+        User $actor,
+    ): void {
+        foreach ($snapshot['recoveries']['loans'] ?? [] as $row) {
+            $loanId = (int) ($row['employee_loan_id'] ?? 0);
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+            if ($loanId <= 0 || $amount <= 0) {
+                continue;
+            }
+
+            $already = EmployeeLoanRecovery::query()
+                ->where('employee_loan_id', $loanId)
+                ->where('payroll_run_id', $run->id)
+                ->exists();
+            if ($already) {
+                continue;
+            }
+
+            $loan = EmployeeLoan::query()->whereKey($loanId)->where('employee_id', $employee->id)->first();
+            if (! $loan) {
+                continue;
+            }
+
+            EmployeeLoanRecovery::query()->create([
+                'organization_id' => $run->organization_id,
+                'employee_loan_id' => $loan->id,
+                'payroll_run_id' => $run->id,
+                'payroll_period_id' => $period->id,
+                'amount' => $amount,
+                'recovery_type' => 'payroll',
+                'recovered_at' => now(),
+                'notes' => 'Payroll calculation recovery',
+                'recovered_by' => $actor->id,
+            ]);
+
+            $newBalance = round((float) $loan->outstanding_balance - $amount, 2);
+            $loan->update([
+                'outstanding_balance' => max(0, $newBalance),
+                'status' => $newBalance <= 0 ? 'closed' : 'active',
+                'closed_at' => $newBalance <= 0 ? now() : null,
+                'closed_by' => $newBalance <= 0 ? $actor->id : null,
+                'closure_reason' => $newBalance <= 0 ? 'Fully recovered via payroll' : null,
+            ]);
+
+            $this->auditLogger->log($loan, 'payroll_loan_recovery_applied', [
+                'payroll_run_id' => $run->id,
+                'amount' => $amount,
+                'outstanding_balance' => max(0, $newBalance),
+            ], $actor);
+        }
+
+        foreach ($snapshot['recoveries']['advances'] ?? [] as $row) {
+            $advanceId = (int) ($row['salary_advance_id'] ?? 0);
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+            if ($advanceId <= 0 || $amount <= 0) {
+                continue;
+            }
+
+            $already = SalaryAdvanceRecovery::query()
+                ->where('salary_advance_id', $advanceId)
+                ->where('payroll_run_id', $run->id)
+                ->exists();
+            if ($already) {
+                continue;
+            }
+
+            $advance = SalaryAdvance::query()->whereKey($advanceId)->where('employee_id', $employee->id)->first();
+            if (! $advance) {
+                continue;
+            }
+
+            SalaryAdvanceRecovery::query()->create([
+                'organization_id' => $run->organization_id,
+                'salary_advance_id' => $advance->id,
+                'payroll_run_id' => $run->id,
+                'payroll_period_id' => $period->id,
+                'amount' => $amount,
+                'recovery_type' => 'payroll',
+                'recovered_at' => now(),
+                'notes' => 'Payroll calculation recovery',
+                'recovered_by' => $actor->id,
+            ]);
+
+            $newBalance = round((float) $advance->outstanding_balance - $amount, 2);
+            $advance->update([
+                'outstanding_balance' => max(0, $newBalance),
+                'status' => $newBalance <= 0 ? 'closed' : 'active',
+            ]);
+
+            $this->auditLogger->log($advance, 'payroll_advance_recovery_applied', [
+                'payroll_run_id' => $run->id,
+                'amount' => $amount,
+                'outstanding_balance' => max(0, $newBalance),
+            ], $actor);
+        }
+    }
+
+    protected function releaseRecoveriesForRun(PayrollRun $run, User $actor): void
+    {
+        $loanRecoveries = EmployeeLoanRecovery::query()->where('payroll_run_id', $run->id)->get();
+        foreach ($loanRecoveries as $recovery) {
+            $loan = EmployeeLoan::query()->find($recovery->employee_loan_id);
+            if ($loan) {
+                $restored = round((float) $loan->outstanding_balance + (float) $recovery->amount, 2);
+                $loan->update([
+                    'outstanding_balance' => $restored,
+                    'status' => 'active',
+                    'closed_at' => null,
+                    'closed_by' => null,
+                    'closure_reason' => null,
+                ]);
+            }
+            $this->auditLogger->log($recovery, 'payroll_loan_recovery_released', [
+                'payroll_run_id' => $run->id,
+                'amount' => $recovery->amount,
+            ], $actor);
+            $recovery->delete();
+        }
+
+        $advanceRecoveries = SalaryAdvanceRecovery::query()->where('payroll_run_id', $run->id)->get();
+        foreach ($advanceRecoveries as $recovery) {
+            $advance = SalaryAdvance::query()->find($recovery->salary_advance_id);
+            if ($advance) {
+                $restored = round((float) $advance->outstanding_balance + (float) $recovery->amount, 2);
+                $advance->update([
+                    'outstanding_balance' => $restored,
+                    'status' => 'active',
+                ]);
+            }
+            $this->auditLogger->log($recovery, 'payroll_advance_recovery_released', [
+                'payroll_run_id' => $run->id,
+                'amount' => $recovery->amount,
+            ], $actor);
+            $recovery->delete();
+        }
     }
 
     protected function assertPeriodCalculable(PayrollPeriod $period): void

@@ -6,7 +6,7 @@ Phase 9.2 — Workflow Platform Foundation
 
 ## Outcome
 
-NovaCRM now has a tenant-safe, event-driven Workflow Platform for CRM automation. Administrators can define nested conditions and sequential actions, enable/disable workflows, and inspect durable execution history.
+Konnect Nex now has a tenant-safe, event-driven Workflow Platform for CRM automation. Administrators can define nested conditions and sequential actions, enable/disable workflows, and inspect durable execution history.
 
 CRM services remain the write authorities. Workflow action handlers adapt configuration to Assignment, Metadata, Task, Note, Notification, Lead, and Audit services rather than duplicating their business logic.
 

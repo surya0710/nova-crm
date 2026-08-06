@@ -1151,6 +1151,26 @@ class PayrollFinanceService
     /**
      * @return Collection<int, array<string, mixed>>
      */
+    public function reportBranchSalary(?int $payrollRunId = null): Collection
+    {
+        return $this->reportSalaryRegister($payrollRunId)
+            ->groupBy(function (array $row) {
+                $employee = Employee::query()->with('branch')->find($row['employee_id']);
+
+                return $employee?->branch?->name ?? 'Unassigned';
+            })
+            ->map(fn (Collection $rows, string $branch) => [
+                'branch' => $branch,
+                'employee_count' => $rows->count(),
+                'gross_salary' => round((float) $rows->sum('gross_salary'), 2),
+                'net_salary' => round((float) $rows->sum('net_salary'), 2),
+            ])
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
     public function reportDepartmentSalary(?int $payrollRunId = null): Collection
     {
         return $this->reportSalaryRegister($payrollRunId)
@@ -1166,6 +1186,91 @@ class PayrollFinanceService
                 'net_salary' => round((float) $rows->sum('net_salary'), 2),
             ])
             ->values();
+    }
+
+    /**
+     * Export a report payload as CSV or XLSX content string / binary.
+     *
+     * @return array{disk: string, path: string, format: string, filename: string}
+     */
+    public function exportReport(string $report, string $format = 'csv', ?int $payrollRunId = null): array
+    {
+        if (! in_array($format, ['csv', 'xlsx'], true)) {
+            throw ValidationException::withMessages([
+                'format' => 'Export format must be csv or xlsx.',
+            ]);
+        }
+
+        $rows = match ($report) {
+            'statutory' => collect($this->reportStatutoryLiability($payrollRunId))
+                ->map(fn ($amount, $code) => ['account' => $code, 'liability' => $amount])
+                ->values()
+                ->all(),
+            'salary_register' => $this->reportSalaryRegister($payrollRunId)->all(),
+            'department' => $this->reportDepartmentSalary($payrollRunId)->all(),
+            'branch' => $this->reportBranchSalary($payrollRunId)->all(),
+            'cost_center' => $this->reportCostCenterSummary($payrollRunId)->all(),
+            default => [ $this->reportPayrollSummary($payrollRunId) ],
+        };
+
+        $disk = config('hrms.payslips.disk', 'local');
+        $filename = 'payroll-report-'.$report.'-'.now()->format('YmdHis').'.'.$format;
+        $path = 'hrms-payroll-reports/'.$this->tenantContext->id().'/'.$filename;
+
+        $normalized = array_map(function ($row) {
+            if (! is_array($row)) {
+                return ['value' => (string) $row];
+            }
+
+            return array_map(fn ($value) => is_scalar($value) || $value === null ? (string) $value : json_encode($value), $row);
+        }, $rows);
+
+        if ($format === 'csv') {
+            $this->writeGenericCsvExport($disk, $path, $normalized);
+        } else {
+            $this->writeGenericXlsxExport($disk, $path, $normalized);
+        }
+
+        return compact('disk', 'path', 'format', 'filename');
+    }
+
+    /**
+     * @param  list<array<string, string>>  $rows
+     */
+    protected function writeGenericCsvExport(string $disk, string $path, array $rows): void
+    {
+        $headers = $rows === [] ? ['value'] : array_keys($rows[0]);
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, $headers);
+        foreach ($rows as $row) {
+            fputcsv($handle, array_map(fn (string $key) => $row[$key] ?? '', $headers));
+        }
+        rewind($handle);
+        Storage::disk($disk)->put($path, stream_get_contents($handle) ?: '');
+        fclose($handle);
+    }
+
+    /**
+     * @param  list<array<string, string>>  $rows
+     */
+    protected function writeGenericXlsxExport(string $disk, string $path, array $rows): void
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $headers = $rows === [] ? ['value'] : array_keys($rows[0]);
+        foreach ($headers as $i => $header) {
+            $sheet->setCellValue([$i + 1, 1], $header);
+        }
+        foreach ($rows as $rowIndex => $row) {
+            foreach ($headers as $colIndex => $header) {
+                $sheet->setCellValue([$colIndex + 1, $rowIndex + 2], $row[$header] ?? '');
+            }
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'pr');
+        (new Xlsx($spreadsheet))->save($tmp);
+        Storage::disk($disk)->put($path, file_get_contents($tmp) ?: '');
+        @unlink($tmp);
     }
 
     /**

@@ -39,7 +39,7 @@ Customer Admin + Implementation:
 - [ ] **Branding** — logo, display name, colors (Administration → Branding)
 - [ ] **Branches** — HQ + remote sites
 - [ ] **Departments** — aligned to customer org chart
-- [ ] **Roles & permissions** — map job roles to NovaCRM roles; least privilege
+- [ ] **Roles & permissions** — map job roles to Konnect Nex roles; least privilege
 - [ ] **Users** — create / invite initial cohort (admins, managers, power users)
 - [ ] **Holiday calendar** — regional holidays
 - [ ] **Leave types** — policy-aligned leave catalog

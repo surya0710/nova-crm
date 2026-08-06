@@ -1,6 +1,6 @@
 # Deliverable 2 — Color System
 
-Semantic and domain color system for NovaCRM.
+Semantic and domain color system for Konnect Nex.
 
 ---
 

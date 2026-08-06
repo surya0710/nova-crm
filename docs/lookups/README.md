@@ -1,6 +1,6 @@
 # Lookup Platform
 
-NovaCRM Release **1.1.S.1** provides a reusable Lookup Platform for organization-scoped entity search.
+Konnect Nex Release **1.1.S.1** provides a reusable Lookup Platform for organization-scoped entity search.
 
 ## Architecture
 

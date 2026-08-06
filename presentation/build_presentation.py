@@ -1,5 +1,5 @@
 """
-NovaCRM Enterprise Presentation Builder
+Konnect Nex Enterprise Presentation Builder
 Creates a 23-slide 16:9 PowerPoint using real application screenshots.
 """
 
@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "assets" / "screenshots"
 ASSETS = ROOT / "presentation" / "assets"
 OUT_DIR = ROOT / "presentation"
-PPTX_PATH = OUT_DIR / "NovaCRM_Presentation.pptx"
-PDF_PATH = OUT_DIR / "NovaCRM_Presentation.pdf"
+PPTX_PATH = OUT_DIR / "KonnectNex_Presentation.pptx"
+PDF_PATH = OUT_DIR / "KonnectNex_Presentation.pdf"
 
 # Brand
 PRIMARY = RGBColor(0x25, 0x63, 0xEB)
@@ -396,7 +396,7 @@ def build() -> Path:
     badge = card(s, Inches(0.8), Inches(1.6), Inches(2.2), Inches(0.45), RGBColor(0x1E, 0x3A, 0x8A))
     add_text(badge, "  ENTERPRISE PLATFORM", size=11, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
     t = s.shapes.add_textbox(Inches(0.8), Inches(2.3), Inches(8), Inches(1.2))
-    add_text(t, "NovaCRM", size=60, bold=True, color=WHITE)
+    add_text(t, "Konnect Nex", size=60, bold=True, color=WHITE)
     t2 = s.shapes.add_textbox(Inches(0.8), Inches(3.5), Inches(8), Inches(0.5))
     add_text(t2, "Business Management Platform", size=24, color=RGBColor(0xBF, 0xDB, 0xFE))
     t3 = s.shapes.add_textbox(Inches(0.8), Inches(4.4), Inches(9), Inches(1))
@@ -408,11 +408,11 @@ def build() -> Path:
     # ---------- Slide 2 About ----------
     s = blank_slide(prs)
     add_bg(s)
-    title_block(s, "About NovaCRM", "A unified operating system for modern enterprises")
+    title_block(s, "About Konnect Nex", "A unified operating system for modern enterprises")
     para = s.shapes.add_textbox(Inches(0.6), Inches(1.5), Inches(12), Inches(1.1))
     add_text(
         para,
-        "NovaCRM brings HRMS, Projects, CRM, Finance readiness, Inventory, Helpdesk, and Automation "
+        "Konnect Nex brings HRMS, Projects, CRM, Finance readiness, Inventory, Helpdesk, and Automation "
         "into one secure workspace — replacing fragmented tools with a single source of truth for people, "
         "customers, and delivery.",
         size=16,
@@ -467,7 +467,7 @@ def build() -> Path:
     # ---------- Slide 4 Why ----------
     s = blank_slide(prs)
     add_bg(s)
-    title_block(s, "Why NovaCRM", "Outcomes that matter to leadership teams")
+    title_block(s, "Why Konnect Nex", "Outcomes that matter to leadership teams")
     reasons = [
         ("central", "Centralized Operations", "One workspace for people, projects, and revenue"),
         ("prod", "Higher Productivity", "Less switching, faster execution, clearer ownership"),
@@ -491,7 +491,7 @@ def build() -> Path:
     add_bg(s)
     title_block(s, "Platform Overview", "Everything connected. One enterprise graph.")
     hub = card(s, Inches(5.1), Inches(3.1), Inches(3.1), Inches(1.2), PRIMARY)
-    add_text(hub, "NovaCRM", size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+    add_text(hub, "Konnect Nex", size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
     nodes = [
         (1.0, 1.6, "HRMS"),
         (4.0, 1.6, "Projects"),
@@ -659,7 +659,7 @@ def build() -> Path:
     add_text(
         note,
         "Dedicated onboarding, data migration support, role-based training, and ongoing success management "
-        "ensure NovaCRM becomes operational quickly without disrupting day-to-day business.",
+        "ensure Konnect Nex becomes operational quickly without disrupting day-to-day business.",
         size=15,
         color=SLATE,
     )
@@ -684,14 +684,14 @@ def build() -> Path:
     # ---------- Slide 20 Comparison ----------
     s = blank_slide(prs)
     add_bg(s)
-    title_block(s, "Why Choose NovaCRM", "Traditional stacks vs a unified platform")
+    title_block(s, "Why Choose Konnect Nex", "Traditional stacks vs a unified platform")
     # table header
     card(s, Inches(0.6), Inches(1.6), Inches(6.0), Inches(5.2), LIGHT)
     card(s, Inches(6.8), Inches(1.6), Inches(6.0), Inches(5.2), RGBColor(0xEF, 0xF6, 0xFF))
     h1 = s.shapes.add_textbox(Inches(0.9), Inches(1.85), Inches(5.4), Inches(0.5))
     add_text(h1, "Traditional Software", size=20, bold=True, color=MUTED)
     h2 = s.shapes.add_textbox(Inches(7.1), Inches(1.85), Inches(5.4), Inches(0.5))
-    add_text(h2, "NovaCRM", size=20, bold=True, color=PRIMARY)
+    add_text(h2, "Konnect Nex", size=20, bold=True, color=PRIMARY)
     left_rows = ["Multiple Systems", "Multiple Logins", "Higher Cost", "Data Duplication", "Fragmented Reporting"]
     right_rows = ["Single Platform", "Unified Login", "Integrated Modules", "Scalable Architecture", "Modern UI"]
     for i, (a, b) in enumerate(zip(left_rows, right_rows)):
@@ -732,10 +732,10 @@ def build() -> Path:
     t = s.shapes.add_textbox(Inches(0.8), Inches(1.8), Inches(8), Inches(1))
     add_text(t, "Thank You", size=54, bold=True, color=WHITE)
     t2 = s.shapes.add_textbox(Inches(0.8), Inches(2.9), Inches(8), Inches(0.5))
-    add_text(t2, "NovaCRM — One Platform. Complete Business Control.", size=18, color=RGBColor(0xBF, 0xDB, 0xFE))
+    add_text(t2, "Konnect Nex — One Platform. Complete Business Control.", size=18, color=RGBColor(0xBF, 0xDB, 0xFE))
     contact = s.shapes.add_textbox(Inches(0.8), Inches(4.0), Inches(7), Inches(2))
-    tf = add_text(contact, "www.novacrm.com", size=16, color=WHITE)
-    add_para(tf, "hello@novacrm.com", size=16, color=WHITE, space_before=8)
+    tf = add_text(contact, "www.konnectnex.com", size=16, color=WHITE)
+    add_para(tf, "hello@konnectnex.com", size=16, color=WHITE, space_before=8)
     add_para(tf, "+91 98765 43210", size=16, color=WHITE, space_before=8)
     add_para(tf, "Schedule a live enterprise demo", size=14, color=RGBColor(0x93, 0xC5, 0xFD), space_before=14)
     s.shapes.add_picture(str(qr), Inches(10.4), Inches(4.4), Inches(2.1), Inches(2.1))
@@ -760,7 +760,7 @@ def export_pdf(pptx_path: Path) -> Path | None:
 
             cmd = [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(OUT_DIR), str(pptx_path)]
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-            if PDF_PATH.exists() or (OUT_DIR / "NovaCRM_Presentation.pdf").exists():
+            if PDF_PATH.exists() or (OUT_DIR / "KonnectNex_Presentation.pdf").exists():
                 print(f"PDF via LibreOffice: {PDF_PATH}")
                 return PDF_PATH
             print("LibreOffice output:", r.stdout, r.stderr)

@@ -1,6 +1,6 @@
 # RBAC
 
-NovaCRM uses a dynamic, organization-scoped Role Based Access Control (RBAC) platform.
+Konnect Nex uses a dynamic, organization-scoped Role Based Access Control (RBAC) platform.
 
 ## Documentation
 

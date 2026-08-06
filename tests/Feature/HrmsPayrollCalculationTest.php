@@ -22,10 +22,12 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\LocksAttendanceForPayroll;
 use Tests\TestCase;
 
 class HrmsPayrollCalculationTest extends TestCase
 {
+    use LocksAttendanceForPayroll;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -101,7 +103,7 @@ class HrmsPayrollCalculationTest extends TestCase
         $result = PayrollResult::query()->firstOrFail();
         $this->assertNotEmpty($result->calculation_hash);
         $this->assertIsArray($result->snapshot);
-        $this->assertSame('10.3.3', $result->snapshot['engine_version']);
+        $this->assertSame('10.3.6', $result->snapshot['engine_version']);
         $this->assertGreaterThan(0, (float) $result->gross_salary);
         $this->assertSame((float) $result->net_salary, (float) $result->gross_salary - (float) $result->total_deductions);
     }
@@ -351,6 +353,7 @@ class HrmsPayrollCalculationTest extends TestCase
             'annual_ctc' => 480000,
         ], $hr);
 
+        app(TenantContext::class)->set($organization);
         app(PayrollService::class)->getOrCreateConfiguration();
 
         $period = PayrollPeriod::factory()->open()->create([
@@ -359,6 +362,9 @@ class HrmsPayrollCalculationTest extends TestCase
             'start_date' => '2026-07-01',
             'end_date' => '2026-07-31',
         ]);
+
+        $this->lockAttendanceForPayrollPeriod($period, $hr);
+        app(TenantContext::class)->set($organization);
 
         return [$organization, $hr, $period, $employee];
     }

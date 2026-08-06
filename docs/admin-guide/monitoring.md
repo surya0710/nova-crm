@@ -1,6 +1,6 @@
 # Administrator Guide — Monitoring & Operations
 
-Operational visibility for NovaCRM without Laravel Telescope or Horizon. Use the Platform Monitoring UI, health endpoint, queue CLI, application logs, and scheduler heartbeat.
+Operational visibility for Konnect Nex without Laravel Telescope or Horizon. Use the Platform Monitoring UI, health endpoint, queue CLI, application logs, and scheduler heartbeat.
 
 **Related:** [Deployment overview](../deployment/overview.md) · [Production readiness](../release/production-readiness.md) · [Troubleshooting](../troubleshooting/overview.md)
 

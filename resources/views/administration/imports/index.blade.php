@@ -3,7 +3,7 @@
 
     <x-layouts.entity-listing
         :title="__('Import Center')"
-        :subtitle="__('Import business data from Excel or CSV into NovaCRM')"
+        :subtitle="__('Import business data from Excel or CSV into :product', ['product' => config('branding.product_name')])"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[

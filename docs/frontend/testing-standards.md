@@ -1,6 +1,6 @@
 # Deliverable 11 — UI Testing Standards
 
-Frontend QA expectations for NovaCRM.
+Frontend QA expectations for Konnect Nex.
 
 ---
 

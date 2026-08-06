@@ -16,7 +16,7 @@
 
 ## Purpose
 
-Upgrade NovaCRM application versions with backup, migration, and smoke validation.
+Upgrade Konnect Nex application versions with backup, migration, and smoke validation.
 
 ## Scope
 

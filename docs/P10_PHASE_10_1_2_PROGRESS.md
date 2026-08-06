@@ -2,7 +2,7 @@
 
 ## Task
 
-Implement the first functional HRMS module for NovaCRM by delivering:
+Implement the first functional HRMS module for Konnect Nex by delivering:
 
 - Organization Structure CRUD (Branches, Departments, Designations, Teams)
 - Employee Management CRUD
@@ -107,6 +107,6 @@ Implement the first functional HRMS module for NovaCRM by delivering:
 
 ## Notes
 
-- All changes were implemented as additive updates aligned with the existing NovaCRM architecture (`Controller -> FormRequest -> Service -> Model`).
+- All changes were implemented as additive updates aligned with the existing Konnect Nex architecture (`Controller -> FormRequest -> Service -> Model`).
 - No destructive database reset commands were used.
 - Workflow integration was limited to domain event emission, with no HR business logic moved into Workflow handlers.

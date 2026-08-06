@@ -2,7 +2,7 @@
 
 ## 1. Phase Summary
 
-**Objective:** Build a production-grade Leave Management Platform as the single source of truth for employee leave within NovaCRM, integrated with Attendance (read-only), Workflow (events), Audit, and RBAC — without coupling to Payroll or ESS.
+**Objective:** Build a production-grade Leave Management Platform as the single source of truth for employee leave within Konnect Nex, integrated with Attendance (read-only), Workflow (events), Audit, and RBAC — without coupling to Payroll or ESS.
 
 **Scope completed:** Leave types, holiday calendar, leave balances, balance ledger (`leave_balance_transactions`), leave applications (apply/edit/withdraw/cancel), half-day leave, multi-step approval (manager → optional HR), workflow events, audit logging, Blade UI, attendance read contract, and feature tests.
 

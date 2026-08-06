@@ -13,7 +13,6 @@ use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Models\EmployeeShiftAssignment;
 use App\Models\HrmsShift;
-use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -27,6 +26,9 @@ class AttendanceService
     public function __construct(
         protected AuditLogger $auditLogger,
         protected LeaveService $leaveService,
+        protected AttendanceCalculationService $calculationService,
+        protected AttendanceVersionService $versionService,
+        protected AttendanceLockService $lockService,
     ) {}
 
     public function createShift(array $data, User $actor): HrmsShift
@@ -116,6 +118,7 @@ class AttendanceService
             $clockInAt ??= now();
             $attendanceDate = $clockInAt->copy()->startOfDay();
 
+            $this->lockService->assertEditable($attendanceDate, isPrivileged: false);
             $this->assertCanRecordAttendance($employee, $attendanceDate);
 
             $existing = AttendanceRecord::query()
@@ -132,21 +135,34 @@ class AttendanceService
             $shift = $this->resolveShiftForEmployee($employee, $attendanceDate);
 
             if ($existing !== null) {
+                if ($this->versionService->hasMaterialChange($existing, [
+                    'clock_in_at' => $clockInAt,
+                    'shift_id' => $shift?->id,
+                    'source' => $source,
+                    'status' => 'pending',
+                ])) {
+                    $this->versionService->archiveAndIncrement($existing, $actor, 'clock_in');
+                }
+
                 $existing->update([
                     'clock_in_at' => $clockInAt,
                     'shift_id' => $shift?->id,
                     'source' => $source,
                     'status' => 'pending',
+                    'approval_status' => $existing->approval_status ?? 'approved',
                 ]);
                 $record = $existing->fresh();
             } else {
                 $record = AttendanceRecord::query()->create([
+                    'organization_id' => $employee->organization_id,
                     'employee_id' => $employee->id,
                     'shift_id' => $shift?->id,
                     'attendance_date' => $attendanceDate->toDateString(),
                     'clock_in_at' => $clockInAt,
                     'status' => 'pending',
+                    'approval_status' => 'approved',
                     'source' => $source,
+                    'version' => 1,
                 ]);
             }
 
@@ -170,6 +186,7 @@ class AttendanceService
             $clockOutAt ??= now();
             $attendanceDate = $clockOutAt->copy()->startOfDay();
 
+            $this->lockService->assertEditable($attendanceDate, isPrivileged: false);
             $this->assertCanRecordAttendance($employee, $attendanceDate);
 
             $record = AttendanceRecord::query()
@@ -195,14 +212,19 @@ class AttendanceService
                 ]);
             }
 
-            $record->clock_out_at = $clockOutAt;
             $shift = $record->shift ?? $this->resolveShiftForEmployee($employee, $attendanceDate);
+            $metricsAttributes = [
+                'clock_out_at' => $clockOutAt,
+            ];
 
             if ($shift !== null) {
-                $metrics = $this->calculateMetrics($record, $shift);
-                $record->fill([
+                $forMetrics = $record->replicate();
+                $forMetrics->clock_out_at = $clockOutAt;
+                $metrics = $this->calculateMetrics($forMetrics, $shift);
+                $metricsAttributes = array_merge($metricsAttributes, [
                     'shift_id' => $shift->id,
                     'working_minutes' => $metrics['working_minutes'],
+                    'break_minutes' => $metrics['break_minutes'],
                     'late_minutes' => $metrics['late_minutes'],
                     'early_departure_minutes' => $metrics['early_departure_minutes'],
                     'overtime_minutes' => $metrics['overtime_minutes'],
@@ -210,13 +232,16 @@ class AttendanceService
                 ]);
             } else {
                 $grossMinutes = (int) $record->clock_in_at->diffInMinutes($clockOutAt);
-                $record->fill([
+                $metricsAttributes = array_merge($metricsAttributes, [
                     'working_minutes' => $grossMinutes,
+                    'break_minutes' => 0,
                     'status' => 'present',
                 ]);
             }
 
-            $record->save();
+            $this->versionService->archiveAndIncrement($record, $actor, 'clock_out');
+            $record->refresh();
+            $record->fill($metricsAttributes)->save();
             $record->refresh();
 
             $this->auditLogger->log($record, 'attendance_clocked_out', [
@@ -224,6 +249,7 @@ class AttendanceService
                 'clock_out_at' => $record->clock_out_at?->toIso8601String(),
                 'working_minutes' => $record->working_minutes,
                 'status' => $record->status,
+                'version' => $record->version,
             ], $actor);
 
             event(AttendanceClockedOut::forModel($record, ['actor_id' => $actor->id]));
@@ -242,6 +268,11 @@ class AttendanceService
     public function submitCorrection(AttendanceRecord $record, array $data, User $actor): AttendanceCorrection
     {
         return DB::transaction(function () use ($record, $data, $actor): AttendanceCorrection {
+            $this->lockService->assertEditable(
+                $record->attendance_date,
+                isPrivileged: $this->actorCanCorrectWhileFrozen($actor)
+            );
+
             $pendingExists = AttendanceCorrection::query()
                 ->where('attendance_record_id', $record->id)
                 ->where('status', 'pending')
@@ -254,17 +285,22 @@ class AttendanceService
             }
 
             $correction = AttendanceCorrection::query()->create([
+                'organization_id' => $record->organization_id,
                 'attendance_record_id' => $record->id,
                 'employee_id' => $record->employee_id,
                 'requested_clock_in_at' => $data['requested_clock_in_at'] ?? null,
                 'requested_clock_out_at' => $data['requested_clock_out_at'] ?? null,
                 'reason' => $data['reason'],
                 'status' => 'pending',
+                'target_version' => (int) ($record->version ?? 1),
+                'current_step' => 'manager',
+                'requires_hr_approval' => (bool) ($data['requires_hr_approval'] ?? false),
             ]);
 
             $this->auditLogger->log($correction, 'attendance_correction_submitted', [
                 'attendance_record_id' => $record->id,
                 'employee_id' => $record->employee_id,
+                'target_version' => $correction->target_version,
             ], $actor);
 
             event(AttendanceCorrectionSubmitted::forModel($correction, ['actor_id' => $actor->id]));
@@ -282,6 +318,12 @@ class AttendanceService
                 ]);
             }
 
+            $record = $correction->attendanceRecord;
+            $this->lockService->assertEditable(
+                $record->attendance_date,
+                isPrivileged: $this->actorCanCorrectWhileFrozen($actor)
+            );
+
             $correction->update([
                 'status' => 'approved',
                 'reviewed_by' => $actor->id,
@@ -289,17 +331,24 @@ class AttendanceService
                 'review_notes' => $data['review_notes'] ?? null,
             ]);
 
-            $record = $correction->attendanceRecord;
-            $record->clock_in_at = $correction->requested_clock_in_at ?? $record->clock_in_at;
-            $record->clock_out_at = $correction->requested_clock_out_at ?? $record->clock_out_at;
+            $nextClockIn = $correction->requested_clock_in_at ?? $record->clock_in_at;
+            $nextClockOut = $correction->requested_clock_out_at ?? $record->clock_out_at;
+            $nextAttributes = [
+                'clock_in_at' => $nextClockIn,
+                'clock_out_at' => $nextClockOut,
+            ];
 
-            if ($record->clock_in_at !== null && $record->clock_out_at !== null) {
+            if ($nextClockIn !== null && $nextClockOut !== null) {
                 $shift = $record->shift ?? $this->resolveShiftForEmployee($record->employee, $record->attendance_date);
                 if ($shift !== null) {
-                    $metrics = $this->calculateMetrics($record, $shift);
-                    $record->fill([
+                    $temp = $record->replicate();
+                    $temp->clock_in_at = $nextClockIn;
+                    $temp->clock_out_at = $nextClockOut;
+                    $metrics = $this->calculateMetrics($temp, $shift);
+                    $nextAttributes = array_merge($nextAttributes, [
                         'shift_id' => $shift->id,
                         'working_minutes' => $metrics['working_minutes'],
+                        'break_minutes' => $metrics['break_minutes'],
                         'late_minutes' => $metrics['late_minutes'],
                         'early_departure_minutes' => $metrics['early_departure_minutes'],
                         'overtime_minutes' => $metrics['overtime_minutes'],
@@ -308,19 +357,26 @@ class AttendanceService
                 }
             }
 
-            $record->save();
+            $this->versionService->archiveAndIncrement($record, $actor, 'correction_approved');
+            $record->fill($nextAttributes)->save();
+
+            $correction->update([
+                'resulting_version' => (int) $record->fresh()->version,
+                'current_step' => 'completed',
+            ]);
 
             $this->auditLogger->log($correction, 'attendance_correction_approved', [
                 'attendance_record_id' => $record->id,
                 'review_notes' => $correction->review_notes,
+                'resulting_version' => $correction->resulting_version,
             ], $actor);
 
             event(AttendanceCorrectionApproved::forModel($correction, ['actor_id' => $actor->id]));
 
-            if ($record->overtime_minutes > 0) {
-                event(AttendanceOvertimeRecorded::forModel($record, [
+            if ($record->fresh()->overtime_minutes > 0) {
+                event(AttendanceOvertimeRecorded::forModel($record->fresh(), [
                     'actor_id' => $actor->id,
-                    'overtime_minutes' => $record->overtime_minutes,
+                    'overtime_minutes' => $record->fresh()->overtime_minutes,
                     'via_correction' => true,
                 ]));
             }
@@ -338,11 +394,17 @@ class AttendanceService
                 ]);
             }
 
+            $this->lockService->assertEditable(
+                $correction->attendanceRecord->attendance_date,
+                isPrivileged: $this->actorCanCorrectWhileFrozen($actor)
+            );
+
             $correction->update([
                 'status' => 'rejected',
                 'reviewed_by' => $actor->id,
                 'reviewed_at' => now(),
                 'review_notes' => $data['review_notes'] ?? null,
+                'current_step' => 'rejected',
             ]);
 
             $this->auditLogger->log($correction, 'attendance_correction_rejected', [
@@ -422,57 +484,11 @@ class AttendanceService
     }
 
     /**
-     * @return array{working_minutes: int, late_minutes: int, early_departure_minutes: int, overtime_minutes: int, status: string}
+     * @return array{working_minutes: int, break_minutes: int, late_minutes: int, early_departure_minutes: int, overtime_minutes: int, status: string}
      */
     public function calculateMetrics(AttendanceRecord $record, HrmsShift $shift): array
     {
-        $clockIn = $record->clock_in_at;
-        $clockOut = $record->clock_out_at;
-
-        if ($clockIn === null || $clockOut === null) {
-            return [
-                'working_minutes' => 0,
-                'late_minutes' => 0,
-                'early_departure_minutes' => 0,
-                'overtime_minutes' => 0,
-                'status' => $record->status ?? 'pending',
-            ];
-        }
-
-        $attendanceDate = $record->attendance_date->copy()->startOfDay();
-        $shiftStart = $this->shiftStartAt($shift, $attendanceDate);
-        $shiftEnd = $this->shiftEndAt($shift, $attendanceDate);
-        $graceEnd = $shiftStart->copy()->addMinutes((int) $shift->grace_period_minutes);
-
-        $lateMinutes = $clockIn->gt($graceEnd) ? (int) $graceEnd->diffInMinutes($clockIn) : 0;
-        $earlyDepartureMinutes = $clockOut->lt($shiftEnd) ? (int) $clockOut->diffInMinutes($shiftEnd) : 0;
-
-        $grossMinutes = (int) $clockIn->diffInMinutes($clockOut);
-        $workingMinutes = max(0, $grossMinutes - (int) $shift->break_minutes);
-
-        $overtimeThreshold = $shift->overtime_threshold_minutes
-            ?? (int) round(((float) $shift->working_hours) * 60);
-        $overtimeMinutes = max(0, $workingMinutes - $overtimeThreshold);
-
-        $minimumWorking = $shift->minimum_working_minutes
-            ?? (int) round(((float) $shift->working_hours) * 60);
-
-        $status = 'present';
-        if ($workingMinutes < (int) ($minimumWorking / 2)) {
-            $status = 'half_day';
-        } elseif ($workingMinutes < $minimumWorking) {
-            $status = 'half_day';
-        } elseif ($lateMinutes > 0) {
-            $status = 'late';
-        }
-
-        return [
-            'working_minutes' => $workingMinutes,
-            'late_minutes' => $lateMinutes,
-            'early_departure_minutes' => $earlyDepartureMinutes,
-            'overtime_minutes' => $overtimeMinutes,
-            'status' => $status,
-        ];
+        return $this->calculationService->calculateMetrics($record, $shift);
     }
 
     /** Attendance reads approved leave — never modifies leave balances. */
@@ -487,20 +503,21 @@ class AttendanceService
         return $this->leaveService->getApprovedLeaveForDate($employee, $date);
     }
 
-    protected function shiftStartAt(HrmsShift $shift, Carbon $date): Carbon
+    public function isHolidayForEmployee(Employee $employee, Carbon $date): bool
     {
-        return $date->copy()->setTimeFromTimeString((string) $shift->start_time);
+        return $this->calculationService->isHolidayForEmployee($employee, $date);
     }
 
-    protected function shiftEndAt(HrmsShift $shift, Carbon $date): Carbon
+    public function isWeekend(Carbon $date): bool
     {
-        $end = $date->copy()->setTimeFromTimeString((string) $shift->end_time);
+        return $this->calculationService->isWeekend($date);
+    }
 
-        if ($shift->is_overnight || $end->lte($this->shiftStartAt($shift, $date))) {
-            $end->addDay();
-        }
-
-        return $end;
+    protected function actorCanCorrectWhileFrozen(User $actor): bool
+    {
+        return $actor->hasPermission('attendance.correct')
+            || $actor->hasPermission('attendance.manage')
+            || $actor->hasPermission('attendance.lock');
     }
 
     protected function assertEmployeeCanClock(Employee $employee): void
@@ -531,23 +548,6 @@ class AttendanceService
                 'employee_id' => __('Cannot record attendance on a weekend.'),
             ]);
         }
-    }
-
-    public function isHolidayForEmployee(Employee $employee, Carbon $date): bool
-    {
-        return Holiday::query()
-            ->where('organization_id', $employee->organization_id)
-            ->whereDate('holiday_date', $date)
-            ->where(function ($query) use ($employee) {
-                $query->whereNull('branch_id')
-                    ->orWhere('branch_id', $employee->branch_id);
-            })
-            ->exists();
-    }
-
-    public function isWeekend(Carbon $date): bool
-    {
-        return in_array(strtolower($date->englishDayOfWeek), config('hrms.weekend_days', []), true);
     }
 
     protected function assertNoOverlappingAssignment(Employee $employee, Carbon $from, ?Carbon $to): void

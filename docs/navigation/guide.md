@@ -29,4 +29,4 @@
 
 ## Branding
 
-The NovaCRM logo tile was removed from the sidebar. The current organization logo and name remain the primary identity.
+The Konnect Nex logo tile was removed from the sidebar. The current organization logo and name remain the primary identity.

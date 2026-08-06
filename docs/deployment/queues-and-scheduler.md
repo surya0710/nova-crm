@@ -1,6 +1,6 @@
 # Queues and Scheduler — Release 1.2.x
 
-This is the canonical runtime runbook for NovaCRM queue workers and the Laravel scheduler. Use absolute paths in production and keep queue workers separate from `schedule:run`.
+This is the canonical runtime runbook for Konnect Nex queue workers and the Laravel scheduler. Use absolute paths in production and keep queue workers separate from `schedule:run`.
 
 ## Development: database queue
 

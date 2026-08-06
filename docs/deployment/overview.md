@@ -1,6 +1,6 @@
 # Deployment Overview
 
-Production deployment runbook for NovaCRM (tenant app + `/platform` console).
+Production deployment runbook for Konnect Nex (tenant app + `/platform` console).
 
 ---
 

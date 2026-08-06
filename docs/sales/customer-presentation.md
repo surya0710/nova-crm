@@ -2,11 +2,11 @@
 
 Slide-ready outline (export to PPT/Google Slides as needed).
 
-1. **Title** — NovaCRM for [Customer]
+1. **Title** — Konnect Nex for [Customer]
 2. **Agenda**
 3. **Your goals** (from discovery)
 4. **Challenges with fragmented tools**
-5. **NovaCRM overview** (workspace map)
+5. **Konnect Nex overview** (workspace map)
 6. **Solution walkthrough** (screenshots from Nova Enterprises demo)
 7. **Security & tenancy**
 8. **Implementation approach** (timeline)

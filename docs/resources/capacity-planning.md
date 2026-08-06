@@ -1,7 +1,7 @@
 # Capacity Planning Guide
 
 ## Purpose
-Describe how NovaCRM forecasts employee load, surfaces overallocation risks, and combines planned allocations with open task estimates.
+Describe how Konnect Nex forecasts employee load, surfaces overallocation risks, and combines planned allocations with open task estimates.
 
 ## Service
 `App\Services\CapacityPlanningService` builds forecasts for a single `Employee` or an entire `Organization`.

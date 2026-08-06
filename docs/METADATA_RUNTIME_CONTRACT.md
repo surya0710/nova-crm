@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the canonical runtime contract for NovaCRM metadata values. It applies to web forms, API intake, lead conversion, future entity integrations, and future validation/search/reporting phases.
+This document is the canonical runtime contract for Konnect Nex metadata values. It applies to web forms, API intake, lead conversion, future entity integrations, and future validation/search/reporting phases.
 
 The approved runtime flow is:
 

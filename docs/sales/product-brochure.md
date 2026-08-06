@@ -1,9 +1,9 @@
-# Product Brochure — NovaCRM
+# Product Brochure — Konnect Nex
 
 ## The challenge
 Teams run sales in one tool, projects in another, HR in a third — and executives still lack a single view of performance.
 
-## The NovaCRM answer
+## The Konnect Nex answer
 | Workspace | Outcomes |
 |-----------|----------|
 | CRM | Leads, customers, pipeline, quotations, invoices, payments |
@@ -14,7 +14,7 @@ Teams run sales in one tool, projects in another, HR in a third — and executiv
 | Administration | Org branding, roles, modules, developer tools |
 | Platform | SaaS operator console for provisioning and monitoring |
 
-## Why customers choose NovaCRM
+## Why customers choose Konnect Nex
 1. Unified tenant security model
 2. Role-based workspaces with enterprise shell UX
 3. Implementation playbooks and Knowledge Center

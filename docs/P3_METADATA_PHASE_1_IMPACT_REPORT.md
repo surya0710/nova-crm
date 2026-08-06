@@ -16,7 +16,7 @@ Phase 1 - Metadata Foundation
   - Field layout placements
   - Field permissions
   - Field version snapshots
-- Added metadata models that follow NovaCRM's existing organization scoping and audit patterns.
+- Added metadata models that follow Konnect Nex's existing organization scoping and audit patterns.
 - Added a metadata lifecycle service for create, update, publish, activate, deactivate, and archive transitions.
 - Added version snapshots for metadata definition changes and lifecycle transitions.
 - Added tenant RBAC permissions for the Metadata Platform.

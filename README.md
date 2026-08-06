@@ -1,4 +1,4 @@
-# NovaCRM
+# Konnect Nex
 
 Multi-tenant SaaS CRM + Projects (EPM) + HRMS/Recruitment + Marketing attribution + Analytics, with a SaaS owner console at `/platform`.
 
@@ -95,4 +95,4 @@ php artisan test --group=smoke
 
 ## License
 
-Proprietary — NovaCRM. Laravel framework components retain their upstream licenses.
+Proprietary — Konnect Nex. Laravel framework components retain their upstream licenses.
