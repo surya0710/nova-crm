@@ -145,8 +145,8 @@ class LeadImportTemplateTest extends TestCase
             $data = $spreadsheet->getSheetByName('Lead Import');
             $this->assertSame('First Name', $data->getCell([1, 1])->getValue());
             $this->assertSame('John', $data->getCell([1, 2])->getValue());
-            $this->assertSame('Preferred Country', $data->getCell([10, 1])->getValue());
-            $this->assertSame('canada', $data->getCell([10, 2])->getValue());
+            $this->assertSame('Postal Code', $data->getCell([10, 1])->getValue());
+            $this->assertSame('110001', (string) $data->getCell([10, 2])->getValue());
 
             $instructions = $spreadsheet->getSheetByName(ImportTemplateService::INSTRUCTIONS_SHEET);
             $instructionText = '';

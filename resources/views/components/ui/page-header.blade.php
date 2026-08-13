@@ -1,4 +1,10 @@
 @props(['title', 'subtitle' => null])
+@php
+    $title = is_string($title) ? $title : (is_scalar($title) ? (string) $title : '');
+    $subtitle = ($subtitle === null || is_string($subtitle))
+        ? $subtitle
+        : (is_scalar($subtitle) ? (string) $subtitle : null);
+@endphp
 <div {{ $attributes->class(['mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between']) }}>
     <div class="min-w-0">
         @isset($breadcrumbs)<div class="mb-2">{{ $breadcrumbs }}</div>@endisset

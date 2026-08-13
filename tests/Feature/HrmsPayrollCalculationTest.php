@@ -103,7 +103,7 @@ class HrmsPayrollCalculationTest extends TestCase
         $result = PayrollResult::query()->firstOrFail();
         $this->assertNotEmpty($result->calculation_hash);
         $this->assertIsArray($result->snapshot);
-        $this->assertSame('10.3.6', $result->snapshot['engine_version']);
+        $this->assertSame(\App\Services\Hrms\PayrollCalculationService::ENGINE_VERSION, $result->snapshot['engine_version']);
         $this->assertGreaterThan(0, (float) $result->gross_salary);
         $this->assertSame((float) $result->net_salary, (float) $result->gross_salary - (float) $result->total_deductions);
     }
@@ -268,7 +268,7 @@ class HrmsPayrollCalculationTest extends TestCase
 
     public function test_employee_cannot_access_payroll_calculation(): void
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $employeeUser = User::factory()->create();
         $organization->addMember($employeeUser, 'employee');
         $session = ['current_organization_id' => $organization->id];
@@ -372,7 +372,7 @@ class HrmsPayrollCalculationTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     private function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 

@@ -372,7 +372,7 @@ class HrmsLeaveTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     private function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 
@@ -384,7 +384,7 @@ class HrmsLeaveTest extends TestCase
      */
     private function leaveScenario(bool $organizationOnly = false, bool $returnEmployeeOnly = false): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $organization->addMember($hr, 'hr');
 

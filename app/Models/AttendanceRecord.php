@@ -24,6 +24,20 @@ class AttendanceRecord extends Model
         'clock_out_at',
         'status',
         'source',
+        'clock_in_latitude',
+        'clock_in_longitude',
+        'clock_in_accuracy_meters',
+        'clock_in_device_id',
+        'clock_in_geofence_id',
+        'clock_in_verification_status',
+        'clock_in_verification_metadata',
+        'clock_out_latitude',
+        'clock_out_longitude',
+        'clock_out_accuracy_meters',
+        'clock_out_device_id',
+        'clock_out_geofence_id',
+        'clock_out_verification_status',
+        'clock_out_verification_metadata',
         'working_minutes',
         'break_minutes',
         'late_minutes',
@@ -42,6 +56,14 @@ class AttendanceRecord extends Model
             'attendance_date' => 'date',
             'clock_in_at' => 'datetime',
             'clock_out_at' => 'datetime',
+            'clock_in_latitude' => 'float',
+            'clock_in_longitude' => 'float',
+            'clock_in_accuracy_meters' => 'integer',
+            'clock_in_verification_metadata' => 'array',
+            'clock_out_latitude' => 'float',
+            'clock_out_longitude' => 'float',
+            'clock_out_accuracy_meters' => 'integer',
+            'clock_out_verification_metadata' => 'array',
             'working_minutes' => 'integer',
             'break_minutes' => 'integer',
             'late_minutes' => 'integer',
@@ -72,6 +94,21 @@ class AttendanceRecord extends Model
         return $this->hasMany(AttendanceRecordVersion::class);
     }
 
+    public function verificationAudits(): HasMany
+    {
+        return $this->hasMany(AttendanceVerificationAudit::class);
+    }
+
+    public function clockInGeofence(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceGeofence::class, 'clock_in_geofence_id');
+    }
+
+    public function clockOutGeofence(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceGeofence::class, 'clock_out_geofence_id');
+    }
+
     public function lockedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'locked_by');
@@ -90,5 +127,23 @@ class AttendanceRecord extends Model
     public function sourceLabel(): string
     {
         return config('hrms.attendance_sources.'.$this->source, $this->source);
+    }
+
+    public function clockInVerificationStatusLabel(): string
+    {
+        $status = $this->clock_in_verification_status;
+
+        return $status
+            ? config('hrms.attendance_verification_statuses.'.$status, $status)
+            : '';
+    }
+
+    public function clockOutVerificationStatusLabel(): string
+    {
+        $status = $this->clock_out_verification_status;
+
+        return $status
+            ? config('hrms.attendance_verification_statuses.'.$status, $status)
+            : '';
     }
 }

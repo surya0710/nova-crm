@@ -94,7 +94,7 @@
                     <p class="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Favorites') }}</p>
                     <div class="space-y-0.5">
                         @foreach ($favorites as $fav)
-                            <x-nav.sidebar-link :href="$fav['href']" :icon="$icons[$fav['icon'] ?? 'doc'] ?? $icons['doc']">{{ $fav['label'] }}</x-nav.sidebar-link>
+                            <x-nav.sidebar-link :href="$fav['href']" :icon="$icons[$fav['icon'] ?? 'doc'] ?? $icons['doc']">{{ is_string($fav['label'] ?? null) ? $fav['label'] : '' }}</x-nav.sidebar-link>
                         @endforeach
                     </div>
                 </div>
@@ -105,7 +105,7 @@
                     <p class="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('Pinned') }}</p>
                     <div class="space-y-0.5">
                         @foreach ($pinned as $pin)
-                            <x-nav.sidebar-link :href="$pin['href']" :icon="$icons[$pin['icon'] ?? 'doc'] ?? $icons['doc']">{{ $pin['label'] }}</x-nav.sidebar-link>
+                            <x-nav.sidebar-link :href="$pin['href']" :icon="$icons[$pin['icon'] ?? 'doc'] ?? $icons['doc']">{{ is_string($pin['label'] ?? null) ? $pin['label'] : '' }}</x-nav.sidebar-link>
                         @endforeach
                     </div>
                 </div>
@@ -129,7 +129,7 @@
                                 @if (! empty($item['icon']))
                                     <span class="shrink-0">{!! $icons[$item['icon']] ?? $icons['doc'] !!}</span>
                                 @endif
-                                <span class="flex-1 text-left" x-show="! $store.shell.sidebarCollapsed" x-cloak>{{ $item['label'] }}</span>
+                                <span class="flex-1 text-left" x-show="! $store.shell.sidebarCollapsed" x-cloak>{{ is_string($item['label'] ?? null) ? $item['label'] : '' }}</span>
                                 <svg class="h-4 w-4 transition" x-show="! $store.shell.sidebarCollapsed" x-cloak :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
                             </button>
                             <div x-show="open && ! $store.shell.sidebarCollapsed" x-cloak class="ml-4 space-y-0.5 border-l border-sidebar-border pl-2">
@@ -138,7 +138,7 @@
                                         :href="$child['href']"
                                         :active="$child['active'] ?? false"
                                         :badge="$child['badge'] ?? null"
-                                    >{{ $child['label'] }}</x-nav.sidebar-link>
+                                    >{{ is_string($child['label'] ?? null) ? $child['label'] : '' }}</x-nav.sidebar-link>
                                 @endforeach
                             </div>
                         </div>
@@ -148,7 +148,7 @@
                             :active="$item['active'] ?? false"
                             :badge="$item['badge'] ?? null"
                             :icon="! empty($item['icon']) ? ($icons[$item['icon']] ?? null) : null"
-                        >{{ $item['label'] }}</x-nav.sidebar-link>
+                        >{{ is_string($item['label'] ?? null) ? $item['label'] : '' }}</x-nav.sidebar-link>
                     @endif
                 @empty
                     <p class="px-3 py-2 text-xs text-sidebar-muted" x-show="! $store.shell.sidebarCollapsed" x-cloak>{{ __('No navigation items in this workspace.') }}</p>

@@ -90,7 +90,14 @@ class LeadIntakeApiTest extends TestCase
         ], $this->apiHeaders($organization));
 
         $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['name', 'phone', 'source']);
+
+        $errors = $response->json('errors');
+        $this->assertIsArray($errors);
+
+        $fields = collect($errors)->pluck('field')->all();
+        $this->assertContains('name', $fields);
+        $this->assertContains('phone', $fields);
+        $this->assertContains('source', $fields);
     }
 
     public function test_unauthorized_request_returns_401(): void

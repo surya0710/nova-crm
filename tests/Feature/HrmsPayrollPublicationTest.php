@@ -304,6 +304,7 @@ class HrmsPayrollPublicationTest extends TestCase
             'effective_from' => '2026-01-01',
             'annual_ctc' => 240000,
         ], $hr);
+        app(TenantContext::class)->set($organization);
         $payroll->getOrCreateConfiguration();
 
         $period = PayrollPeriod::factory()->open()->create([
@@ -325,7 +326,7 @@ class HrmsPayrollPublicationTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     private function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 

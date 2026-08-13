@@ -28,6 +28,8 @@ class PayrollDashboardController extends Controller
             'runCount' => PayrollRun::query()->count(),
             'resultCount' => PayrollResult::query()->count(),
             'latestRuns' => PayrollRun::query()->with('period')->latest()->limit(5)->get(),
+            'latestPeriod' => PayrollPeriod::query()->latest('start_date')->first(),
+            'periodStatusLabels' => config('hrms.payroll_period_statuses', []),
             'enterprise' => $this->enterpriseDashboard->widgets(),
         ]);
     }

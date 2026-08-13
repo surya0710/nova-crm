@@ -19,7 +19,7 @@ class MetadataIndexIntegrationTest extends TestCase
 
     public function test_lead_index_filters_by_metadata_and_composes_with_static_filters(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'lead', 'destination_country', 'text', ['is_filterable' => true]);
 
         $match = $this->lead($organization, $user, 'Canada Match', 'new', ['destination_country' => 'Canada']);
@@ -43,7 +43,7 @@ class MetadataIndexIntegrationTest extends TestCase
 
     public function test_lead_index_metadata_sort_is_deterministic_places_nulls_last_and_keeps_pagination(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'lead', 'ielts_score', 'decimal', ['is_sortable' => true]);
 
         $eightA = $this->lead($organization, $user, 'Eight A', 'new', ['ielts_score' => 8.0]);
@@ -75,8 +75,8 @@ class MetadataIndexIntegrationTest extends TestCase
 
     public function test_lead_index_preserves_permissions_and_tenant_isolation_for_metadata_filters(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
-        [, $otherOrganization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+        [, $otherOrganization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'lead', 'destination_country', 'text', ['is_filterable' => true]);
         $this->field($otherOrganization, 'lead', 'destination_country', 'text', ['is_filterable' => true]);
         $visible = $this->lead($organization, $user, 'Tenant A Lead', 'new', ['destination_country' => 'Canada']);
@@ -152,7 +152,7 @@ class MetadataIndexIntegrationTest extends TestCase
 
     public function test_metadata_index_security_rejects_disallowed_fields_and_ignores_inactive_fields(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'lead', 'not_filterable', 'text');
         $this->field($organization, 'lead', 'not_sortable', 'text');
         $this->field($organization, 'lead', 'sensitive_code', 'text', ['is_filterable' => true, 'is_sensitive' => true]);

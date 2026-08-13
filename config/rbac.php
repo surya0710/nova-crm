@@ -288,6 +288,10 @@ return [
         'leave.manage' => ['Leave', 'Manage leave configuration and applications'],
         'leave.approve' => ['Leave', 'Approve or reject leave applications'],
 
+        'wfh.view' => ['WFH', 'View work-from-home policies, assignments, and requests'],
+        'wfh.manage' => ['WFH', 'Manage work-from-home assignments and configuration'],
+        'wfh.approve' => ['WFH', 'Approve or reject work-from-home requests'],
+
         'payroll.view' => ['Payroll', 'View salary structures, assignments, and payroll periods'],
         'payroll.manage' => ['Payroll', 'Manage salary components, structures, assignments, and periods'],
         'payroll.configuration' => ['Payroll', 'Manage organization payroll configuration'],
@@ -448,6 +452,7 @@ return [
                 'manager.dashboard',
                 'attendance.view', 'attendance.correct',
                 'leave.view', 'leave.approve',
+                'wfh.view', 'wfh.approve',
                 'performance.view',
                 'performance.goal.view', 'performance.goal.update',
                 'performance.review.view', 'performance.review.submit',
@@ -522,6 +527,7 @@ return [
                 'attendance.view', 'attendance.manage', 'attendance.correct', 'attendance.approve',
                 'attendance.lock', 'attendance.export',
                 'leave.view', 'leave.manage', 'leave.approve',
+                'wfh.view', 'wfh.manage', 'wfh.approve',
                 'payroll.view', 'payroll.manage', 'payroll.configuration', 'payroll.calculate',
                 'payroll.approve', 'payroll.publish', 'payroll.pay', 'payroll.lock',
                 'payroll.adjustment.manage', 'payroll.adjustment.approve',

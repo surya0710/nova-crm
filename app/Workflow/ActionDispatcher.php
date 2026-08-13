@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Workflow\Contracts\WorkflowActionHandler;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ActionDispatcher
@@ -25,7 +26,7 @@ class ActionDispatcher
             throw ValidationException::withMessages(['action' => "Unknown workflow action [{$context->action->type}]."]);
         }
 
-        $entity = strtolower(class_basename($context->subject));
+        $entity = $this->resolveEntity($context);
         if (! in_array($entity, $definition['entities'], true)) {
             throw ValidationException::withMessages(['action' => "Action [{$context->action->type}] does not support {$entity}."]);
         }
@@ -52,5 +53,32 @@ class ActionDispatcher
         }
 
         return $handler->handle($context, $context->action->configuration);
+    }
+
+    /**
+     * Resolve the catalog entity key for the triggering subject.
+     *
+     * Prefer the registered trigger entity (snake_case), falling back to a
+     * snake-cased class basename so multi-word models (LeaveApplication →
+     * leave_application) match config/workflows.php entity lists.
+     */
+    protected function resolveEntity(ActionContext $context): string
+    {
+        $triggerType = $context->execution->relationLoaded('workflow')
+            ? $context->execution->workflow?->trigger_type
+            : null;
+
+        if (! is_string($triggerType) || $triggerType === '') {
+            $triggerType = data_get($context->execution->trigger_payload, '_event.trigger');
+        }
+
+        if (is_string($triggerType) && $triggerType !== '') {
+            $fromTrigger = config("workflows.triggers.{$triggerType}.entity");
+            if (is_string($fromTrigger) && $fromTrigger !== '') {
+                return $fromTrigger;
+            }
+        }
+
+        return Str::snake(class_basename($context->subject));
     }
 }

@@ -475,6 +475,39 @@ return [
                         'match' => ['hrms.attendance.corrections.*'],
                         'permission' => 'attendance.view',
                     ],
+                    [
+                        'label' => 'Geofences',
+                        'route' => 'hrms.attendance.geofences.index',
+                        'match' => ['hrms.attendance.geofences.*'],
+                        'permission' => 'attendance.view',
+                    ],
+                ],
+            ],
+            [
+                'label' => 'WFH',
+                'route' => 'hrms.wfh.requests.index',
+                'match' => ['hrms.wfh.*'],
+                'icon' => 'hr',
+                'permission' => 'wfh.view',
+                'children' => [
+                    [
+                        'label' => 'WFH Requests',
+                        'route' => 'hrms.wfh.requests.index',
+                        'match' => ['hrms.wfh.requests.*'],
+                        'permission' => 'wfh.view',
+                    ],
+                    [
+                        'label' => 'Approval Queue',
+                        'route' => 'hrms.wfh.requests.approval-queue',
+                        'match' => ['hrms.wfh.requests.approval-queue'],
+                        'permission' => 'wfh.approve',
+                    ],
+                    [
+                        'label' => 'Assignments',
+                        'route' => 'hrms.wfh.assignments.index',
+                        'match' => ['hrms.wfh.assignments.*'],
+                        'permission' => 'wfh.manage',
+                    ],
                 ],
             ],
             [
@@ -657,6 +690,12 @@ return [
                         'label' => 'My Leave',
                         'route' => 'ess.leave.index',
                         'match' => ['ess.leave.*'],
+                        'permission' => 'ess.access',
+                    ],
+                    [
+                        'label' => 'Work From Home',
+                        'route' => 'ess.wfh.index',
+                        'match' => ['ess.wfh.*'],
                         'permission' => 'ess.access',
                     ],
                     [

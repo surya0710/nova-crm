@@ -15,9 +15,25 @@
             <label class="block text-sm text-slate-600 mb-1">{{ __('Early Clock-in Window (minutes)') }}</label>
             <input type="number" name="allow_early_clock_in_minutes" value="{{ old('allow_early_clock_in_minutes', $rules['allow_early_clock_in_minutes']) }}" class="w-full rounded-md border-slate-300 text-sm" min="0" max="240">
         </div>
+        <div>
+            <label class="block text-sm text-slate-600 mb-1">{{ __('Attendance Verification Mode') }}</label>
+            <select name="attendance_verification_mode" class="w-full rounded-md border-slate-300 text-sm">
+                @foreach (config('hrms.attendance_verification_modes') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('attendance_verification_mode', $rules['attendance_verification_mode']) === $value)>{{ __($label) }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm text-slate-600 mb-1">{{ __('Max GPS Accuracy (meters)') }}</label>
+            <input type="number" name="max_accuracy_meters" value="{{ old('max_accuracy_meters', $rules['max_accuracy_meters']) }}" class="w-full rounded-md border-slate-300 text-sm" min="1" max="100000">
+        </div>
         <label class="flex items-center gap-2 text-sm">
             <input type="checkbox" name="overtime_requires_approval" value="1" @checked(old('overtime_requires_approval', $rules['overtime_requires_approval'])) class="rounded border-slate-300">
             {{ __('Overtime requires approval') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="require_device_id" value="1" @checked(old('require_device_id', $rules['require_device_id'])) class="rounded border-slate-300">
+            {{ __('Require device identifier') }}
         </label>
         <x-primary-button>{{ __('Save Attendance Rules') }}</x-primary-button>
     </form>

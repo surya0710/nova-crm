@@ -60,13 +60,14 @@ Phase 10.1.1 services contain constructor injection only (no business methods be
 
 ## Future workflow integration
 
-Placeholder trigger keys live in `config/hrms.php` under `workflow_triggers`.
+Canonical trigger keys live in `config/hrms_workflow_triggers.php`, mirrored by
+`config/hrms.php` → `workflow_triggers`, and registered in
+`config/workflows.php` (Phase 10.7).
 
-They are **not** registered in `config/workflows.php` and have **no** listeners in Phase 10.1.1.
+HRMS domain events extend `WorkflowDomainEvent` and are listened to by
+`RunTriggeredWorkflows`. Intended triggers include:
 
-Intended later triggers include:
-
-- `employee.created`, `employee.exited`, `employee.probation_ending`
+- `employee.created`, `employee.updated`, `employee.exited`, `employee.probation_ending`
 - `leave.submitted`, `leave.approved`, `leave.rejected`, `leave.cancelled`
 - `attendance.correction_submitted`
 - `employee_document.expiring`

@@ -12,6 +12,7 @@ use App\Events\SalaryStructureUpdated;
 use App\Models\Employee;
 use App\Models\EmployeeExitProcess;
 use App\Models\EmployeeSalaryAssignment;
+use App\Models\Organization;
 use App\Models\PayrollConfiguration;
 use App\Models\PayrollPeriod;
 use App\Models\SalaryComponent;
@@ -406,9 +407,15 @@ class PayrollService implements PayrollCalculationContract
     // Payroll Configuration
     // -------------------------------------------------------------------------
 
-    public function getOrCreateConfiguration(): PayrollConfiguration
+    public function getOrCreateConfiguration(?Organization $organization = null): PayrollConfiguration
     {
-        $organization = $this->tenantContext->get();
+        $organization ??= $this->tenantContext->get();
+
+        if ($organization === null) {
+            throw ValidationException::withMessages([
+                'organization' => __('Organization context is required for payroll configuration.'),
+            ]);
+        }
 
         return PayrollConfiguration::query()->firstOrCreate(
             ['organization_id' => $organization->id],
@@ -475,7 +482,9 @@ class PayrollService implements PayrollCalculationContract
         $asOf = $end->copy();
 
         $assignment = $this->getActiveSalaryAssignment($employee, $asOf);
-        $configuration = $this->getOrCreateConfiguration();
+        $configuration = $this->getOrCreateConfiguration(
+            $this->tenantContext->get() ?? $employee->organization
+        );
 
         $snapshot = $this->attendanceLockService->requireLockedSnapshotForPayroll($period);
         $attendance = $this->attendanceSnapshotService->summarizeForEmployee($snapshot, $employee->id);

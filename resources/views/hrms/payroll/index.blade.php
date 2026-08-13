@@ -9,40 +9,114 @@
             ]" />
         </x-slot:breadcrumbs>
 
+        <div class="md:col-span-2 xl:col-span-3">
+            <x-ui.card>
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <h2 class="text-sm font-semibold text-ink-heading">
+                            {{ __('Attendance window for payroll calculation') }}
+                        </h2>
+                        <p class="mt-1 text-xs text-ink-muted">
+                            {{ __('Payroll uses attendance from the payroll periods you define here. Set the date range before locking attendance and running payroll.') }}
+                        </p>
+                        @if ($latestPeriod)
+                            <p class="mt-2 text-xs text-ink-muted">
+                                {{ __('Latest period: :name (:start – :end, :status)', [
+                                    'name' => $latestPeriod->name,
+                                    'start' => $latestPeriod->start_date?->toDateString(),
+                                    'end' => $latestPeriod->end_date?->toDateString(),
+                                    'status' => $periodStatusLabels[$latestPeriod->status] ?? $latestPeriod->status,
+                                ]) }}
+                            </p>
+                        @else
+                            <p class="mt-2 text-xs text-ink-muted">
+                                {{ __('No payroll periods defined yet. Create one using the form on the right.') }}
+                            </p>
+                        @endif
+                        @can('viewAny', \App\Models\PayrollPeriod::class)
+                            <div class="mt-3">
+                                <x-ui.button :href="route('hrms.payroll.periods.index')" variant="link" size="xs">
+                                    {{ __('Open full period management') }}
+                                </x-ui.button>
+                            </div>
+                        @endcan
+                    </div>
+                    @can('create', \App\Models\PayrollPeriod::class)
+                        <form method="POST" action="{{ route('hrms.payroll.periods.store') }}" class="mt-3 w-full max-w-md space-y-3 md:mt-0">
+                            @csrf
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <x-forms.field :label="__('Name')" name="name">
+                                    <x-forms.input
+                                        name="name"
+                                        placeholder="{{ __('Name') }}"
+                                        :value="old('name', now()->format('F Y'))"
+                                        required
+                                    />
+                                </x-forms.field>
+                                <x-forms.field :label="__('Start Date')" name="start_date">
+                                    <x-forms.input
+                                        name="start_date"
+                                        type="date"
+                                        :value="old('start_date', now()->startOfMonth()->toDateString())"
+                                        required
+                                    />
+                                </x-forms.field>
+                                <x-forms.field :label="__('End Date')" name="end_date">
+                                    <x-forms.input
+                                        name="end_date"
+                                        type="date"
+                                        :value="old('end_date', now()->endOfMonth()->toDateString())"
+                                        required
+                                    />
+                                </x-forms.field>
+                            </div>
+                            <div class="flex justify-end">
+                                <x-ui.button type="submit" variant="primary" size="sm">
+                                    {{ __('Save attendance period') }}
+                                </x-ui.button>
+                            </div>
+                        </form>
+                    @endcan
+                </div>
+            </x-ui.card>
+        </div>
+
         <x-slot:kpis>
-            <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Pending Payroll') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['pending_payroll'] ?? 0 }}</p>
-            </a>
-            <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Generated Payroll') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['generated_payroll'] ?? 0 }}</p>
-            </a>
-            <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Paid Payroll') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['paid_payroll'] ?? 0 }}</p>
-            </a>
-            <div class="rounded-xl border border-line bg-surface-card p-4 shadow-sm">
-                <p class="text-sm text-ink-muted">{{ __('Upcoming Salary Date') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['upcoming_salary_date'] ?? '—' }}</p>
+            <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Pending Payroll') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['pending_payroll'] ?? 0 }}</p>
+                </a>
+                <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Generated Payroll') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['generated_payroll'] ?? 0 }}</p>
+                </a>
+                <a href="{{ route('hrms.payroll.runs.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Paid Payroll') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['paid_payroll'] ?? 0 }}</p>
+                </a>
+                <div class="rounded-xl border border-line bg-surface-card p-4 shadow-sm">
+                    <p class="text-sm text-ink-muted">{{ __('Upcoming Salary Date') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['upcoming_salary_date'] ?? '—' }}</p>
+                </div>
+                <a href="{{ route('hrms.payroll.assignments.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Missing Salary Structure') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['missing_salary_structure'] ?? 0 }}</p>
+                </a>
+                <div class="rounded-xl border border-line bg-surface-card p-4 shadow-sm">
+                    <p class="text-sm text-ink-muted">{{ __('Payroll Health') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ ucfirst($enterprise['payroll_health']['status'] ?? '—') }}</p>
+                    <p class="text-xs text-ink-muted">{{ __('Score') }}: {{ $enterprise['payroll_health']['score'] ?? 0 }}</p>
+                </div>
+                <a href="{{ route('hrms.payroll.components.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Components') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $componentCount }}</p>
+                </a>
+                <a href="{{ route('hrms.payroll.structures.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
+                    <p class="text-sm text-ink-muted">{{ __('Structures') }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $structureCount }}</p>
+                </a>
             </div>
-            <a href="{{ route('hrms.payroll.assignments.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Missing Salary Structure') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $enterprise['missing_salary_structure'] ?? 0 }}</p>
-            </a>
-            <div class="rounded-xl border border-line bg-surface-card p-4 shadow-sm">
-                <p class="text-sm text-ink-muted">{{ __('Payroll Health') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ ucfirst($enterprise['payroll_health']['status'] ?? '—') }}</p>
-                <p class="text-xs text-ink-muted">{{ __('Score') }}: {{ $enterprise['payroll_health']['score'] ?? 0 }}</p>
-            </div>
-            <a href="{{ route('hrms.payroll.components.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Components') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $componentCount }}</p>
-            </a>
-            <a href="{{ route('hrms.payroll.structures.index') }}" class="rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-300">
-                <p class="text-sm text-ink-muted">{{ __('Structures') }}</p>
-                <p class="mt-1 text-2xl font-semibold text-ink-heading">{{ $structureCount }}</p>
-            </a>
         </x-slot:kpis>
 
         <div class="md:col-span-2 xl:col-span-3">

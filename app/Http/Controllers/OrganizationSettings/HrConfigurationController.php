@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class HrConfigurationController extends Controller
@@ -57,6 +58,11 @@ class HrConfigurationController extends Controller
                 'late_threshold_minutes' => $settings['late_threshold_minutes'] ?? 15,
                 'overtime_requires_approval' => $settings['overtime_requires_approval'] ?? true,
                 'allow_early_clock_in_minutes' => $settings['allow_early_clock_in_minutes'] ?? 30,
+                'attendance_verification_mode' => $settings['attendance_verification_mode']
+                    ?? config('hrms.attendance_verification_modes_default', 'none'),
+                'max_accuracy_meters' => $settings['max_accuracy_meters']
+                    ?? config('hrms.attendance_geofence.default_max_accuracy_meters', 100),
+                'require_device_id' => $settings['require_device_id'] ?? false,
             ],
         ]);
     }
@@ -69,6 +75,13 @@ class HrConfigurationController extends Controller
             'late_threshold_minutes' => ['required', 'integer', 'min:0', 'max:240'],
             'allow_early_clock_in_minutes' => ['required', 'integer', 'min:0', 'max:240'],
             'overtime_requires_approval' => ['sometimes', 'boolean'],
+            'attendance_verification_mode' => [
+                'required',
+                'string',
+                Rule::in(array_keys(config('hrms.attendance_verification_modes', []))),
+            ],
+            'max_accuracy_meters' => ['required', 'integer', 'min:1', 'max:100000'],
+            'require_device_id' => ['sometimes', 'boolean'],
         ]);
 
         $settings = $organization->settings ?? [];
@@ -77,6 +90,9 @@ class HrConfigurationController extends Controller
             'late_threshold_minutes' => (int) $validated['late_threshold_minutes'],
             'allow_early_clock_in_minutes' => (int) $validated['allow_early_clock_in_minutes'],
             'overtime_requires_approval' => $request->boolean('overtime_requires_approval'),
+            'attendance_verification_mode' => $validated['attendance_verification_mode'],
+            'max_accuracy_meters' => (int) $validated['max_accuracy_meters'],
+            'require_device_id' => $request->boolean('require_device_id'),
         ];
         $organization->update(['settings' => $settings]);
 
@@ -123,6 +139,67 @@ class HrConfigurationController extends Controller
         return redirect()
             ->route('organization.settings.leave-policies.edit')
             ->with('status', 'leave-policies-updated');
+    }
+
+    public function editWfhPolicies(TenantContext $tenant): View
+    {
+        $organization = $this->organization($tenant);
+        $settings = $organization->settings['wfh_policies'] ?? [];
+
+        return view('organization-settings.wfh-policies', [
+            'organization' => $organization,
+            'policies' => [
+                'enabled' => $settings['enabled'] ?? config('hrms.wfh_enabled_default', false),
+                'default_policy_type' => $settings['default_policy_type']
+                    ?? config('hrms.wfh_default_policy_type', 'none'),
+                'requires_approval' => $settings['requires_approval'] ?? true,
+                'requires_hr_approval' => $settings['requires_hr_approval'] ?? false,
+                'bypass_geofence' => $settings['bypass_geofence'] ?? true,
+                'record_gps_when_wfh' => $settings['record_gps_when_wfh'] ?? false,
+                'allowed_weekdays' => $settings['allowed_weekdays']
+                    ?? config('hrms.wfh_default_allowed_weekdays', [1, 2, 3, 4, 5]),
+                'cancellation_cutoff_days' => $settings['cancellation_cutoff_days']
+                    ?? config('hrms.wfh_cancellation_cutoff_days', 0),
+            ],
+            'policyTypes' => config('hrms.wfh_policy_types', []),
+            'weekdays' => config('hrms.wfh_weekdays', []),
+        ]);
+    }
+
+    public function updateWfhPolicies(Request $request, TenantContext $tenant): RedirectResponse
+    {
+        $organization = $this->organization($tenant);
+        $validated = $request->validate([
+            'default_policy_type' => ['required', 'string', Rule::in(array_keys(config('hrms.wfh_policy_types', [])))],
+            'cancellation_cutoff_days' => ['required', 'integer', 'min:0', 'max:90'],
+            'allowed_weekdays' => ['nullable', 'array'],
+            'allowed_weekdays.*' => ['integer', 'min:1', 'max:7'],
+            'enabled' => ['sometimes', 'boolean'],
+            'requires_approval' => ['sometimes', 'boolean'],
+            'requires_hr_approval' => ['sometimes', 'boolean'],
+            'bypass_geofence' => ['sometimes', 'boolean'],
+            'record_gps_when_wfh' => ['sometimes', 'boolean'],
+        ]);
+
+        $settings = $organization->settings ?? [];
+        $settings['wfh_policies'] = [
+            'enabled' => $request->boolean('enabled'),
+            'default_policy_type' => $validated['default_policy_type'],
+            'requires_approval' => $request->boolean('requires_approval'),
+            'requires_hr_approval' => $request->boolean('requires_hr_approval'),
+            'bypass_geofence' => $request->boolean('bypass_geofence'),
+            'record_gps_when_wfh' => $request->boolean('record_gps_when_wfh'),
+            'allowed_weekdays' => array_values(array_unique(array_map(
+                'intval',
+                $validated['allowed_weekdays'] ?? config('hrms.wfh_default_allowed_weekdays', [1, 2, 3, 4, 5])
+            ))),
+            'cancellation_cutoff_days' => (int) $validated['cancellation_cutoff_days'],
+        ];
+        $organization->update(['settings' => $settings]);
+
+        return redirect()
+            ->route('organization.settings.wfh-policies.edit')
+            ->with('status', 'wfh-policies-updated');
     }
 
     public function editLeaveApprovers(TenantContext $tenant): View

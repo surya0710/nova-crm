@@ -82,6 +82,12 @@ class AttendanceVersionService
             'early_departure_minutes',
             'overtime_minutes',
             'notes',
+            'clock_in_verification_status',
+            'clock_out_verification_status',
+            'clock_in_latitude',
+            'clock_in_longitude',
+            'clock_out_latitude',
+            'clock_out_longitude',
         ];
 
         foreach ($tracked as $field) {
@@ -127,6 +133,26 @@ class AttendanceVersionService
             'overtime_minutes' => (int) ($record->overtime_minutes ?? 0),
             'notes' => $record->notes,
             'version' => (int) ($record->version ?? 1),
+            'verification' => [
+                'clock_in' => [
+                    'latitude' => $record->clock_in_latitude,
+                    'longitude' => $record->clock_in_longitude,
+                    'accuracy_meters' => $record->clock_in_accuracy_meters,
+                    'device_id' => $record->clock_in_device_id,
+                    'geofence_id' => $record->clock_in_geofence_id,
+                    'status' => $record->clock_in_verification_status,
+                    'metadata' => $record->clock_in_verification_metadata,
+                ],
+                'clock_out' => [
+                    'latitude' => $record->clock_out_latitude,
+                    'longitude' => $record->clock_out_longitude,
+                    'accuracy_meters' => $record->clock_out_accuracy_meters,
+                    'device_id' => $record->clock_out_device_id,
+                    'geofence_id' => $record->clock_out_geofence_id,
+                    'status' => $record->clock_out_verification_status,
+                    'metadata' => $record->clock_out_verification_metadata,
+                ],
+            ],
         ];
     }
 }

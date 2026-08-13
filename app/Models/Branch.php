@@ -58,4 +58,9 @@ class Branch extends Model
     {
         return $this->belongsTo(Employee::class, 'manager_employee_id');
     }
+
+    public function geofences(): HasMany
+    {
+        return $this->hasMany(AttendanceGeofence::class, 'branch_id');
+    }
 }

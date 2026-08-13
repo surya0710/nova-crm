@@ -1,0 +1,143 @@
+Konnect Nex HRMS — Feature Timeline (Product Introduction Video)
+Target length: 10–15 minutes | Format: 1920x1080 | 30 FPS | MP4 H.264
+
+================================================================================
+00:00–00:40  SCENE 1 — PRODUCT INTRODUCTION
+--------------------------------------------------------------------------------
+Visuals: Login → Dashboard → HRMS workspace home
+Narration:
+  "Konnect Nex HRMS provides a centralized platform for managing employees,
+   attendance, leave, payroll, recruitment, employee self-service and HR
+   workflows."
+
+================================================================================
+00:40–01:40  SCENE 2 — HRMS FOUNDATION
+--------------------------------------------------------------------------------
+Visuals: Employee directory → profile → documents → departments → designations
+         → branches → shifts → holidays → leave types → org settings hub
+Narration:
+  "HR starts from a complete people foundation — identity, org structure,
+   shifts, holidays, and document records in one tenant-scoped workspace."
+
+================================================================================
+01:40–02:30  SCENE 3 — EMPLOYEE MANAGEMENT
+--------------------------------------------------------------------------------
+Visuals: Create/edit employee surfaces, assignment fields, status, linkage
+Narration:
+  "HR maintains the employee master record — department, designation, branch,
+   shift, status, and portal linkage — without leaving the HRMS workspace."
+
+================================================================================
+02:30–03:30  SCENE 4 — ATTENDANCE LIFECYCLE
+--------------------------------------------------------------------------------
+Visuals: Attendance dashboard → summary → reports → calendar → corrections
+         → attendance record detail
+Narration:
+  "Attendance follows a clear lifecycle: employee check-in, verification,
+   working day tracking, check-out, and durable attendance records with
+   history and reporting."
+
+================================================================================
+03:30–04:20  SCENE 5 — GEO-ATTENDANCE & VERIFICATION
+--------------------------------------------------------------------------------
+Visuals: Attendance rules (verification mode) → geofences → record metadata
+Narration:
+  "Organization policy controls verification. Branch geofences can enforce
+   location, verification evidence is retained, and existing attendance
+   versioning remains intact. Biometric proof foundations are available when
+   policy requires them — without claiming unconfigured hardware vendors."
+
+================================================================================
+04:20–05:30  SCENE 6 — WORK FROM HOME
+--------------------------------------------------------------------------------
+Visuals: WFH policies → permanent assignments → requests → detail → approvals
+Narration:
+  "WFH supports permanent assignments, daily and multi-day requests, manager
+   and HR approval, cancellation, and attendance interaction.
+   Office days enforce geofence; approved WFH can exempt geofence while
+   biometric policy can still apply; approved leave takes precedence over WFH."
+
+================================================================================
+05:30–06:20  SCENE 7 — LEAVE MANAGEMENT
+--------------------------------------------------------------------------------
+Visuals: Leave dashboard → types → balances → applications → approval queue
+Narration:
+  "Leave covers configuration, balances, employee requests, manager or HR
+   approval, history, and interaction with attendance and WFH conflict rules."
+
+================================================================================
+06:20–07:20  SCENE 8 — PAYROLL
+--------------------------------------------------------------------------------
+Visuals: Payroll home → configuration → components → structures → assignments
+         → periods → runs → payslips → reports
+Narration:
+  "Payroll connects salary configuration, calculation surfaces, attendance and
+   leave-aware processing, statutory handling, publication, and payslip output
+   as available in the current build."
+
+================================================================================
+07:20–07:50  SCENE 9 — TAX / TDS
+--------------------------------------------------------------------------------
+Visuals: Tax workspace → regimes/declarations → statutory
+Narration:
+  "Tax and TDS configuration, employee declarations, and statutory workflows
+   sit alongside payroll for India-ready compliance operations."
+
+================================================================================
+07:50–08:50  SCENE 10 — RECRUITMENT
+--------------------------------------------------------------------------------
+Visuals: Recruitment home → requisitions → openings → candidates → interviews
+         → offers → analytics → hiring decisions
+Narration:
+  "Recruitment follows the hiring funnel: requisition, job opening, candidate,
+   interview, offer, and hiring — with analytics for pipeline visibility."
+
+================================================================================
+08:50–09:50  SCENE 11 — EMPLOYEE SELF-SERVICE
+--------------------------------------------------------------------------------
+Visuals: ESS dashboard → profile → attendance → leave → WFH → documents → payroll
+Narration:
+  "Employees complete permitted HR actions in self-service — attendance,
+   leave, WFH, documents, and payslip access — without admin privileges."
+
+================================================================================
+09:50–10:30  SCENE 12 — MANAGER EXPERIENCE
+--------------------------------------------------------------------------------
+Visuals: Manager dashboard → team visibility → leave queue → WFH queue
+Narration:
+  "Managers see and approve only what their permissions allow — team
+   attendance visibility plus leave and WFH approval queues."
+
+================================================================================
+10:30–11:00  SCENE 13 — RBAC & SECURITY
+--------------------------------------------------------------------------------
+Visuals: Roles → permission matrix → organization settings hub
+Narration:
+  "Access is controlled through organization-scoped roles and permissions,
+   ensuring employees, managers and HR users receive only the capabilities
+   assigned to them."
+
+================================================================================
+11:00–11:40  SCENE 14 — WORKFLOW & AUDIT
+--------------------------------------------------------------------------------
+Visuals: WFH request detail/approval → attendance corrections → audit logs
+Narration:
+  "HRMS uses the existing workflow platform for approvals and retains audit
+   history with tenant context — not a separate workflow engine."
+
+================================================================================
+11:40–12:30+ SCENE 15 — CLOSING MONTAGE
+--------------------------------------------------------------------------------
+Visuals: HRMS dashboard + quick montage across major modules
+Narration:
+  "Konnect Nex brings the complete HR lifecycle into one organization-scoped
+   platform, connecting HR operations, employee self-service, attendance,
+   leave, payroll, recruitment and workforce workflows."
+
+================================================================================
+POST-PRODUCTION NOTES
+- Section title cards inserted before each scene
+- Dead navigation trimmed at capture dwell times; failed routes skipped
+- Password fields redacted during capture where visible
+- Re-record individual scenes by editing record-hrms-video.mjs scene list
+================================================================================

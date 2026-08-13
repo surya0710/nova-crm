@@ -65,7 +65,7 @@ class WorkspaceResolver
 
                 return [
                     'id' => $workspaceId,
-                    'label' => __($workspace['label']),
+                    'label' => is_string($translated = __($workspace['label'])) ? $translated : $workspace['label'],
                     'icon' => $workspace['icon'] ?? 'home',
                     'order' => $workspace['order'] ?? 100,
                     'footer' => (bool) ($workspace['footer'] ?? false),
@@ -83,9 +83,12 @@ class WorkspaceResolver
         if ($workspaces->isEmpty()) {
             $home = config('navigation.workspaces.home');
             if (is_array($home) && $this->menuBuilder->routeExists($home['route'] ?? 'dashboard')) {
+                $homeLabel = $home['label'] ?? 'Home';
+                $homeTranslated = __($homeLabel);
+
                 return collect([[
                     'id' => 'home',
-                    'label' => __($home['label'] ?? 'Home'),
+                    'label' => is_string($homeTranslated) ? $homeTranslated : $homeLabel,
                     'icon' => $home['icon'] ?? 'home',
                     'order' => $home['order'] ?? 10,
                     'footer' => false,

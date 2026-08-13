@@ -17,7 +17,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_metadata_filter_works_after_web_form_create_without_manual_projection_sync(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
 
         $this->actingAs($user)
@@ -66,7 +66,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_applies_multiple_metadata_filters_together(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
         $this->field($organization, 'visa_type', 'select', ['is_filterable' => true]);
 
@@ -100,7 +100,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_metadata_filter_composes_with_static_filters(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
 
         $match = $this->lead($organization, $user, 'Qualified Canada', 'qualified', ['destination_country' => 'Canada']);
@@ -124,7 +124,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_rejects_invalid_metadata_filter_fields(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text');
 
         $this->actingAs($user)
@@ -139,7 +139,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_ignores_inactive_metadata_filter_fields(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'inactive_destination', 'text', ['status' => 'inactive', 'is_filterable' => true]);
         $visible = $this->lead($organization, $user, 'Visible Lead', 'new');
 
@@ -157,8 +157,8 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_metadata_filter_preserves_tenant_isolation(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
-        [, $otherOrganization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+        [, $otherOrganization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
         $this->field($otherOrganization, 'destination_country', 'text', ['is_filterable' => true]);
         $visible = $this->lead($organization, $user, 'Tenant A Lead', 'new', ['destination_country' => 'Canada']);
@@ -179,7 +179,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_metadata_filter_works_after_projection_backfill_for_legacy_storage(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
 
         Lead::factory()->create([
@@ -215,7 +215,7 @@ class LeadMetadataFilterBugfixTest extends TestCase
 
     public function test_lead_index_metadata_filter_survives_pagination_and_sorting(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('manager');
         $this->field($organization, 'destination_country', 'text', ['is_filterable' => true]);
         $this->field($organization, 'ielts_score', 'decimal', ['is_sortable' => true]);
 

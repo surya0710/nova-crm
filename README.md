@@ -65,6 +65,15 @@ Enterprise shell flags: `config/features.php` (`ENTERPRISE_SHELL`, etc.). Rollba
 
 ---
 
+## Architecture & security at a glance
+
+- **Multi-tenancy:** Every tenant-facing model carries `organization_id` and is scoped via `OrganizationScope` and `TenantContext`. Web and API routes run behind `set.organization` / `ensure.organization` middleware to prevent cross-tenant access.
+- **Dynamic RBAC:** Authorization is permission-based (`EnsureUserHasPermission` middleware, policies, and `config/rbac.php`), avoiding hard-coded tenant role names. Owner/manager/employee/client roles are mapped to dynamic permissions.
+- **API platform:** `/api/v1/*` and HRMS/mobile APIs use Laravel Sanctum bearer tokens plus `X-Organization-Id` and `organization.api` middleware for org lifecycle gating, with `permission:api.access` and domain-specific policies.
+- **File and data safety:** Employee documents and other sensitive uploads are validated (size/MIME), stored on configured disks, and served via authorized controllers/policies rather than direct public paths.
+
+---
+
 ## Documentation
 
 | Guide | Path |

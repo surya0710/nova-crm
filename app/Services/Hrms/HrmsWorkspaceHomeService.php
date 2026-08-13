@@ -164,7 +164,7 @@ class HrmsWorkspaceHomeService
                     'href' => Route::has('hrms.attendance.index')
                         ? route('hrms.attendance.index')
                         : null,
-                    'badge' => __('Attendance'),
+                    'badge' => __('attendance.label'),
                 ]);
             }
 

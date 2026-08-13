@@ -147,8 +147,8 @@ class AttendanceDashboardTest extends TestCase
             'effective_from' => '2026-07-01',
         ], $user);
 
-        $service->clockIn($employee, Carbon::parse('2026-07-21 09:04:00'), $user);
-        $record = $service->clockOut($employee, Carbon::parse('2026-07-21 18:00:00'), $user);
+        $service->clockIn($employee, Carbon::parse('2026-07-21 09:20:00'), $user);
+        $record = $service->clockOut($employee, Carbon::parse('2026-07-21 18:20:00'), $user);
 
         $this->assertGreaterThan(0, $record->working_minutes);
         $this->assertSame('late', $record->status);

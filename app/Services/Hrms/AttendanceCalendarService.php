@@ -16,6 +16,7 @@ class AttendanceCalendarService
         protected AttendanceService $attendanceService,
         protected AttendanceDashboardService $dashboardService,
         protected LeaveService $leaveService,
+        protected WfhPolicyService $wfhPolicyService,
     ) {}
 
     /**
@@ -238,7 +239,17 @@ class AttendanceCalendarService
         $shift = $this->attendanceService->resolveShiftForEmployee($employee, $date);
         $indicator = $this->dashboardService->attendanceIndicator($record, $shift, $date, $state);
         $working = $this->dashboardService->workingHours($record, $shift);
-        $visual = $this->resolveVisual($date, $state, $record, $holiday, $leave, $isWeekend, $isFuture, $indicator);
+        $visual = $this->resolveVisual(
+            $date,
+            $state,
+            $record,
+            $holiday,
+            $leave,
+            $isWeekend,
+            $isFuture,
+            $indicator,
+            $this->wfhPolicyService->isWfhDay($employee, $date),
+        );
 
         return [
             'date' => $date->toDateString(),
@@ -384,6 +395,7 @@ class AttendanceCalendarService
         bool $isWeekend,
         bool $isFuture,
         ?array $indicator,
+        bool $isWfh = false,
     ): array {
         $dots = [];
 
@@ -396,7 +408,7 @@ class AttendanceCalendarService
             }
         }
 
-        if ($isFuture && $leave === null && $record === null) {
+        if ($isFuture && $leave === null && $record === null && $holiday === null && ! $isWeekend) {
             return [
                 'key' => 'future',
                 'label' => __('Future'),
@@ -443,7 +455,7 @@ class AttendanceCalendarService
                 ];
             }
 
-            if (in_array($record->source, ['mobile', 'api'], true)) {
+            if ($isWfh || in_array($record->source, ['mobile', 'api'], true)) {
                 return [
                     'key' => 'remote',
                     'label' => __('WFH'),
@@ -469,6 +481,17 @@ class AttendanceCalendarService
                 'key' => 'weekend',
                 'label' => __('Weekend'),
                 'color' => 'slate',
+                'dots' => $dots,
+                'border' => null,
+            ];
+        }
+
+        // Planned/active WFH day without punch still surfaces as WFH (not absent).
+        if ($isWfh && ($record === null || $record->clock_in_at === null)) {
+            return [
+                'key' => 'remote',
+                'label' => __('WFH'),
+                'color' => 'cyan',
                 'dots' => $dots,
                 'border' => null,
             ];

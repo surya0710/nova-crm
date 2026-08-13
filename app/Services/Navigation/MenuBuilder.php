@@ -75,7 +75,9 @@ class MenuBuilder
         if (! empty($item['term']) && function_exists('crm_term')) {
             $label = crm_term($item['term']);
         } else {
-            $label = __($label);
+            $translated = __($label);
+            // On case-insensitive filesystems, __("Attendance") can resolve to lang/en/attendance.php (array).
+            $label = is_string($translated) ? $translated : $label;
         }
 
         return [

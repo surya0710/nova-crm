@@ -29,6 +29,7 @@ class AttendanceService
         protected AttendanceCalculationService $calculationService,
         protected AttendanceVersionService $versionService,
         protected AttendanceLockService $lockService,
+        protected AttendanceVerificationService $verificationService,
     ) {}
 
     public function createShift(array $data, User $actor): HrmsShift
@@ -110,14 +111,32 @@ class AttendanceService
         });
     }
 
-    public function clockIn(Employee $employee, ?Carbon $clockInAt, User $actor, string $source = 'manual'): AttendanceRecord
-    {
-        return DB::transaction(function () use ($employee, $clockInAt, $actor, $source): AttendanceRecord {
-            $this->assertEmployeeCanClock($employee);
+    /**
+     * @param  array<string, mixed>  $context  Optional verification context (lat/lng/accuracy/device/biometric).
+     */
+    public function clockIn(
+        Employee $employee,
+        ?Carbon $clockInAt,
+        User $actor,
+        string $source = 'manual',
+        array $context = [],
+    ): AttendanceRecord {
+        $this->assertEmployeeCanClock($employee);
 
-            $clockInAt ??= now();
-            $attendanceDate = $clockInAt->copy()->startOfDay();
+        $clockInAt ??= now();
+        $attendanceDate = $clockInAt->copy()->startOfDay();
 
+        // Verify outside the write transaction so failed attempts still leave an audit trail.
+        $verification = $this->verificationService->assertVerified(
+            $employee,
+            'clock_in',
+            $context,
+            $clockInAt,
+            $actor,
+        );
+        $verificationAttributes = $this->verificationService->attributesForEvent('clock_in', $verification);
+
+        return DB::transaction(function () use ($employee, $clockInAt, $attendanceDate, $actor, $source, $verification, $verificationAttributes): AttendanceRecord {
             $this->lockService->assertEditable($attendanceDate, isPrivileged: false);
             $this->assertCanRecordAttendance($employee, $attendanceDate);
 
@@ -135,25 +154,23 @@ class AttendanceService
             $shift = $this->resolveShiftForEmployee($employee, $attendanceDate);
 
             if ($existing !== null) {
-                if ($this->versionService->hasMaterialChange($existing, [
+                $nextAttributes = array_merge([
                     'clock_in_at' => $clockInAt,
                     'shift_id' => $shift?->id,
                     'source' => $source,
                     'status' => 'pending',
-                ])) {
+                ], $verificationAttributes);
+
+                if ($this->versionService->hasMaterialChange($existing, $nextAttributes)) {
                     $this->versionService->archiveAndIncrement($existing, $actor, 'clock_in');
                 }
 
-                $existing->update([
-                    'clock_in_at' => $clockInAt,
-                    'shift_id' => $shift?->id,
-                    'source' => $source,
-                    'status' => 'pending',
+                $existing->update(array_merge($nextAttributes, [
                     'approval_status' => $existing->approval_status ?? 'approved',
-                ]);
+                ]));
                 $record = $existing->fresh();
             } else {
-                $record = AttendanceRecord::query()->create([
+                $record = AttendanceRecord::query()->create(array_merge([
                     'organization_id' => $employee->organization_id,
                     'employee_id' => $employee->id,
                     'shift_id' => $shift?->id,
@@ -163,13 +180,16 @@ class AttendanceService
                     'approval_status' => 'approved',
                     'source' => $source,
                     'version' => 1,
-                ]);
+                ], $verificationAttributes));
             }
+
+            $this->verificationService->recordAudit($employee, 'clock_in', $verification, $actor, $record);
 
             $this->auditLogger->log($record, 'attendance_clocked_in', [
                 'employee_id' => $employee->id,
                 'clock_in_at' => $record->clock_in_at?->toIso8601String(),
                 'source' => $source,
+                'verification_status' => $record->clock_in_verification_status,
             ], $actor);
 
             event(AttendanceClockedIn::forModel($record, ['actor_id' => $actor->id]));
@@ -178,14 +198,30 @@ class AttendanceService
         });
     }
 
-    public function clockOut(Employee $employee, ?Carbon $clockOutAt, User $actor): AttendanceRecord
-    {
-        return DB::transaction(function () use ($employee, $clockOutAt, $actor): AttendanceRecord {
-            $this->assertEmployeeCanClock($employee);
+    /**
+     * @param  array<string, mixed>  $context  Optional verification context (lat/lng/accuracy/device/biometric).
+     */
+    public function clockOut(
+        Employee $employee,
+        ?Carbon $clockOutAt,
+        User $actor,
+        array $context = [],
+    ): AttendanceRecord {
+        $this->assertEmployeeCanClock($employee);
 
-            $clockOutAt ??= now();
-            $attendanceDate = $clockOutAt->copy()->startOfDay();
+        $clockOutAt ??= now();
+        $attendanceDate = $clockOutAt->copy()->startOfDay();
 
+        $verification = $this->verificationService->assertVerified(
+            $employee,
+            'clock_out',
+            $context,
+            $clockOutAt,
+            $actor,
+        );
+        $verificationAttributes = $this->verificationService->attributesForEvent('clock_out', $verification);
+
+        return DB::transaction(function () use ($employee, $clockOutAt, $attendanceDate, $actor, $verification, $verificationAttributes): AttendanceRecord {
             $this->lockService->assertEditable($attendanceDate, isPrivileged: false);
             $this->assertCanRecordAttendance($employee, $attendanceDate);
 
@@ -213,9 +249,9 @@ class AttendanceService
             }
 
             $shift = $record->shift ?? $this->resolveShiftForEmployee($employee, $attendanceDate);
-            $metricsAttributes = [
+            $metricsAttributes = array_merge([
                 'clock_out_at' => $clockOutAt,
-            ];
+            ], $verificationAttributes);
 
             if ($shift !== null) {
                 $forMetrics = $record->replicate();
@@ -244,12 +280,15 @@ class AttendanceService
             $record->fill($metricsAttributes)->save();
             $record->refresh();
 
+            $this->verificationService->recordAudit($employee, 'clock_out', $verification, $actor, $record);
+
             $this->auditLogger->log($record, 'attendance_clocked_out', [
                 'employee_id' => $employee->id,
                 'clock_out_at' => $record->clock_out_at?->toIso8601String(),
                 'working_minutes' => $record->working_minutes,
                 'status' => $record->status,
                 'version' => $record->version,
+                'verification_status' => $record->clock_out_verification_status,
             ], $actor);
 
             event(AttendanceClockedOut::forModel($record, ['actor_id' => $actor->id]));

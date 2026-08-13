@@ -27,6 +27,26 @@ class AttendanceResource extends JsonResource
             'overtime_minutes' => $this->overtime_minutes,
             'notes' => $this->notes,
             'approval_status' => $this->approval_status,
+            'verification' => [
+                'clock_in' => [
+                    'latitude' => $this->clock_in_latitude,
+                    'longitude' => $this->clock_in_longitude,
+                    'accuracy_meters' => $this->clock_in_accuracy_meters,
+                    'device_id' => $this->clock_in_device_id,
+                    'geofence_id' => $this->clock_in_geofence_id,
+                    'status' => $this->clock_in_verification_status,
+                    'metadata' => $this->clock_in_verification_metadata,
+                ],
+                'clock_out' => [
+                    'latitude' => $this->clock_out_latitude,
+                    'longitude' => $this->clock_out_longitude,
+                    'accuracy_meters' => $this->clock_out_accuracy_meters,
+                    'device_id' => $this->clock_out_device_id,
+                    'geofence_id' => $this->clock_out_geofence_id,
+                    'status' => $this->clock_out_verification_status,
+                    'metadata' => $this->clock_out_verification_metadata,
+                ],
+            ],
             'shift' => $this->whenLoaded('shift', fn () => [
                 'id' => $this->shift?->id,
                 'name' => $this->shift?->name,

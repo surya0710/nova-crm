@@ -137,7 +137,7 @@
                             <x-sidebar-link :href="route('hrms.calendar')" :active="request()->routeIs('hrms.calendar')" :icon="$iconHr">{{ __('Calendar') }}</x-sidebar-link>
                         @endif
                         @if ($can('attendance.view'))
-                            <x-sidebar-link :href="route('hrms.attendance.index')" :active="request()->routeIs('hrms.attendance.*')" :icon="$iconHr">{{ __('Attendance') }}</x-sidebar-link>
+                            <x-sidebar-link :href="route('hrms.attendance.index')" :active="request()->routeIs('hrms.attendance.*')" :icon="$iconHr">{{ __('attendance.label') }}</x-sidebar-link>
                             <x-sidebar-link :href="route('hrms.shift-assignments.index')" :active="request()->routeIs('hrms.shift-assignments.*')" :icon="$iconHr">{{ __('Shift Assignments') }}</x-sidebar-link>
                         @endif
                         @if ($can('leave.view'))
@@ -168,7 +168,7 @@
                         <x-sidebar-link :href="route('ess.dashboard')" :active="request()->routeIs('ess.dashboard')" :icon="$iconUser">{{ __('My HR') }}</x-sidebar-link>
                         <x-sidebar-link :href="route('ess.profile')" :active="request()->routeIs('ess.profile*')" :icon="$iconUser">{{ __('Profile') }}</x-sidebar-link>
                         <x-sidebar-link :href="route('ess.documents.index')" :active="request()->routeIs('ess.documents.*')" :icon="$iconUser">{{ __('Documents') }}</x-sidebar-link>
-                        <x-sidebar-link :href="route('ess.attendance.index')" :active="request()->routeIs('ess.attendance.*')" :icon="$iconUser">{{ __('Attendance') }}</x-sidebar-link>
+                        <x-sidebar-link :href="route('ess.attendance.index')" :active="request()->routeIs('ess.attendance.*')" :icon="$iconUser">{{ __('attendance.label') }}</x-sidebar-link>
                         <x-sidebar-link :href="route('ess.leave.index')" :active="request()->routeIs('ess.leave.*')" :icon="$iconUser">{{ __('Leave') }}</x-sidebar-link>
                         <x-sidebar-link :href="route('ess.payroll.index')" :active="request()->routeIs('ess.payroll.*')" :icon="$iconUser">{{ __('Payroll') }}</x-sidebar-link>
                     </div>

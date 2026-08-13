@@ -27,6 +27,7 @@ use App\Services\Hrms\EssContext;
 use App\Services\Hrms\HrmsDashboardService;
 use App\Services\Hrms\LeaveService;
 use App\Services\Hrms\TeamService;
+use App\Services\Navigation\NavigationService;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
@@ -259,7 +260,8 @@ class HrmsFoundationTest extends TestCase
 
     public function test_hrms_and_ess_routes_are_permission_protected(): void
     {
-        $organization = Organization::factory()->create();
+        // HRMS is licensed on professional/enterprise only (starter → Module not licensed).
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $employee = User::factory()->create();
         $sales = User::factory()->create();
@@ -298,7 +300,8 @@ class HrmsFoundationTest extends TestCase
 
     public function test_sidebar_shows_hrms_and_ess_links_based_on_permissions(): void
     {
-        $organization = Organization::factory()->create();
+        // Shell nav is workspace-scoped; assert HRMS workspace visibility by role.
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $employee = User::factory()->create();
         $sales = User::factory()->create();
@@ -306,26 +309,31 @@ class HrmsFoundationTest extends TestCase
         $organization->addMember($employee, 'employee');
         $organization->addMember($sales, 'sales-executive');
 
+        $workspaceIds = fn (User $user) => app(NavigationService::class)
+            ->availableWorkspaces($user, $organization)
+            ->pluck('id');
+
+        $this->assertTrue($workspaceIds($hr)->contains('hr'));
+        $this->assertTrue($workspaceIds($employee)->contains('hr'));
+        $this->assertFalse($workspaceIds($sales)->contains('hr'));
+
         $this->actingAs($hr)
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('HR Dashboard')
-            ->assertSee('My HR');
+            ->assertSee('HRMS', false);
 
         $this->actingAs($employee)
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee('HR Dashboard')
-            ->assertSee('My HR');
+            ->assertSee('HRMS', false);
 
         $this->actingAs($sales)
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSee('HR Dashboard')
-            ->assertDontSee('>My HR<');
+            ->assertDontSee('>HRMS<', false);
     }
 
     public function test_service_skeletons_are_resolvable(): void
@@ -359,6 +367,10 @@ class HrmsFoundationTest extends TestCase
         $this->assertNotEmpty(config('hrms.working_days'));
         $this->assertNotEmpty(config('hrms.weekend_days'));
         $this->assertArrayHasKey('employee.created', config('hrms.workflow_triggers'));
-        $this->assertArrayNotHasKey('employee.created', config('workflows.triggers'));
+        $this->assertArrayHasKey('employee.created', config('workflows.triggers'));
+        $this->assertSame(
+            config('hrms.workflow_triggers.employee.created'),
+            config('workflows.triggers.employee.created'),
+        );
     }
 }

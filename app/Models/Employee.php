@@ -147,6 +147,16 @@ class Employee extends Model
         return $this->hasMany(LeaveApplication::class);
     }
 
+    public function wfhAssignments(): HasMany
+    {
+        return $this->hasMany(EmployeeWfhAssignment::class);
+    }
+
+    public function wfhRequests(): HasMany
+    {
+        return $this->hasMany(WfhRequest::class);
+    }
+
     public function assets(): HasMany
     {
         return $this->hasMany(EmployeeAsset::class);

@@ -324,7 +324,7 @@ class HrmsRecruitmentOfferTest extends TestCase
      */
     private function offerScenario(bool $withRecommendation = true): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $organization->addMember($hr, 'hr');
 

@@ -93,6 +93,7 @@ class AttendanceMeApiController extends Controller
             $clockInAt,
             $request->user(),
             'mobile',
+            $request->verificationContext(),
         );
 
         return ApiResponse::success(
@@ -112,6 +113,7 @@ class AttendanceMeApiController extends Controller
             $employee,
             $clockOutAt,
             $request->user(),
+            $request->verificationContext(),
         );
 
         return ApiResponse::success(

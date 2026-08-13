@@ -260,6 +260,7 @@ class HrmsPayrollFoundationTest extends TestCase
             'week_off_days' => ['saturday', 'sunday'],
             'overtime_handling' => 'pay',
             'rounding_policy' => 'nearest',
+            'salary_mode' => 'calendar',
         ])->assertRedirect(route('hrms.payroll.configuration.edit'));
 
         $this->assertDatabaseHas('payroll_configurations', [
@@ -291,7 +292,7 @@ class HrmsPayrollFoundationTest extends TestCase
 
     public function test_employee_role_cannot_access_payroll(): void
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $employeeUser = User::factory()->create();
         $organization->addMember($employeeUser, 'employee');
         $session = ['current_organization_id' => $organization->id];
@@ -363,7 +364,7 @@ class HrmsPayrollFoundationTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     private function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 

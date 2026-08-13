@@ -59,6 +59,7 @@ use App\Events\EmployeeManagerChanged;
 use App\Events\EmployeeProfileUpdated;
 use App\Events\EmployeeSalaryAssigned;
 use App\Events\EmployeeSettlementCompleted;
+use App\Events\EmployeeUpdated;
 use App\Events\EvaluationSubmitted;
 use App\Events\FeedbackCampaignCreated;
 use App\Events\FeedbackClosed;
@@ -85,6 +86,11 @@ use App\Events\LeaveBalanceAdjusted;
 use App\Events\LeaveCancelled;
 use App\Events\LeaveRejected;
 use App\Events\LeaveSubmitted;
+use App\Events\WfhRequestApproved;
+use App\Events\WfhRequestCancelled;
+use App\Events\WfhRequestRejected;
+use App\Events\WfhRequestSubmitted;
+use App\Events\MarketingLeadImported;
 use App\Events\MilestoneCompleted;
 use App\Events\MilestoneDelayed;
 use App\Events\ProgressUpdated;
@@ -141,6 +147,7 @@ use App\Events\ResumeUploaded;
 use App\Events\ResourceAllocated;
 use App\Events\ResourceAllocationUpdated;
 use App\Events\ResourceReleased;
+use App\Events\RequisitionApproved;
 use App\Events\SalaryRevised;
 use App\Events\SalaryStructureCreated;
 use App\Events\SalaryStructureUpdated;
@@ -163,6 +170,7 @@ use App\Models\AttendanceCorrection;
 use App\Models\AttendanceOvertimeEntry;
 use App\Models\AttendanceOvertimeRule;
 use App\Models\AttendancePeriod;
+use App\Models\AttendanceGeofence;
 use App\Models\AttendanceRecord;
 use App\Models\Branch;
 use App\Models\Competency;
@@ -171,6 +179,8 @@ use App\Models\Customer;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Employee;
+use App\Models\EmployeeWfhAssignment;
+use App\Models\WfhRequest;
 use App\Models\EmployeeAppraisal;
 use App\Models\EmployeeAsset;
 use App\Models\EmployeeDocument;
@@ -285,8 +295,10 @@ use App\Policies\AppraisalSessionPolicy;
 use App\Policies\AttendanceCorrectionPolicy;
 use App\Policies\AttendanceOvertimePolicy;
 use App\Policies\AttendancePeriodPolicy;
+use App\Policies\AttendanceGeofencePolicy;
 use App\Policies\AttendancePolicy;
 use App\Policies\BranchPolicy;
+use App\Policies\WfhPolicy;
 use App\Policies\CompetencyCategoryPolicy;
 use App\Policies\CompetencyPolicy;
 use App\Policies\CustomerPolicy;
@@ -560,8 +572,11 @@ class AppServiceProvider extends ServiceProvider
         AttendanceOvertimeRule::class => AttendanceOvertimePolicy::class,
         AttendanceOvertimeEntry::class => AttendanceOvertimePolicy::class,
         AttendancePeriod::class => AttendancePeriodPolicy::class,
+        AttendanceGeofence::class => AttendanceGeofencePolicy::class,
         HrmsShift::class => ShiftPolicy::class,
         LeaveApplication::class => LeavePolicy::class,
+        EmployeeWfhAssignment::class => WfhPolicy::class,
+        WfhRequest::class => WfhPolicy::class,
         LeaveType::class => LeaveTypePolicy::class,
         Holiday::class => HolidayPolicy::class,
         HrmsAnnouncement::class => HrmsAnnouncementPolicy::class,
@@ -748,6 +763,10 @@ class AppServiceProvider extends ServiceProvider
             LeaveRejected::class,
             LeaveCancelled::class,
             LeaveBalanceAdjusted::class,
+            WfhRequestSubmitted::class,
+            WfhRequestApproved::class,
+            WfhRequestRejected::class,
+            WfhRequestCancelled::class,
             AnnouncementCreated::class,
             AnnouncementUpdated::class,
             AnnouncementDeleted::class,
@@ -959,8 +978,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AttendanceOvertimeRule::class, AttendanceOvertimePolicy::class);
         Gate::policy(AttendanceOvertimeEntry::class, AttendanceOvertimePolicy::class);
         Gate::policy(AttendancePeriod::class, AttendancePeriodPolicy::class);
+        Gate::policy(AttendanceGeofence::class, AttendanceGeofencePolicy::class);
         Gate::policy(HrmsShift::class, ShiftPolicy::class);
         Gate::policy(LeaveApplication::class, LeavePolicy::class);
+        Gate::policy(EmployeeWfhAssignment::class, WfhPolicy::class);
+        Gate::policy(WfhRequest::class, WfhPolicy::class);
         Gate::policy(LeaveType::class, LeaveTypePolicy::class);
         Gate::policy(Holiday::class, HolidayPolicy::class);
         Gate::policy(HrmsAnnouncement::class, HrmsAnnouncementPolicy::class);

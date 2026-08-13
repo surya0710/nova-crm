@@ -16,7 +16,7 @@ class HrmsAttendanceSearchProvider implements SearchProviderInterface
 
     public function label(): string
     {
-        return __('Attendance');
+        return __('attendance.label');
     }
 
     public function search(User $user, Organization $organization, string $query, int $limit = 10): Collection
@@ -46,9 +46,9 @@ class HrmsAttendanceSearchProvider implements SearchProviderInterface
             ->limit($limit)
             ->get()
             ->map(fn (AttendanceRecord $record) => [
-                'type' => __('Attendance'),
+                'type' => __('attendance.label'),
                 'label' => $this->label(),
-                'title' => $record->employee?->full_name ?? __('Attendance'),
+                'title' => $record->employee?->full_name ?? __('attendance.label'),
                 'subtitle' => trim(($record->attendance_date?->format('Y-m-d') ?? '').' · '.($record->status ?? '')),
                 'url' => route('hrms.attendance.index', ['search' => $record->employee?->employee_code]),
                 'workspace' => 'hr',

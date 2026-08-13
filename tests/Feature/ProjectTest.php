@@ -18,7 +18,7 @@ class ProjectTest extends TestCase
     protected function setupUserWithOrg(string $role = 'organization-owner'): array
     {
         $user = User::factory()->create();
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $organization->addMember($user, $role);
 
         return [$user, $organization];

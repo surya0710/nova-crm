@@ -31,7 +31,7 @@
                     :hint="__('Open your employee self-service dashboard')"
                 />
                 <a href="{{ route('ess.attendance.index') }}" class="rounded-xl border border-line bg-surface-card p-5 shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40">
-                    <p class="text-sm font-medium text-ink-muted">{{ __('Attendance') }}</p>
+                    <p class="text-sm font-medium text-ink-muted">{{ __('attendance.label') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-ink-heading">{{ __('Check in') }}</p>
                     <p class="mt-1 text-xs text-ink-muted">{{ __('Mark today’s attendance') }}</p>
                 </a>

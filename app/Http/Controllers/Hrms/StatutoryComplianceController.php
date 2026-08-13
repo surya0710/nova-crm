@@ -87,6 +87,10 @@ class StatutoryComplianceController extends Controller
 
     public function showRuleVersion(StatutoryRuleSet $ruleSet, StatutoryRuleVersion $version): View
     {
+        abort_unless(
+            (int) $ruleSet->organization_id === (int) app(\App\Services\TenantContext::class)->id(),
+            404
+        );
         $this->authorize('view', $ruleSet);
         abort_unless($version->statutory_rule_set_id === $ruleSet->id, 404);
 

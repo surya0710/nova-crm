@@ -29,6 +29,7 @@ class EmployeeService
         protected EmployeeCertificationService $certificationService,
         protected EmployeeEducationService $educationService,
         protected EmployeeExperienceService $experienceService,
+        protected WfhPolicyService $wfhPolicyService,
     ) {}
 
     public function createEmployee(array $data, User $actor): Employee
@@ -63,7 +64,14 @@ class EmployeeService
     public function updateEmployee(Employee $employee, array $data, User $actor): Employee
     {
         return DB::transaction(function () use ($employee, $data, $actor): Employee {
-            $before = $employee->only(['status', 'reporting_manager_id', 'department_id', 'branch_id', 'designation_id']);
+            $before = $employee->only([
+                'status',
+                'reporting_manager_id',
+                'department_id',
+                'branch_id',
+                'designation_id',
+                'organization_id',
+            ]);
             $employee->update(Arr::except($data, [
                 'employee_code',
                 'emergency_contacts',
@@ -94,10 +102,26 @@ class EmployeeService
                 event(EmployeeDepartmentChanged::forModel($employee, ['actor_id' => $actor->id]));
             }
             if ($before['branch_id'] !== $employee->branch_id) {
-                $this->auditLogger->log($employee, 'employee_branch_changed', ['from' => $before['branch_id'], 'to' => $employee->branch_id], $actor);
+                $this->auditLogger->log($employee, 'employee_branch_changed', [
+                    'from' => $before['branch_id'],
+                    'to' => $employee->branch_id,
+                    'wfh_policy' => 'unchanged',
+                ], $actor);
             }
             if ($before['designation_id'] !== $employee->designation_id) {
                 $this->auditLogger->log($employee, 'employee_designation_changed', ['from' => $before['designation_id'], 'to' => $employee->designation_id], $actor);
+            }
+            if ((int) $before['organization_id'] !== (int) $employee->organization_id) {
+                $transfer = $this->wfhPolicyService->handleEmployeeOrganizationTransfer(
+                    $employee,
+                    (int) $before['organization_id'],
+                    $actor,
+                );
+                $this->auditLogger->log($employee, 'employee_organization_changed', [
+                    'from' => $before['organization_id'],
+                    'to' => $employee->organization_id,
+                    'wfh' => $transfer,
+                ], $actor);
             }
 
             event(EmployeeUpdated::forModel($employee, ['actor_id' => $actor->id]));

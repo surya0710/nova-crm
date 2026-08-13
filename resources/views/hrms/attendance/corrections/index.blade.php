@@ -19,7 +19,7 @@
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
                 ['label' => __('HR'), 'href' => route('hrms.home')],
-                ['label' => __('Attendance'), 'href' => route('hrms.attendance.index')],
+                ['label' => __('attendance.label'), 'href' => route('hrms.attendance.index')],
                 ['label' => __('Corrections'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>

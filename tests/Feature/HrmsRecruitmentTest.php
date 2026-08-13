@@ -253,7 +253,7 @@ class HrmsRecruitmentTest extends TestCase
      */
     private function recruitmentScenario(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $organization->addMember($hr, 'hr');
 

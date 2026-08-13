@@ -79,7 +79,13 @@ class EssAttendanceController extends Controller
     {
         $employee = $request->employee();
         $clockInAt = $request->filled('clock_in_at') ? Carbon::parse($request->validated('clock_in_at')) : null;
-        $this->service->clockIn($employee, $clockInAt, $request->user(), 'mobile');
+        $this->service->clockIn(
+            $employee,
+            $clockInAt,
+            $request->user(),
+            'mobile',
+            $request->verificationContext(),
+        );
 
         return redirect()->to($request->input('redirect_to', route('ess.attendance.index')))
             ->with('status', 'ess-attendance-clocked-in');
@@ -89,7 +95,12 @@ class EssAttendanceController extends Controller
     {
         $employee = $request->employee();
         $clockOutAt = $request->filled('clock_out_at') ? Carbon::parse($request->validated('clock_out_at')) : null;
-        $this->service->clockOut($employee, $clockOutAt, $request->user());
+        $this->service->clockOut(
+            $employee,
+            $clockOutAt,
+            $request->user(),
+            $request->verificationContext(),
+        );
 
         return redirect()->to($request->input('redirect_to', route('ess.attendance.index')))
             ->with('status', 'ess-attendance-clocked-out');

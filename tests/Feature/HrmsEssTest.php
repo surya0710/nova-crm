@@ -107,9 +107,10 @@ class HrmsEssTest extends TestCase
         [$organization, $user, $employee] = $this->employeeUser();
         $session = ['current_organization_id' => $organization->id];
 
+        // ESS attendance index is the calendar surface (Check In / Check Out).
         $this->actingAs($user)->withSession($session)->get(route('ess.attendance.index'))
             ->assertOk()
-            ->assertSee('Clock In');
+            ->assertSee('Check In');
 
         $this->actingAs($user)->withSession($session)->post(route('ess.attendance.clock-in'))
             ->assertRedirect(route('ess.attendance.index'));
@@ -228,7 +229,7 @@ class HrmsEssTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     private function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 
@@ -238,7 +239,7 @@ class HrmsEssTest extends TestCase
     /** @return array{0: Organization, 1: User, 2: Employee}|array{0: Organization, 1: User} */
     private function employeeUser(bool $withEmployee = true): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'employee');
 
@@ -259,7 +260,7 @@ class HrmsEssTest extends TestCase
     /** @return array{0: Organization, 1: User, 2: Employee, 3?: Employee} */
     private function managerScenario(bool $returnTeamMember = true): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $managerUser = User::factory()->create();
         $organization->addMember($managerUser, 'manager');
 

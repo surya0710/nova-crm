@@ -184,7 +184,7 @@ class HrmsRecruitmentInterviewTest extends TestCase
      */
     private function interviewFeatureScenario(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $hr = User::factory()->create();
         $organization->addMember($hr, 'hr');
 

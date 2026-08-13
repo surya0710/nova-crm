@@ -24,13 +24,17 @@ class ShellQuickActionService
 
         $actions = collect($definitions)
             ->filter(fn (array $action) => $this->isAllowed($action, $user, $organization))
-            ->map(fn (array $action) => [
-                'label' => __($action['label']),
-                'href' => route($action['route']),
-                'variant' => $action['variant'] ?? 'secondary',
-                'priority' => (int) ($action['priority'] ?? 100),
-                'group' => $action['group'] ?? (($action['variant'] ?? null) === 'primary' ? 'primary' : 'secondary'),
-            ])
+            ->map(function (array $action) {
+                $translated = __($action['label']);
+
+                return [
+                    'label' => is_string($translated) ? $translated : $action['label'],
+                    'href' => route($action['route']),
+                    'variant' => $action['variant'] ?? 'secondary',
+                    'priority' => (int) ($action['priority'] ?? 100),
+                    'group' => $action['group'] ?? (($action['variant'] ?? null) === 'primary' ? 'primary' : 'secondary'),
+                ];
+            })
             ->sortBy([
                 fn (array $a) => ($a['group'] === 'primary' ? 0 : 1),
                 fn (array $a) => $a['priority'],

@@ -45,7 +45,13 @@ class AttendanceDashboardApiController extends Controller
     {
         $employee = $request->employee();
         $clockInAt = $request->filled('clock_in_at') ? Carbon::parse($request->validated('clock_in_at')) : null;
-        $record = $this->attendance->clockIn($employee, $clockInAt, $request->user(), 'api');
+        $record = $this->attendance->clockIn(
+            $employee,
+            $clockInAt,
+            $request->user(),
+            'api',
+            $request->verificationContext(),
+        );
         $summary = $this->dashboard->employeeSummary($employee);
 
         return response()->json([
@@ -59,7 +65,12 @@ class AttendanceDashboardApiController extends Controller
     {
         $employee = $request->employee();
         $clockOutAt = $request->filled('clock_out_at') ? Carbon::parse($request->validated('clock_out_at')) : null;
-        $record = $this->attendance->clockOut($employee, $clockOutAt, $request->user());
+        $record = $this->attendance->clockOut(
+            $employee,
+            $clockOutAt,
+            $request->user(),
+            $request->verificationContext(),
+        );
         $summary = $this->dashboard->employeeSummary($employee);
 
         return response()->json([

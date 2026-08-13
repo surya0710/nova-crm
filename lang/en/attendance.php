@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Use attendance.label — __('Attendance') collides with this file on case-insensitive filesystems.
+    'label' => 'Attendance',
     'periods' => [
         'created' => 'Attendance period created successfully.',
         'frozen' => 'Attendance period frozen successfully.',

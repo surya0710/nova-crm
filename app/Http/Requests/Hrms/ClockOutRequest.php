@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Hrms;
 
+use App\Http\Requests\Concerns\CapturesAttendanceVerificationContext;
 use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Services\TenantContext;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Rule;
 
 class ClockOutRequest extends FormRequest
 {
+    use CapturesAttendanceVerificationContext;
+
     public function authorize(): bool
     {
         return $this->user()?->can('manage', AttendanceRecord::class) ?? false;
@@ -19,14 +22,14 @@ class ClockOutRequest extends FormRequest
     {
         $org = app(TenantContext::class)->get();
 
-        return [
+        return array_merge([
             'employee_id' => [
                 'required',
                 'integer',
                 Rule::exists('employees', 'id')->where('organization_id', $org?->id),
             ],
             'clock_out_at' => ['nullable', 'date'],
-        ];
+        ], $this->verificationRules());
     }
 
     public function employee(): Employee

@@ -15,7 +15,7 @@
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
                 ['label' => __('HR'), 'href' => route('hrms.home')],
-                ['label' => __('Attendance'), 'href' => route('hrms.attendance.index')],
+                ['label' => __('attendance.label'), 'href' => route('hrms.attendance.index')],
                 ['label' => $record->attendance_date?->format('M j, Y') ?? __('Record'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>

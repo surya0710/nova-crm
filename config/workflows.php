@@ -9,10 +9,13 @@ use App\Workflow\Actions\NotifyUserAction;
 use App\Workflow\Actions\ReassignOwnerAction;
 use App\Workflow\Actions\UpdateMetadataAction;
 
+$hrmsTriggers = require __DIR__.'/hrms_workflow_triggers.php';
+$hrmsEntities = array_values(array_unique(array_column($hrmsTriggers, 'entity')));
+
 return [
     'max_depth' => 10,
 
-    'triggers' => [
+    'triggers' => array_merge([
         'lead.created' => ['entity' => 'lead', 'label' => 'Lead created', 'description' => 'Runs when a lead is created.'],
         'lead.updated' => ['entity' => 'lead', 'label' => 'Lead updated', 'description' => 'Runs after lead details change.'],
         'lead.assigned' => ['entity' => 'lead', 'label' => 'Lead assigned', 'description' => 'Runs when a lead owner changes.'],
@@ -101,7 +104,7 @@ return [
         'resource.released' => ['entity' => 'resource_allocation', 'label' => 'Resource released', 'description' => 'Runs when a resource allocation is deleted/released.'],
         'resource.capacity_exceeded' => ['entity' => 'resource_allocation', 'label' => 'Capacity exceeded', 'description' => 'Runs when an allocation pushes an employee over capacity.'],
         'resource.overallocation_detected' => ['entity' => 'resource_allocation', 'label' => 'Overallocation detected', 'description' => 'Runs when overallocation is detected for an employee.'],
-    ],
+    ], $hrmsTriggers),
 
     'operators' => [
         'equals', 'not_equals', 'contains', 'does_not_contain', 'starts_with',
@@ -176,7 +179,13 @@ return [
         ],
         'notify_user' => [
             'label' => 'Notify user', 'description' => 'Sends an in-app notification to an organization member.',
-            'handler' => NotifyUserAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'invoice', 'payment'], 'fields' => ['user_id', 'title', 'message'],
+            'handler' => NotifyUserAction::class,
+            // Entity-agnostic notification action — CRM + HRMS subject entities.
+            'entities' => array_values(array_unique(array_merge(
+                ['lead', 'customer', 'opportunity', 'invoice', 'payment'],
+                $hrmsEntities,
+            ))),
+            'fields' => ['user_id', 'title', 'message'],
             'form_fields' => [
                 'user_id' => ['label' => 'Recipient', 'type' => 'user', 'required' => true],
                 'title' => ['label' => 'Title', 'type' => 'text', 'required' => true],

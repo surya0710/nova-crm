@@ -2,13 +2,13 @@
     <x-flash-messages />
 
     <x-layouts.entity-listing
-        :title="__('Attendance')"
+        :title="__('attendance.label')"
         :subtitle="null"
     >
         <x-slot:breadcrumbs>
             <x-nav.breadcrumbs :items="[
                 ['label' => __('HR'), 'href' => route('hrms.home')],
-                ['label' => __('Attendance'), 'current' => true],
+                ['label' => __('attendance.label'), 'current' => true],
             ]" />
         </x-slot:breadcrumbs>
 

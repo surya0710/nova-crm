@@ -157,7 +157,7 @@ class AttendanceReportTest extends TestCase
     /** @return array{0: Organization, 1: User} */
     protected function organizationWithHrUser(): array
     {
-        $organization = Organization::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
         $user = User::factory()->create();
         $organization->addMember($user, 'hr');
 

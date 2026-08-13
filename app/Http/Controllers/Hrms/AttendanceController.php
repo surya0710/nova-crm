@@ -65,7 +65,13 @@ class AttendanceController extends Controller
     {
         $clockInAt = $request->filled('clock_in_at') ? Carbon::parse($request->validated('clock_in_at')) : null;
 
-        $this->service->clockIn($request->employee(), $clockInAt, $request->user());
+        $this->service->clockIn(
+            $request->employee(),
+            $clockInAt,
+            $request->user(),
+            'manual',
+            $request->verificationContext(),
+        );
 
         return redirect()->route('hrms.attendance.index')->with('status', 'hrms-attendance-clocked-in');
     }
@@ -74,7 +80,12 @@ class AttendanceController extends Controller
     {
         $clockOutAt = $request->filled('clock_out_at') ? Carbon::parse($request->validated('clock_out_at')) : null;
 
-        $this->service->clockOut($request->employee(), $clockOutAt, $request->user());
+        $this->service->clockOut(
+            $request->employee(),
+            $clockOutAt,
+            $request->user(),
+            $request->verificationContext(),
+        );
 
         return redirect()->route('hrms.attendance.index')->with('status', 'hrms-attendance-clocked-out');
     }

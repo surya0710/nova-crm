@@ -124,6 +124,13 @@ return [
             'fallback_permission' => 'attendance.manage',
             'group' => 'hr_config',
         ],
+        'wfh_policies' => [
+            'label' => 'WFH Policies',
+            'route' => 'organization.settings.wfh-policies.edit',
+            'permission' => 'organization.hr_config.manage',
+            'fallback_permission' => 'wfh.manage',
+            'group' => 'hr_config',
+        ],
         'crm_defaults' => [
             'label' => 'CRM Defaults',
             'route' => 'products.index',

@@ -76,6 +76,14 @@ class AttendanceSnapshotService
                     'overtime_minutes' => (int) ($record->overtime_minutes ?? 0),
                     'attendance_record_version' => (int) ($record->version ?? 1),
                     'leave_context' => $leave,
+                    'verification' => [
+                        'clock_in_status' => $record->clock_in_verification_status,
+                        'clock_out_status' => $record->clock_out_verification_status,
+                        'clock_in_geofence_id' => $record->clock_in_geofence_id,
+                        'clock_out_geofence_id' => $record->clock_out_geofence_id,
+                        'clock_in_device_id' => $record->clock_in_device_id,
+                        'clock_out_device_id' => $record->clock_out_device_id,
+                    ],
                 ];
 
                 $rowPayloads[] = [

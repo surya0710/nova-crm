@@ -137,7 +137,10 @@ class WorkflowFoundationTest extends TestCase
                 'event' => $event,
             ]);
         }
-        $this->assertSame(5, AuditLog::query()->where('auditable_id', $workflow->id)->count());
+        $this->assertSame(5, AuditLog::query()
+            ->where('auditable_type', $workflow->getMorphClass())
+            ->where('auditable_id', $workflow->id)
+            ->count());
     }
 
     public function test_tenant_scope_is_applied_to_all_workflow_models(): void

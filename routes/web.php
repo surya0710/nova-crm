@@ -34,6 +34,7 @@ use App\Http\Controllers\Ess\EssAttendanceController;
 use App\Http\Controllers\Ess\EssDashboardController;
 use App\Http\Controllers\Ess\EssDocumentController;
 use App\Http\Controllers\Ess\EssLeaveController;
+use App\Http\Controllers\Ess\EssWfhController;
 use App\Http\Controllers\Ess\EssPayrollController;
 use App\Http\Controllers\Ess\EssProfileController;
 use App\Http\Controllers\Hrms\AnnouncementController as HrmsAnnouncementController;
@@ -44,6 +45,9 @@ use App\Http\Controllers\Hrms\AppraisalSessionController as HrmsAppraisalSession
 use App\Http\Controllers\Hrms\AssetController as HrmsAssetController;
 use App\Http\Controllers\Hrms\AttendanceCalendarController as HrmsAttendanceCalendarController;
 use App\Http\Controllers\Hrms\AttendanceController as HrmsAttendanceController;
+use App\Http\Controllers\Hrms\AttendanceGeofenceController as HrmsAttendanceGeofenceController;
+use App\Http\Controllers\Hrms\EmployeeWfhAssignmentController as HrmsEmployeeWfhAssignmentController;
+use App\Http\Controllers\Hrms\WfhRequestController as HrmsWfhRequestController;
 use App\Http\Controllers\Hrms\AttendanceOvertimeController as HrmsAttendanceOvertimeController;
 use App\Http\Controllers\Hrms\AttendancePeriodController as HrmsAttendancePeriodController;
 use App\Http\Controllers\Hrms\AttendanceReportController as HrmsAttendanceReportController;
@@ -585,6 +589,20 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::post('/corrections/{correction}/reject', [HrmsAttendanceController::class, 'rejectCorrection'])
                 ->middleware('permission:attendance.correct')
                 ->name('hrms.attendance.corrections.reject');
+
+            Route::get('/geofences', [HrmsAttendanceGeofenceController::class, 'index'])
+                ->middleware('permission:attendance.view')
+                ->name('hrms.attendance.geofences.index');
+            Route::post('/geofences', [HrmsAttendanceGeofenceController::class, 'store'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.geofences.store');
+            Route::put('/geofences/{geofence}', [HrmsAttendanceGeofenceController::class, 'update'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.geofences.update');
+            Route::delete('/geofences/{geofence}', [HrmsAttendanceGeofenceController::class, 'destroy'])
+                ->middleware('permission:attendance.manage')
+                ->name('hrms.attendance.geofences.destroy');
+
             Route::get('/{attendance}', [HrmsAttendanceController::class, 'show'])
                 ->middleware('permission:attendance.view')
                 ->name('hrms.attendance.show');
@@ -628,6 +646,44 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('hrms/leave-applications/{leave_application}/cancel', [HrmsLeaveApplicationController::class, 'cancel'])
             ->middleware('permission:leave.manage')
             ->name('hrms.leave-applications.cancel');
+
+        Route::get('hrms/wfh/assignments', [HrmsEmployeeWfhAssignmentController::class, 'index'])
+            ->middleware('permission:wfh.view')
+            ->name('hrms.wfh.assignments.index');
+        Route::post('hrms/wfh/assignments', [HrmsEmployeeWfhAssignmentController::class, 'store'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.assignments.store');
+        Route::put('hrms/wfh/assignments/{assignment}', [HrmsEmployeeWfhAssignmentController::class, 'update'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.assignments.update');
+        Route::delete('hrms/wfh/assignments/{assignment}', [HrmsEmployeeWfhAssignmentController::class, 'destroy'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.assignments.destroy');
+
+        Route::get('hrms/wfh/requests/approval-queue', [HrmsWfhRequestController::class, 'approvalQueue'])
+            ->middleware('permission:wfh.approve')
+            ->name('hrms.wfh.requests.approval-queue');
+        Route::get('hrms/wfh/requests', [HrmsWfhRequestController::class, 'index'])
+            ->middleware('permission:wfh.view')
+            ->name('hrms.wfh.requests.index');
+        Route::post('hrms/wfh/requests', [HrmsWfhRequestController::class, 'store'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.requests.store');
+        Route::get('hrms/wfh/requests/{wfh_request}', [HrmsWfhRequestController::class, 'show'])
+            ->middleware('permission:wfh.view')
+            ->name('hrms.wfh.requests.show');
+        Route::delete('hrms/wfh/requests/{wfh_request}', [HrmsWfhRequestController::class, 'destroy'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.requests.destroy');
+        Route::post('hrms/wfh/requests/{wfh_request}/approve', [HrmsWfhRequestController::class, 'approve'])
+            ->middleware('permission:wfh.approve')
+            ->name('hrms.wfh.requests.approve');
+        Route::post('hrms/wfh/requests/{wfh_request}/reject', [HrmsWfhRequestController::class, 'reject'])
+            ->middleware('permission:wfh.approve')
+            ->name('hrms.wfh.requests.reject');
+        Route::post('hrms/wfh/requests/{wfh_request}/cancel', [HrmsWfhRequestController::class, 'cancel'])
+            ->middleware('permission:wfh.manage')
+            ->name('hrms.wfh.requests.cancel');
 
         Route::get('hrms/recruitment', HrmsRecruitmentDashboardController::class)
             ->middleware('permission:recruitment.view')
@@ -1393,6 +1449,10 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::get('/leave', [EssLeaveController::class, 'index'])->name('leave.index');
             Route::post('/leave', [EssLeaveController::class, 'store'])->name('leave.store');
             Route::delete('/leave/{application}', [EssLeaveController::class, 'destroy'])->name('leave.destroy');
+            Route::get('/wfh', [EssWfhController::class, 'index'])->name('wfh.index');
+            Route::post('/wfh', [EssWfhController::class, 'store'])->name('wfh.store');
+            Route::delete('/wfh/{wfhRequest}', [EssWfhController::class, 'destroy'])->name('wfh.destroy');
+            Route::post('/wfh/{wfhRequest}/cancel', [EssWfhController::class, 'cancel'])->name('wfh.cancel');
             Route::get('/payroll', [EssPayrollController::class, 'index'])->name('payroll.index');
             Route::get('/payroll/payslips', [EssPayrollController::class, 'payslips'])->name('payroll.payslips');
             Route::get('/payroll/payslips/{payslip}', [EssPayrollController::class, 'show'])->name('payroll.show');
@@ -1895,6 +1955,8 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::put('attendance-rules', [HrConfigurationController::class, 'updateAttendanceRules'])->name('attendance-rules.update');
             Route::get('leave-policies', [HrConfigurationController::class, 'editLeavePolicies'])->name('leave-policies.edit');
             Route::put('leave-policies', [HrConfigurationController::class, 'updateLeavePolicies'])->name('leave-policies.update');
+            Route::get('wfh-policies', [HrConfigurationController::class, 'editWfhPolicies'])->name('wfh-policies.edit');
+            Route::put('wfh-policies', [HrConfigurationController::class, 'updateWfhPolicies'])->name('wfh-policies.update');
             Route::get('leave-approvers', [HrConfigurationController::class, 'editLeaveApprovers'])->name('leave-approvers.edit');
             Route::put('leave-approvers', [HrConfigurationController::class, 'updateLeaveApprovers'])->name('leave-approvers.update');
             Route::get('notifications', [HrConfigurationController::class, 'editNotifications'])->name('notifications.edit');
