@@ -5,16 +5,59 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# --- Ensure MySQL is running (needed for migrations during install) ---
-sudo service mysql start >/dev/null 2>&1 || true
-for i in $(seq 1 30); do
-  if sudo mysqladmin ping >/dev/null 2>&1; then break; fi
+# --- Ensure MySQL server is installed, running, and reachable over TCP ---
+# The migrations require MySQL (they query information_schema, so SQLite is not
+# supported). This must bring MySQL up reliably on a fresh pod/build.
+echo "==> Ensuring MySQL is available"
+
+# Install the server if the base image/snapshot does not already provide it.
+if ! command -v mysqld >/dev/null 2>&1 && [ ! -x /usr/sbin/mysqld ]; then
+  echo "==> mysqld not found; installing mysql-server"
+  sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mysql-server
+fi
+
+# The runtime socket directory lives on a tmpfs that is empty on a fresh boot.
+sudo mkdir -p /var/run/mysqld
+sudo chown -R mysql:mysql /var/run/mysqld
+
+start_mysql() {
+  sudo service mysql start 2>&1 || true
+  # Fallback if the init script reported success but nothing is listening.
+  if ! pgrep -x mysqld >/dev/null 2>&1; then
+    echo "==> service start did not yield a running mysqld; trying mysqld_safe"
+    sudo bash -c 'nohup mysqld_safe --skip-syslog >/var/log/mysql/mysqld_safe.out 2>&1 &' || true
+  fi
+}
+
+mysql_ready() {
+  # App connects over TCP as root@127.0.0.1, so verify TCP specifically.
+  mysqladmin --protocol=tcp -h 127.0.0.1 -P 3306 -u root ping >/dev/null 2>&1 \
+    || mysql --protocol=tcp -h 127.0.0.1 -P 3306 -u root -e 'SELECT 1' >/dev/null 2>&1 \
+    || sudo mysqladmin ping >/dev/null 2>&1
+}
+
+start_mysql
+for i in $(seq 1 60); do
+  if mysql_ready; then break; fi
   sleep 1
+  if [ "$i" = "20" ]; then echo "==> MySQL still not ready after 20s; retrying start"; start_mysql; fi
 done
+
+if ! mysql_ready; then
+  echo "==> ERROR: MySQL failed to become ready. Diagnostics follow:"
+  echo "--- sudo -n check ---"; sudo -n true 2>&1 && echo "sudo OK" || echo "sudo FAILED"
+  echo "--- mysqld processes ---"; pgrep -a mysqld || echo "(none)"
+  echo "--- /var/run/mysqld ---"; ls -la /var/run/mysqld 2>&1 || true
+  echo "--- error log tail ---"; sudo tail -n 40 /var/log/mysql/error.log 2>&1 || true
+  exit 1
+fi
+echo "==> MySQL is ready"
 
 # --- Ensure root TCP access (empty password) + application databases ---
 # App/tests connect as root@127.0.0.1 with an empty password (see .env.testing).
-sudo mysql <<'SQL' >/dev/null 2>&1 || true
+# Run via the local socket (root uses auth_socket by default on a fresh install).
+sudo mysql <<'SQL'
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
 CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;

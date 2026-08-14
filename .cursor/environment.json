@@ -1,7 +1,7 @@
 {
   "name": "Nova CRM (Konnect Nex)",
   "install": "bash .cursor/install.sh",
-  "start": "sudo service mysql start",
+  "start": "sudo mkdir -p /var/run/mysqld && sudo chown mysql:mysql /var/run/mysqld && sudo service mysql start",
   "terminals": [
     {
       "name": "app",
