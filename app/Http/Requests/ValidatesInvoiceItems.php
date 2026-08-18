@@ -49,6 +49,16 @@ trait ValidatesInvoiceItems
             'items.*.unit_price' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.cess_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.tax_inclusive' => ['nullable', 'boolean'],
+            'items.*.sku' => ['nullable', 'string', 'max:50'],
+            'items.*.unit' => ['nullable', 'string', 'max:30'],
+            'items.*.hsn_sac' => ['nullable', 'string', 'max:20'],
+            'pricing_mode' => ['nullable', 'string', Rule::in(array_keys(config('tax.pricing_modes')))],
+            'tax_treatment' => ['nullable', 'string', Rule::in(array_keys(config('tax.treatments')))],
+            'place_of_supply' => ['nullable', 'string', Rule::in(array_keys(config('tax.states')))],
+            'shipping_amount' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'terms' => ['nullable', 'string', 'max:10000'],
         ];
 
         if ($isUpdate) {

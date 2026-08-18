@@ -364,6 +364,7 @@ return [
         'pipeline.index' => ['slug' => 'crm/user-guide/opportunities'],
         'quotations.index' => ['slug' => 'crm/user-guide/quotations'],
         'invoices.index' => ['slug' => 'crm/user-guide/invoices'],
+        'products.index' => ['slug' => 'crm/user-guide/products'],
         'hrms.employees.index' => ['slug' => 'hrms/user-guide/employees'],
         'hrms.attendance.index' => ['slug' => 'hrms/user-guide/attendance'],
         'hrms.leave-applications.index' => ['slug' => 'hrms/user-guide/leave'],
@@ -407,6 +408,12 @@ return [
         ],
         'quotations.index' => [
             'user-guide' => 'crm/user-guide/quotations',
+            'admin-guide' => 'crm/admin-guide/overview',
+            'api' => 'crm/api/overview',
+            'troubleshooting' => 'crm/troubleshooting/overview',
+        ],
+        'products.index' => [
+            'user-guide' => 'crm/user-guide/products',
             'admin-guide' => 'crm/admin-guide/overview',
             'api' => 'crm/api/overview',
             'troubleshooting' => 'crm/troubleshooting/overview',
@@ -496,10 +503,19 @@ return [
             ],
         ],
         'crm/user-guide/quotations' => [
-            'keywords' => ['quotations', 'quotes', 'proposals'],
+            'keywords' => ['quotations', 'quotes', 'proposals', 'gst', 'email cc'],
             'icon' => 'file-text',
             'related' => [
                 'crm/user-guide/opportunities',
+                'crm/user-guide/invoices',
+                'crm/user-guide/products',
+            ],
+        ],
+        'crm/user-guide/products' => [
+            'keywords' => ['products', 'catalog', 'sku', 'hsn', 'categories'],
+            'icon' => 'box',
+            'related' => [
+                'crm/user-guide/quotations',
                 'crm/user-guide/invoices',
             ],
         ],

@@ -57,6 +57,12 @@
                 @if ($customer->tax_number)
                     <x-entity.definition-item :label="__('Tax Number')">{{ $customer->tax_number }}</x-entity.definition-item>
                 @endif
+                @if ($customer->gstin)
+                    <x-entity.definition-item :label="__('GSTIN')">{{ $customer->gstin }}</x-entity.definition-item>
+                @endif
+                @if ($customer->pan)
+                    <x-entity.definition-item :label="__('PAN')">{{ $customer->pan }}</x-entity.definition-item>
+                @endif
                 @if ($customer->lead)
                     <x-entity.definition-item :label="__('Converted From Lead')">
                         <a href="{{ route('leads.show', $customer->lead) }}" class="text-primary-600 hover:text-primary-700">{{ $customer->lead->name }}</a>
@@ -127,8 +133,22 @@
             </x-entity.section>
         @endif
 
+        @if ($customer->gstin || $customer->gst_registration_type || $customer->place_of_supply || $customer->isTaxExempt())
+            <x-entity.section :title="__('GST / Tax Profile')">
+                <x-entity.definition-list>
+                    <x-entity.definition-item :label="__('GST registration')">{{ $customer->gst_registration_type_label ?? '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Registration status')">{{ $customer->tax_registration_status ? config('tax.tax_registration_statuses.'.$customer->tax_registration_status) : '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Place of supply')">{{ $customer->place_of_supply_label ?? '—' }}</x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Tax preference')">{{ $customer->default_tax_preference ? config('tax.tax_preferences.'.$customer->default_tax_preference) : __('Tax exclusive') }}</x-entity.definition-item>
+                    @if ($customer->isTaxExempt())
+                        <x-entity.definition-item :label="__('Exemption')" :span="2">{{ $customer->tax_exemption_reason ?: __('Exempt') }}</x-entity.definition-item>
+                    @endif
+                </x-entity.definition-list>
+            </x-entity.section>
+        @endif
+
         @if ($customer->address_line_1 || $customer->address_line_2 || $customer->city || $customer->state || $customer->country || $customer->postal_code)
-            <x-entity.section :title="__('Address')">
+            <x-entity.section :title="__('Billing Address')">
                 <div class="text-sm leading-relaxed text-ink">
                     @if ($customer->address_line_1){{ $customer->address_line_1 }}<br>@endif
                     @if ($customer->address_line_2){{ $customer->address_line_2 }}<br>@endif
@@ -140,11 +160,21 @@
             </x-entity.section>
         @endif
 
+        @if (! $customer->shipping_same_as_billing && ($customer->shipping_address_line_1 || $customer->shipping_city || $customer->shipping_state))
+            <x-entity.section :title="__('Shipping Address')">
+                <div class="text-sm leading-relaxed text-ink">
+                    @foreach ($customer->shipping_address_lines as $line)
+                        {{ $line }}<br>
+                    @endforeach
+                </div>
+            </x-entity.section>
+        @endif
+
         <x-entity.section :title="__('Activity')">
             <x-activity.timeline
-                :empty="$customer->notes->isEmpty()"
+                :empty="($timelineItems ?? collect())->isEmpty()"
                 :empty-title="__('No activity yet')"
-                :empty-description="__('Add a note to start the timeline.')"
+                :empty-description="__('Add a note or send a quotation to start the timeline.')"
             >
                 @can('update', $customer)
                     <x-slot:composer>
@@ -159,8 +189,15 @@
                         </form>
                     </x-slot:composer>
                 @endcan
-                @foreach ($customer->notes as $note)
-                    <x-activity.timeline-item :actor="$note->user->name" :timestamp="$note->created_at">{{ $note->body }}</x-activity.timeline-item>
+                @foreach ($timelineItems ?? [] as $item)
+                    <x-activity.timeline-item :actor="$item['actor']" :timestamp="$item['timestamp']">
+                        <x-slot:label>{{ $item['label'] }}</x-slot:label>
+                        @if (! empty($item['href']))
+                            <a href="{{ $item['href'] }}" class="text-primary-600 hover:text-primary-700">{{ $item['body'] }}</a>
+                        @else
+                            {{ $item['body'] }}
+                        @endif
+                    </x-activity.timeline-item>
                 @endforeach
             </x-activity.timeline>
         </x-entity.section>

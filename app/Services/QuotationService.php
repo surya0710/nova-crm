@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\Quotation;
 use App\Models\User;
+use App\Services\Tax\CommercialDocumentFields;
+use App\Services\Tax\TaxDeterminationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -12,7 +15,9 @@ class QuotationService
 {
     public function __construct(
         protected QuotationCalculationService $calculator,
+        protected TaxDeterminationService $taxDetermination,
         protected AuditLogger $auditLogger,
+        protected CommercialPartySnapshot $partySnapshot,
     ) {}
 
     /**
@@ -26,7 +31,8 @@ class QuotationService
             ]);
         }
 
-        $totals = $this->calculator->calculateTotals($data['items']);
+        $context = $this->taxContext($organization, $data);
+        $totals = $this->calculator->calculateTotals($data['items'], $context);
 
         return DB::transaction(function () use ($organization, $data, $totals, $user) {
             $quotation = Quotation::query()->create([
@@ -38,11 +44,10 @@ class QuotationService
                 'issue_date' => $data['issue_date'],
                 'valid_until' => $data['valid_until'] ?? null,
                 'currency' => $data['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
+                ...CommercialDocumentFields::documentFromTotals($totals),
                 'notes' => $data['notes'] ?? null,
+                'terms' => $data['terms'] ?? null,
+                ...$this->snapshotsFor($data),
                 'created_by' => $user->id,
             ]);
 
@@ -59,7 +64,8 @@ class QuotationService
     {
         $this->assertEditable($quotation);
 
-        $totals = $this->calculator->calculateTotals($data['items']);
+        $context = $this->taxContext($quotation->organization, $data);
+        $totals = $this->calculator->calculateTotals($data['items'], $context);
         $previousTotal = (float) $quotation->total;
         $previousSubtotal = (float) $quotation->subtotal;
 
@@ -71,11 +77,10 @@ class QuotationService
                 'issue_date' => $data['issue_date'],
                 'valid_until' => $data['valid_until'] ?? null,
                 'currency' => $data['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
+                ...CommercialDocumentFields::documentFromTotals($totals),
                 'notes' => $data['notes'] ?? null,
+                'terms' => $data['terms'] ?? null,
+                ...$this->snapshotsFor($data),
             ]);
 
             $quotation->items()->delete();
@@ -122,6 +127,7 @@ class QuotationService
         $previousStatus = $currentStatus;
 
         $event = match ($newStatus) {
+            'sent' => 'sent',
             'accepted' => 'accepted',
             'rejected' => 'rejected',
             'expired' => 'expired',
@@ -148,6 +154,24 @@ class QuotationService
         }
 
         return $this->updateStatus($quotation, 'sent', $user);
+    }
+
+    public function recordEmailSent(Quotation $quotation, User $user, string $to): void
+    {
+        $this->auditLogger->log($quotation, 'sent', ['to' => $to], $user);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{billing_snapshot: array<string, mixed>, shipping_snapshot: array<string, mixed>}
+     */
+    protected function snapshotsFor(array $data): array
+    {
+        $customer = isset($data['customer_id'])
+            ? Customer::query()->find($data['customer_id'])
+            : null;
+
+        return $this->partySnapshot->forCustomer($customer);
     }
 
     public function assertEditable(Quotation $quotation): void
@@ -214,21 +238,30 @@ class QuotationService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function taxContext(Organization $organization, array $data): array
+    {
+        $customer = isset($data['customer_id'])
+            ? Customer::query()->find($data['customer_id'])
+            : null;
+
+        return array_merge(
+            $this->taxDetermination->contextFor($organization, $customer, $data),
+            [
+                'shipping_amount' => (float) ($data['shipping_amount'] ?? 0),
+            ],
+        );
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $items
      */
     protected function syncItems(Quotation $quotation, array $items): void
     {
         foreach ($items as $item) {
-            $quotation->items()->create([
-                'product_id' => $item['product_id'],
-                'description' => $item['description'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'tax_rate' => $item['tax_rate'],
-                'discount_percent' => $item['discount_percent'],
-                'line_total' => $item['line_total'],
-                'sort_order' => $item['sort_order'],
-            ]);
+            $quotation->items()->create(CommercialDocumentFields::itemFromCalculated($item));
         }
     }
 }

@@ -2,13 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesCustomerTaxProfile;
 use App\Models\Customer;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreCustomerRequest extends FormRequest
 {
+    use ValidatesCustomerTaxProfile;
+
     public function authorize(): bool
     {
         return $this->user()?->can('create', Customer::class) ?? false;
@@ -40,7 +44,13 @@ class StoreCustomerRequest extends FormRequest
             ],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:50'],
+            ...$this->customerTaxProfileRules(),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $validator) => $this->validateGstinPanConsistency($validator));
     }
 
     protected function prepareForValidation(): void
@@ -59,5 +69,7 @@ class StoreCustomerRequest extends FormRequest
                 'tags' => $tags === '' ? null : array_values(array_filter(array_map('trim', explode(',', $tags)))),
             ]);
         }
+
+        $this->prepareCustomerTaxProfile();
     }
 }

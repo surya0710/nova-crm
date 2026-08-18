@@ -8,6 +8,7 @@
     'subject' => '',
     'organization' => null,
     'missingEmailHint' => false,
+    'showCc' => false,
 ])
 
 @php
@@ -67,6 +68,22 @@
                 <p class="mt-1 text-xs text-amber-600">{{ __('This customer has no email on file — enter one above.') }}</p>
             @endif
         </div>
+
+        @if ($showCc)
+        <div>
+            <x-input-label for="client-cc" :value="__('CC (optional)')" />
+            <x-text-input
+                id="client-cc"
+                class="block mt-1 w-full"
+                type="text"
+                name="cc"
+                :value="old('cc')"
+                placeholder="accounts@example.com, finance@example.com"
+            />
+            <p class="mt-1 text-xs text-slate-500">{{ __('Your address is added automatically. Separate additional recipients with commas.') }}</p>
+            <x-input-error :messages="$errors->get('cc')" class="mt-2" />
+        </div>
+        @endif
 
         <div>
             <x-input-label for="client-message" :value="__('Message')" />

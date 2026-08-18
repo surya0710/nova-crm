@@ -5,15 +5,21 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Services\MetadataEntityFormService;
+use App\Services\ProductService;
 use App\Services\TenantContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        protected ProductService $products,
+        protected MetadataEntityFormService $metadataForms,
+    ) {
         $this->authorizeResource(Product::class, 'product');
     }
 
@@ -21,17 +27,9 @@ class ProductController extends Controller
     {
         $organization = $tenant->get();
 
-        $query = Product::query()
-            ->with('creator')
-            ->latest();
+        $query = Product::query()->with(['creator', 'productCategory']);
 
-        if ($search = $request->string('search')->trim()->toString()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%");
-            });
-        }
+        $this->products->searchQuery($query, $request->string('search')->trim()->toString());
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -41,15 +39,36 @@ class ProductController extends Controller
             $query->where('type', $type);
         }
 
-        if ($category = $request->string('category')->trim()->toString()) {
+        if ($categoryId = $request->integer('product_category_id')) {
+            $query->where('product_category_id', $categoryId);
+        } elseif ($category = $request->string('category')->trim()->toString()) {
             $query->where('category', 'like', "%{$category}%");
         }
+
+        $this->products->applySort(
+            $query,
+            $request->string('sort')->toString() ?: null,
+            $request->string('direction')->toString() ?: 'asc',
+        );
 
         return view('products.index', [
             'products' => $query->paginate(15)->withQueryString(),
             'organization' => $organization,
-            'filters' => $request->only(['search', 'status', 'type', 'category']),
+            'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(),
+            'filters' => $request->only(['search', 'status', 'type', 'category', 'product_category_id', 'sort', 'direction']),
         ]);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Product::class);
+
+        $query = Product::query()->where('status', 'active');
+        $this->products->searchQuery($query, $request->string('q')->trim()->toString());
+
+        return response()->json(
+            $query->orderBy('name')->limit(25)->get()->map->catalogPayload()->values()
+        );
     }
 
     public function create(TenantContext $tenant): View
@@ -63,41 +82,58 @@ class ProductController extends Controller
                 'currency' => $organization?->currency ?? 'USD',
                 'unit' => 'each',
                 'tax_rate' => 0,
+                'default_discount_percent' => 0,
+                'cess_rate' => 0,
+                'tax_inclusive' => false,
             ]),
+            'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(),
+            'metadataFields' => $this->metadataForms->fieldsFor($organization, 'product', 'create'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
-    public function store(StoreProductRequest $request): RedirectResponse
+    public function store(StoreProductRequest $request, TenantContext $tenant): RedirectResponse
     {
-        $product = Product::query()->create([
-            ...$request->validated(),
-            'created_by' => $request->user()->id,
-        ]);
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest(null, $tenant->get(), 'product', 'create', $request);
+
+        $product = $this->products->create(
+            $tenant->get(),
+            $request->validated(),
+            $request->user(),
+            $metadataValues,
+        );
 
         return redirect()
             ->route('products.show', $product)
             ->with('status', 'product-created');
     }
 
-    public function show(Product $product): View
+    public function show(Product $product, TenantContext $tenant): View
     {
-        $product->load('creator');
+        $product->load(['creator', 'productCategory']);
 
         return view('products.show', [
             'product' => $product,
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'product', 'detail'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
-    public function edit(Product $product): View
+    public function edit(Product $product, TenantContext $tenant): View
     {
         return view('products.edit', [
             'product' => $product,
+            'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(),
+            'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'product', 'edit'),
+            'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
     }
 
-    public function update(UpdateProductRequest $request, Product $product): RedirectResponse
+    public function update(UpdateProductRequest $request, Product $product, TenantContext $tenant): RedirectResponse
     {
-        $product->update($request->validated());
+        $metadataValues = $this->metadataForms->validatedValuesFromRequest($product, $tenant->get(), 'product', 'edit', $request);
+
+        $this->products->update($product, $request->validated(), $metadataValues);
 
         return redirect()
             ->route('products.show', $product)
@@ -106,7 +142,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
-        $product->delete();
+        $this->products->delete($product);
 
         return redirect()
             ->route('products.index')

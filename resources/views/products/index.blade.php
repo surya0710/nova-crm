@@ -28,16 +28,19 @@
         </x-slot:breadcrumbs>
 
         <x-slot:actions>
+            @can('viewAny', App\Models\ProductCategory::class)
+                <x-ui.button :href="route('product-categories.index')" variant="secondary" size="sm">{{ __('Categories') }}</x-ui.button>
+            @endcan
             @can('create', App\Models\Product::class)
                 <x-ui.button :href="route('products.create')" variant="primary" size="sm">{{ __('Add Product') }}</x-ui.button>
             @endcan
         </x-slot:actions>
 
         <x-slot:filters>
-            <form method="GET" action="{{ route('products.index') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <form method="GET" action="{{ route('products.index') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 <div class="lg:col-span-2">
                     <label for="products-search" class="sr-only">{{ __('Search products') }}</label>
-                    <x-forms.input id="products-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, SKU, category…') }}" />
+                    <x-forms.input id="products-search" name="search" :value="$filters['search'] ?? ''" placeholder="{{ __('Search name, SKU, HSN…') }}" />
                 </div>
                 <x-forms.select name="status" aria-label="{{ __('Status') }}">
                     <option value="">{{ __('All statuses') }}</option>
@@ -51,8 +54,20 @@
                         <option value="{{ $value }}" @selected(($filters['type'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </x-forms.select>
+                <x-forms.select name="product_category_id" aria-label="{{ __('Category') }}">
+                    <option value="">{{ __('All categories') }}</option>
+                    @foreach ($categories ?? [] as $category)
+                        <option value="{{ $category->id }}" @selected((string) ($filters['product_category_id'] ?? '') === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </x-forms.select>
                 <div class="flex gap-2">
-                    <x-forms.input name="category" class="flex-1" :value="$filters['category'] ?? ''" placeholder="{{ __('Category') }}" />
+                    <x-forms.select name="sort" class="flex-1" aria-label="{{ __('Sort') }}">
+                        <option value="">{{ __('Newest') }}</option>
+                        <option value="name" @selected(($filters['sort'] ?? '') === 'name')>{{ __('Name') }}</option>
+                        <option value="sku" @selected(($filters['sort'] ?? '') === 'sku')>{{ __('SKU') }}</option>
+                        <option value="unit_price" @selected(($filters['sort'] ?? '') === 'unit_price')>{{ __('Price') }}</option>
+                        <option value="category" @selected(($filters['sort'] ?? '') === 'category')>{{ __('Category') }}</option>
+                    </x-forms.select>
                     <x-ui.button type="submit" variant="primary" size="sm">{{ __('Filter') }}</x-ui.button>
                 </div>
             </form>
@@ -89,7 +104,7 @@
                         <td class="px-4 py-3">
                             <x-ui.badge :variant="$statusVariant[$product->status] ?? 'neutral'">{{ $product->status_label }}</x-ui.badge>
                         </td>
-                        <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $product->category ?? '—' }}</td>
+                        <td class="px-4 py-3 hidden md:table-cell text-sm text-ink-muted">{{ $product->productCategory?->name ?? $product->category ?? '—' }}</td>
                     </tr>
                 @endforeach
             </x-tables.table>

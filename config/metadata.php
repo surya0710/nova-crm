@@ -3,7 +3,7 @@
 return [
     'entities' => [
         'lead' => 'Lead',
-        'customer' => 'Customer',
+        'product' => 'Product',
         'opportunity' => 'Opportunity',
         'organization' => 'Organization',
         'project' => 'Project',

@@ -42,6 +42,20 @@ Organization administrators can manage roles, permissions, and user access from 
 - Install templates for Corporate, Startup, Agency, Healthcare, or Education
 - Reset organization roles to the default template
 
+## Commercial CRM permissions
+
+| Action | Permission |
+|--------|------------|
+| View / manage products and categories | `products.view` / `create` / `update` / `delete` / `manage` |
+| View / manage quotations | `quotations.view` / `create` / `update` / `delete` / `manage` |
+| Send quotation email | `quotations.update` (`changeStatus`) |
+| Convert quotation → invoice | `invoices.create` **and** `quotations.view` |
+| View / manage invoices | `invoices.view` / `create` / `update` / `delete` / `manage` |
+| Issue, cancel, or email invoices | `invoices.update` |
+| REST commercial APIs | `api.access` plus the entity permission above |
+
+Product categories reuse the products permission set (no extra slugs). Documents are organization-scoped; other tenants receive 404.
+
 ## Notifications
 
 Users receive in-app notifications when:

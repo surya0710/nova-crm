@@ -162,6 +162,12 @@ class CrmWorkspaceHomeService
             'invoices' => $user->hasPermission('invoices.view') ? Invoice::query()->count() : 0,
             'payments' => $user->hasPermission('payments.view') ? \App\Models\Payment::query()->count() : 0,
             'href' => Route::has('crm.revenue') ? route('crm.revenue') : null,
+            'quotations' => $user->hasPermission('quotations.view')
+                ? app(\App\Services\CommercialMetricsService::class)->quotationMetrics()
+                : null,
+            'invoice_metrics' => $user->hasPermission('invoices.view')
+                ? app(\App\Services\CommercialMetricsService::class)->invoiceMetrics()
+                : null,
         ];
     }
 

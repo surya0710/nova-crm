@@ -4,34 +4,41 @@
 Technical blueprint for CRM module internals.
 
 ## Diagram
-CRM UI -> CRM Controllers -> CRM Services -> CRM Tables
+CRM UI -> CRM Controllers -> Form Requests -> Services -> Models (no repositories)
 
 ## Database Tables
-Leads, customers, contacts, opportunities, quotations, invoices, payments.
+Leads, customers, product_categories, products, opportunities, quotations, quotation_items, invoices, invoice_items, payments.
+
+Commercial documents store GST snapshot columns (CGST/SGST/IGST/UTGST/cess) plus JSON `billing_snapshot` / `shipping_snapshot`. Conversion copies snapshots and does not recalculate tax.
 
 ## Services
-Lead lifecycle, pipeline management, billing integration, reporting.
+- Product / ProductCategory catalog
+- TaxDeterminationService + TaxCalculationService
+- QuotationService, InvoiceService, QuotationConversionService
+- QuotationPdfService, InvoicePdfService
+- ClientEmailCc + OrganizationMailer
+- CommercialTimelineService, CommercialMetricsService
 
 ## Controllers
-Document CRM HTTP controllers and responsibility split.
+HTTP controllers for lead, customer, opportunity, product, quotation, and invoice domains. API counterparts under `App\Http\Controllers\Api`.
 
 ## Policies
-Role-based access for sales, finance, and admin functions.
+Role-based access for sales, finance, and admin functions. Categories use `products.*`. Send uses update. Convert requires `invoices.create` and `quotations.view`.
 
 ## Workflow Events
-Lead created, opportunity updated, invoice issued, payment posted.
+Lead created, opportunity updated, quotation sent/accepted/converted, invoice issued, payment posted.
 
 ## Notifications
-Assignment alerts, follow-up reminders, and status updates.
+Assignment alerts, follow-up reminders, invoice issued/cancelled.
 
 ## Audit
-Track lifecycle edits and financial action history.
+Auditable models log created/status events. Customer timeline merges notes with quotation and invoice audit events.
 
 ## RBAC
-Map permissions for sales rep, manager, and finance roles.
+Map permissions for sales executive, manager, and finance roles. All queries are organization-scoped.
 
 ## Extension Points
-Custom fields, automations, and external connector hooks.
+Custom fields (metadata), automations, and dashboard widgets (`commercial_quotations`, `commercial_invoices`, `commercial_revenue`).
 
 ## Future Improvements
 Pipeline analytics and advanced segmentation support.

@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Events\InvoiceCreated;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Quotation;
 use App\Models\User;
 use App\Notifications\CrmNotification;
+use App\Services\Tax\CommercialDocumentFields;
+use App\Services\Tax\TaxDeterminationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,7 +18,9 @@ class InvoiceService
 {
     public function __construct(
         protected InvoiceCalculationService $calculator,
+        protected TaxDeterminationService $taxDetermination,
         protected AuditLogger $auditLogger,
+        protected CommercialPartySnapshot $partySnapshot,
     ) {}
 
     /**
@@ -29,7 +34,8 @@ class InvoiceService
             ]);
         }
 
-        $totals = $this->calculator->calculateTotals($data['items']);
+        $context = $this->taxContext($organization, $data);
+        $totals = $this->calculator->calculateTotals($data['items'], $context);
 
         return $this->persistNewInvoice($organization, $data, $totals, $user);
     }
@@ -37,6 +43,8 @@ class InvoiceService
     public function createFromQuotation(Quotation $quotation, User $user): Invoice
     {
         $quotation->loadMissing(['organization', 'items']);
+
+        $snapshots = $this->partySnapshot->fromDocument($quotation);
 
         $data = [
             'customer_id' => $quotation->customer_id,
@@ -48,22 +56,14 @@ class InvoiceService
             'due_date' => ($quotation->valid_until ?? now()->addDays(30))->toDateString(),
             'currency' => $quotation->currency,
             'notes' => $this->quotationInvoiceNotes($quotation),
+            'terms' => $quotation->terms,
+            ...$snapshots,
         ];
         $totals = [
-            'subtotal' => $quotation->subtotal,
-            'discount_amount' => $quotation->discount_amount,
-            'tax_total' => $quotation->tax_total,
-            'total' => $quotation->total,
-            'items' => $quotation->items->map(fn ($item): array => [
-                'product_id' => $item->product_id,
-                'description' => $item->description,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'tax_rate' => $item->tax_rate,
-                'discount_percent' => $item->discount_percent,
-                'line_total' => $item->line_total,
-                'sort_order' => $item->sort_order,
-            ])->all(),
+            ...CommercialDocumentFields::documentFromTotals($quotation->only(CommercialDocumentFields::documentKeys())),
+            'items' => $quotation->items->map(fn ($item): array => CommercialDocumentFields::itemFromCalculated(
+                $item->only(CommercialDocumentFields::itemKeys())
+            ))->all(),
         ];
 
         return $this->persistNewInvoice($quotation->organization, $data, $totals, $user);
@@ -72,6 +72,8 @@ class InvoiceService
     protected function persistNewInvoice(Organization $organization, array $data, array $totals, User $user): Invoice
     {
         return DB::transaction(function () use ($organization, $data, $totals, $user) {
+            $snapshots = $this->snapshotsFor($data);
+
             $invoice = Invoice::query()->create([
                 'number' => Invoice::generateNumber($organization),
                 'customer_id' => $data['customer_id'],
@@ -82,12 +84,11 @@ class InvoiceService
                 'issue_date' => $data['issue_date'],
                 'due_date' => $data['due_date'] ?? null,
                 'currency' => $data['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
+                ...CommercialDocumentFields::documentFromTotals($totals),
                 'amount_paid' => 0,
                 'notes' => $data['notes'] ?? null,
+                'terms' => $data['terms'] ?? null,
+                ...$snapshots,
                 'created_by' => $user->id,
             ]);
 
@@ -126,7 +127,8 @@ class InvoiceService
      */
     protected function updateDraft(Invoice $invoice, array $data, User $user): Invoice
     {
-        $totals = $this->calculator->calculateTotals($data['items']);
+        $context = $this->taxContext($invoice->organization, $data);
+        $totals = $this->calculator->calculateTotals($data['items'], $context);
         $previousTotal = (float) $invoice->total;
         $previousSubtotal = (float) $invoice->subtotal;
 
@@ -139,11 +141,10 @@ class InvoiceService
                 'issue_date' => $data['issue_date'],
                 'due_date' => $data['due_date'] ?? null,
                 'currency' => $data['currency'],
-                'subtotal' => $totals['subtotal'],
-                'discount_amount' => $totals['discount_amount'],
-                'tax_total' => $totals['tax_total'],
-                'total' => $totals['total'],
+                ...CommercialDocumentFields::documentFromTotals($totals),
                 'notes' => $data['notes'] ?? null,
+                'terms' => $data['terms'] ?? null,
+                ...$this->snapshotsFor($data),
             ]);
 
             $invoice->items()->delete();
@@ -179,6 +180,7 @@ class InvoiceService
                 'due_date' => $data['due_date'] ?? null,
                 'opportunity_id' => $data['opportunity_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'terms' => $data['terms'] ?? $invoice->terms,
             ]);
 
             $this->auditLogger->log($invoice, 'updated', [
@@ -308,6 +310,31 @@ class InvoiceService
         return $this->issue($invoice, $user);
     }
 
+    public function recordEmailSent(Invoice $invoice, User $user, string $to): void
+    {
+        $this->auditLogger->log($invoice, 'sent', ['to' => $to], $user);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{billing_snapshot: array<string, mixed>, shipping_snapshot: array<string, mixed>}
+     */
+    protected function snapshotsFor(array $data): array
+    {
+        if (! empty($data['billing_snapshot']) || ! empty($data['shipping_snapshot'])) {
+            return [
+                'billing_snapshot' => $data['billing_snapshot'] ?? [],
+                'shipping_snapshot' => $data['shipping_snapshot'] ?? [],
+            ];
+        }
+
+        $customer = isset($data['customer_id'])
+            ? Customer::query()->find($data['customer_id'])
+            : null;
+
+        return $this->partySnapshot->forCustomer($customer);
+    }
+
     public function assertCanIssue(Invoice $invoice): void
     {
         $invoice->loadMissing(['customer', 'items']);
@@ -391,17 +418,26 @@ class InvoiceService
     protected function syncItems(Invoice $invoice, array $items): void
     {
         foreach ($items as $item) {
-            $invoice->items()->create([
-                'product_id' => $item['product_id'],
-                'description' => $item['description'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'tax_rate' => $item['tax_rate'],
-                'discount_percent' => $item['discount_percent'],
-                'line_total' => $item['line_total'],
-                'sort_order' => $item['sort_order'],
-            ]);
+            $invoice->items()->create(CommercialDocumentFields::itemFromCalculated($item));
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function taxContext(Organization $organization, array $data): array
+    {
+        $customer = isset($data['customer_id'])
+            ? Customer::query()->find($data['customer_id'])
+            : null;
+
+        return array_merge(
+            $this->taxDetermination->contextFor($organization, $customer, $data),
+            [
+                'shipping_amount' => (float) ($data['shipping_amount'] ?? 0),
+            ],
+        );
     }
 
     protected function quotationInvoiceNotes(Quotation $quotation): string

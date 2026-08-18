@@ -212,7 +212,8 @@ class SearchService
         return Product::query()
             ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('sku', 'like', "%{$query}%");
+                    ->orWhere('sku', 'like', "%{$query}%")
+                    ->orWhere('hsn_sac', 'like', "%{$query}%");
             })
             ->limit(5)
             ->get()

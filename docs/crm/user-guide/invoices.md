@@ -1,29 +1,31 @@
 # CRM User Guide - Invoices
 
 ## Purpose
-Issue and track invoices linked to customer transactions.
+Issue GST-capable invoices with product lines, payment terms, due dates, and PDF/email delivery.
 
 ## Who should use this feature
-Sales operations and finance users with billing access.
+Sales operations and finance users with `invoices.view` / `invoices.create` / `invoices.update`.
 
 ## Prerequisites
-- Approved quotation/order basis
-- Tax and billing configurations complete
+- Customer billing details
+- Optional accepted quotation for conversion
 
 ## Step-by-step instructions
-1. Create invoice from approved transaction context.
-2. Validate customer billing and tax details.
-3. Publish invoice and share with customer.
-4. Track due dates and payment status.
+1. Create a **draft** invoice (or convert an accepted quotation).
+2. Confirm line items: SKU, HSN/SAC, quantity, UOM, unit price, discount, CGST/SGST/IGST/UTGST/cess.
+3. Set due date, payment terms, shipping/other charges, and place of supply.
+4. Billing and shipping addresses are snapshotted from the customer so later customer edits do not rewrite issued invoices.
+5. Issue the invoice or email it. Emailing a draft also issues it. The authenticated sender is CC’d; extra CC recipients are kept without duplicates.
+6. Download PDF for print or archive. Record payments until the invoice is paid.
 
 ## Expected result
-Invoices are compliant, timely, and reconciled.
+Invoices stay compliant after issue: tax splits and party addresses remain as stored at save/convert time.
 
 ## Best Practices
-Validate amounts before publishing and monitor aging.
+Validate GSTIN/place of supply before issue. Do not change line items after issue.
 
 ## Common Mistakes
-Incorrect tax values and duplicate invoice generation.
+Editing financial lines on an issued invoice, cancelling an invoice that already has payments, or assuming live customer address changes flow into old PDFs.
 
 ## FAQ
-Include correction, cancellation, and credit note guidance.
+Existing invoices without GST columns still display a simple tax total. Conversion copies quotation snapshots rather than recalculating.

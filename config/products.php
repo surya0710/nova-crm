@@ -12,6 +12,10 @@ return [
     ],
 
     'units' => [
+        'nos' => 'Nos',
+        'box' => 'Box',
+        'litre' => 'Litre',
+        'sqft' => 'Square Feet',
         'each' => 'Each',
         'hour' => 'Hour',
         'day' => 'Day',

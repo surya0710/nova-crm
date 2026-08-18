@@ -176,6 +176,7 @@ use App\Http\Controllers\PortfolioExecutiveController;
 use App\Http\Controllers\PortfolioForecastController;
 use App\Http\Controllers\PortfolioReportController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProjectAutomationController;
@@ -1504,17 +1505,23 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::patch('pipeline/{opportunity}/stage', [OpportunityController::class, 'updateStage'])->name('pipeline.stage.update');
         Route::post('pipeline/{opportunity}/notes', [OpportunityController::class, 'storeNote'])->name('pipeline.notes.store');
 
+        Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
         Route::resource('products', ProductController::class);
+        Route::resource('product-categories', ProductCategoryController::class)
+            ->parameters(['product-categories' => 'productCategory'])
+            ->except(['show']);
 
         Route::resource('quotations', QuotationController::class);
         Route::patch('quotations/{quotation}/status', [QuotationController::class, 'updateStatus'])->name('quotations.status.update');
         Route::post('quotations/{quotation}/convert', [QuotationController::class, 'convert'])->name('quotations.convert');
         Route::post('quotations/{quotation}/send', [QuotationController::class, 'sendMail'])->name('quotations.send');
+        Route::get('quotations/{quotation}/pdf', [QuotationController::class, 'pdf'])->name('quotations.pdf');
 
         Route::resource('invoices', InvoiceController::class);
         Route::post('invoices/{invoice}/issue', [InvoiceController::class, 'issue'])->name('invoices.issue');
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::post('invoices/{invoice}/send', [InvoiceController::class, 'sendMail'])->name('invoices.send');
+        Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
 
         Route::resource('payments', PaymentController::class)
             ->only(['index', 'create', 'store', 'show']);

@@ -117,6 +117,22 @@
                             <dt class="text-xs text-ink-muted">{{ __('Payments') }}</dt>
                             <dd class="mt-1 font-semibold text-ink-heading">{{ $revenueSummary['payments'] }}</dd>
                         </div>
+                        @if (! empty($revenueSummary['quotations']))
+                            <div>
+                                <dt class="text-xs text-ink-muted">{{ __('Quotations') }}</dt>
+                                <dd class="mt-1 font-semibold text-ink-heading">{{ $revenueSummary['quotations']['count'] }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs text-ink-muted">{{ __('Conversion rate') }}</dt>
+                                <dd class="mt-1 font-semibold text-ink-heading">{{ number_format((float) $revenueSummary['quotations']['conversion_rate'], 1) }}%</dd>
+                            </div>
+                        @endif
+                        @if (! empty($revenueSummary['invoice_metrics']))
+                            <div>
+                                <dt class="text-xs text-ink-muted">{{ __('Overdue') }}</dt>
+                                <dd class="mt-1 font-semibold text-ink-heading">{{ $revenueSummary['invoice_metrics']['overdue_count'] }}</dd>
+                            </div>
+                        @endif
                     </dl>
                 </x-workspace.widget>
             @endif

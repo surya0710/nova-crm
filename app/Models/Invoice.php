@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasCommercialPartySnapshots;
 use App\Services\InvoiceCalculationService;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
-    use Auditable, BelongsToOrganization, HasAttachments, HasFactory;
+    use Auditable, BelongsToOrganization, HasAttachments, HasCommercialPartySnapshots, HasFactory;
 
     protected $fillable = [
         'organization_id',
@@ -30,10 +31,24 @@ class Invoice extends Model
         'currency',
         'subtotal',
         'discount_amount',
+        'taxable_amount',
         'tax_total',
+        'cgst_amount',
+        'sgst_amount',
+        'igst_amount',
+        'utgst_amount',
+        'cess_amount',
+        'other_tax_amount',
+        'shipping_amount',
         'total',
         'amount_paid',
         'notes',
+        'terms',
+        'pricing_mode',
+        'tax_treatment',
+        'place_of_supply',
+        'billing_snapshot',
+        'shipping_snapshot',
         'created_by',
     ];
 
@@ -44,9 +59,19 @@ class Invoice extends Model
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'taxable_amount' => 'decimal:2',
             'tax_total' => 'decimal:2',
+            'cgst_amount' => 'decimal:2',
+            'sgst_amount' => 'decimal:2',
+            'igst_amount' => 'decimal:2',
+            'utgst_amount' => 'decimal:2',
+            'cess_amount' => 'decimal:2',
+            'other_tax_amount' => 'decimal:2',
+            'shipping_amount' => 'decimal:2',
             'total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
+            'billing_snapshot' => 'array',
+            'shipping_snapshot' => 'array',
         ];
     }
 
@@ -190,20 +215,22 @@ class Invoice extends Model
 
     /**
      * @param  array<int, array<string, mixed>>  $items
-     * @return array{subtotal: float, discount_amount: float, tax_total: float, total: float, items: array<int, array<string, mixed>>}
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
      */
-    public static function calculateTotals(array $items): array
+    public static function calculateTotals(array $items, array $context = []): array
     {
-        return app(InvoiceCalculationService::class)->calculateTotals($items);
+        return app(InvoiceCalculationService::class)->calculateTotals($items, $context);
     }
 
     /**
      * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $context
      * @return array<string, mixed>
      */
-    public static function calculateLine(array $item): array
+    public static function calculateLine(array $item, array $context = []): array
     {
-        return app(InvoiceCalculationService::class)->calculateLine($item);
+        return app(InvoiceCalculationService::class)->calculateLine($item, $context);
     }
 
     public function syncPaymentStatus(): void

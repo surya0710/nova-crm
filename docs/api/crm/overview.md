@@ -1,31 +1,12 @@
 # CRM API Reference
 
-## Endpoint
-`/api/crm/{resource}`
-
-## Method
-`GET | POST | PUT | PATCH | DELETE`
+Commercial CRM APIs are served at `/api/v1` (Sanctum + `X-Organization-Id`). See [CRM API Overview](../../crm/api/overview.md) for products, categories, customer tax profile, quotations, quotation items, convert, and invoices.
 
 ## Authentication
-Bearer token using Konnect Nex API token permissions.
-
-## Request
-Document query parameters, payload schema, and supported filters.
-
-## Validation
-List required and optional fields plus constraint rules.
-
-## Example Request
-`GET /api/crm/leads?status=new`
-
-## Example Response
-`{"data":[{"id":1,"name":"Sample Lead"}]}`
+Bearer token (`api.access`) plus the entity permission (`products.*`, `quotations.*`, `invoices.*`, `customers.*`).
 
 ## Error Codes
 - `401` Unauthorized
 - `403` Forbidden
 - `404` Not Found
 - `422` Validation Error
-
-## Related Events
-Document events emitted after create/update/delete actions.

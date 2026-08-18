@@ -41,6 +41,7 @@ class UpdateOrganizationRequest extends FormRequest
             'country' => ['nullable', 'string', 'max:100'],
             'tax_name' => ['nullable', 'string', 'max:50'],
             'tax_number' => ['nullable', 'string', 'max:50'],
+            'gst_state_code' => ['nullable', 'string', Rule::in(array_keys(config('tax.states', [])))],
             'timezone' => ['required', 'string', 'timezone:all'],
             'currency' => ['required', 'string', 'size:3'],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],

@@ -1,23 +1,35 @@
 @php
-    $defaultItems = [['product_id' => '', 'description' => '', 'quantity' => 1, 'unit_price' => 0, 'tax_rate' => 0, 'discount_percent' => 0]];
+    $defaultItems = [[
+        'product_id' => '',
+        'sku' => '',
+        'unit' => '',
+        'hsn_sac' => '',
+        'description' => '',
+        'quantity' => 1,
+        'unit_price' => 0,
+        'tax_rate' => 0,
+        'discount_percent' => 0,
+        'cess_rate' => 0,
+        'tax_inclusive' => false,
+    ]];
     $hasItems = $invoice->exists || ($invoice->relationLoaded('items') && $invoice->items->isNotEmpty());
     $existingItems = $hasItems
         ? $invoice->items->map(fn ($item) => [
             'product_id' => $item->product_id ?? '',
+            'sku' => $item->sku ?? '',
+            'unit' => $item->unit ?? '',
+            'hsn_sac' => $item->hsn_sac ?? '',
             'description' => $item->description,
             'quantity' => (float) $item->quantity,
             'unit_price' => (float) $item->unit_price,
             'tax_rate' => (float) $item->tax_rate,
             'discount_percent' => (float) $item->discount_percent,
+            'cess_rate' => (float) ($item->cess_rate ?? 0),
+            'tax_inclusive' => (bool) ($item->tax_inclusive ?? false),
         ])->values()->all()
         : $defaultItems;
     $initialItems = old('items', $existingItems);
-    $productOptions = $products->map(fn ($product) => [
-        'id' => $product->id,
-        'name' => $product->name,
-        'unit_price' => (float) $product->unit_price,
-        'tax_rate' => (float) $product->tax_rate,
-    ])->values();
+    $productOptions = isset($productOptions) ? $productOptions : $products->map->catalogPayload()->values();
 @endphp
 
 <div class="space-y-8">
@@ -82,7 +94,18 @@
                 <x-forms.textarea id="notes" name="notes" rows="3">{{ old('notes', $invoice->notes) }}</x-forms.textarea>
             </x-forms.field>
         </div>
+        <div class="sm:col-span-2">
+            <x-forms.field :label="__('Terms & conditions')" name="terms">
+                <x-forms.textarea id="terms" name="terms" rows="3">{{ old('terms', $invoice->terms) }}</x-forms.textarea>
+            </x-forms.field>
+        </div>
     </x-forms.section>
 
-    @include('invoices._line-items', ['initialItems' => $initialItems, 'productOptions' => $productOptions])
+    @include('commercial._line-items', [
+        'initialItems' => $initialItems,
+        'productOptions' => $productOptions,
+        'customerTaxProfiles' => $customerTaxProfiles ?? [],
+        'taxConfig' => $taxConfig ?? ['states' => [], 'seller_state_code' => null],
+        'document' => $invoice,
+    ])
 </div>

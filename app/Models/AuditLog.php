@@ -47,7 +47,14 @@ class AuditLog extends Model
             'deleted' => __('Deleted'),
             'status_changed' => __('Status changed'),
             'assigned' => __('Assigned'),
-            'uploaded' => __('File uploaded'),
+            'issued' => __('Issued'),
+            'cancelled' => __('Cancelled'),
+            'converted' => __('Converted'),
+            'accepted' => __('Accepted'),
+            'rejected' => __('Rejected'),
+            'expired' => __('Expired'),
+            'sent' => __('Sent'),
+            'created_from_quotation' => __('Created from quotation'),
             default => ucfirst(str_replace('_', ' ', $this->event)),
         };
     }

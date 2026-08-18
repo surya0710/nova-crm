@@ -34,7 +34,7 @@ class CustomerService
             : '';
 
         return $query->where(function (Builder $searchQuery) use ($textLike, $phoneDigits) {
-            foreach (['customers.name', 'customers.company', 'customers.email', 'customers.state', 'customers.country'] as $column) {
+            foreach (['customers.name', 'customers.company', 'customers.email', 'customers.state', 'customers.country', 'customers.gstin', 'customers.pan'] as $column) {
                 $searchQuery->orWhereRaw("LOWER({$column}) LIKE ?", [$textLike]);
             }
 

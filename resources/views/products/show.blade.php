@@ -40,9 +40,11 @@
         <x-entity.section :title="__('Product Details')">
             <x-entity.definition-list>
                 <x-entity.definition-item :label="__('Name')">{{ $product->name }}</x-entity.definition-item>
-                <x-entity.definition-item :label="__('SKU')">{{ $product->sku ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('SKU / Item code')">{{ $product->sku ?? '—' }}</x-entity.definition-item>
                 <x-entity.definition-item :label="__('Type')">{{ $product->type_label }}</x-entity.definition-item>
-                <x-entity.definition-item :label="__('Category')">{{ $product->category ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Category')">{{ $product->productCategory?->name ?? $product->category ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="$product->hsn_sac_label">{{ $product->hsn_sac ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Unit')">{{ $product->unit_label ?? '—' }}</x-entity.definition-item>
                 @if ($product->description)
                     <x-entity.definition-item :label="__('Description')" :span="2">
                         <div class="whitespace-pre-line">{{ $product->description }}</div>
@@ -51,20 +53,45 @@
             </x-entity.definition-list>
         </x-entity.section>
 
+        @include('metadata-fields._runtime_detail', [
+            'metadataFields' => $metadataFields ?? collect(),
+            'metadataPresenter' => $metadataPresenter ?? app(\App\Services\MetadataFormValuePresenter::class),
+            'record' => $product,
+        ])
+
         <x-slot:aside>
             <x-entity.section :title="__('Pricing')">
                 <dl class="space-y-4">
                     <div>
-                        <dt class="text-xs text-ink-muted">{{ __('Unit Price') }}</dt>
+                        <dt class="text-xs text-ink-muted">{{ __('Selling Price') }}</dt>
                         <dd class="mt-1 text-2xl font-bold text-ink-heading">{{ $product->formatted_price }}</dd>
                         @if ($product->unit_label)
                             <p class="mt-0.5 text-xs text-ink-muted">{{ __('Per :unit', ['unit' => strtolower($product->unit_label)]) }}</p>
                         @endif
+                        @if ($product->tax_inclusive)
+                            <p class="mt-0.5 text-xs text-ink-muted">{{ __('Tax inclusive') }}</p>
+                        @endif
+                    </div>
+                    @if ($product->cost_price !== null)
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('Cost Price') }}</dt>
+                            <dd class="mt-1 text-sm text-ink-heading">{{ number_format((float) $product->cost_price, 2) }} {{ $product->currency }}</dd>
+                        </div>
+                    @endif
+                    <div>
+                        <dt class="text-xs text-ink-muted">{{ __('Default Discount') }}</dt>
+                        <dd class="mt-1 text-sm text-ink-heading">{{ number_format((float) $product->default_discount_percent, 2) }}%</dd>
                     </div>
                     <div>
                         <dt class="text-xs text-ink-muted">{{ __('Tax Rate') }}</dt>
                         <dd class="mt-1 text-sm text-ink-heading">{{ number_format((float) $product->tax_rate, 2) }}%</dd>
                     </div>
+                    @if ((float) $product->cess_rate > 0)
+                        <div>
+                            <dt class="text-xs text-ink-muted">{{ __('Cess') }}</dt>
+                            <dd class="mt-1 text-sm text-ink-heading">{{ number_format((float) $product->cess_rate, 2) }}%</dd>
+                        </div>
+                    @endif
                 </dl>
             </x-entity.section>
 

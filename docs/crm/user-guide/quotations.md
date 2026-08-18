@@ -1,29 +1,31 @@
 # CRM User Guide - Quotations
 
 ## Purpose
-Create and manage customer quotations for opportunities.
+Create, send, and convert customer quotations with product lines and GST-aware tax.
 
 ## Who should use this feature
-Sales teams and approvers responsible for pricing.
+Sales teams with `quotations.view` / `quotations.create` / `quotations.update`.
 
 ## Prerequisites
-- Product/pricing data available
-- Approval rules configured for discounts
+- Customer record (GST profile optional)
+- Product catalog for reusable lines, or ad-hoc service descriptions
 
 ## Step-by-step instructions
-1. Generate quotation from an opportunity.
-2. Add line items, terms, and validity period.
-3. Submit for approval if required.
-4. Send to customer and track response.
+1. Create a **draft** quotation. New quotations cannot skip draft.
+2. Add product or free-text lines: quantity, UOM, unit price, line discount, tax/cess, inclusive flag.
+3. Set place of supply, shipping/other charges, validity (valid until), and terms.
+4. Download PDF or email the customer. Sending a draft marks it **sent**. Your mailbox is added to CC automatically; extra CC addresses are preserved and de-duplicated.
+5. Mark **accepted** or **rejected**. Only accepted quotations can convert to an invoice.
+6. Convert copies line items and the tax snapshot onto a new draft invoice. It does not recalculate historical tax. Repeat convert returns the existing non-cancelled invoice.
 
 ## Expected result
-Quotations are accurate, approved, and traceable.
+Quotations are priced consistently, emailed with a sender CC, and convertible without changing past tax.
 
 ## Best Practices
-Use approved templates and explicit expiry dates.
+Use catalog products for HSN/SAC. Set expiry dates. Confirm place of supply before sending.
 
 ## Common Mistakes
-Missing terms, invalid pricing, and skipped approvals.
+Trying to create a non-draft quotation, converting before acceptance, or editing a sent quote.
 
 ## FAQ
-Address revisions, expirations, and approval exceptions.
+Service-only (non-product) lines still work. Older quotes that stored a single tax % continue to total correctly as “other tax”.

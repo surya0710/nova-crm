@@ -2,13 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesCustomerTaxProfile;
 use App\Models\Customer;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreApiCustomerRequest extends FormRequest
 {
+    use ValidatesCustomerTaxProfile;
+
     public function authorize(): bool
     {
         return $this->user()?->can('create', Customer::class) ?? false;
@@ -35,6 +39,7 @@ class StoreApiCustomerRequest extends FormRequest
             'state' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
+            'tax_number' => ['nullable', 'string', 'max:50'],
             'assigned_to' => [
                 'nullable',
                 'integer',
@@ -44,7 +49,13 @@ class StoreApiCustomerRequest extends FormRequest
             'tags.*' => ['string', 'max:50'],
             'custom_fields' => ['nullable', 'array'],
             'custom_fields.*' => ['nullable'],
+            ...$this->customerTaxProfileRules(),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $validator) => $this->validateGstinPanConsistency($validator));
     }
 
     protected function prepareForValidation(): void
@@ -58,5 +69,7 @@ class StoreApiCustomerRequest extends FormRequest
                 $this->merge([$field => $value === '' ? null : $value]);
             }
         }
+
+        $this->prepareCustomerTaxProfile();
     }
 }

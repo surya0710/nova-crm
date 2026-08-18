@@ -34,6 +34,22 @@ class Customer extends Model
         'postal_code',
         'country',
         'tax_number',
+        'gstin',
+        'pan',
+        'gst_registration_type',
+        'tax_registration_status',
+        'billing_state_code',
+        'place_of_supply',
+        'tax_exemption_status',
+        'tax_exemption_reason',
+        'default_tax_preference',
+        'shipping_same_as_billing',
+        'shipping_address_line_1',
+        'shipping_address_line_2',
+        'shipping_city',
+        'shipping_state',
+        'shipping_postal_code',
+        'shipping_country',
         'assigned_to',
         'lead_id',
         'tags',
@@ -46,6 +62,7 @@ class Customer extends Model
         return [
             'tags' => 'array',
             'custom_fields' => 'array',
+            'shipping_same_as_billing' => 'boolean',
         ];
     }
 
@@ -101,5 +118,54 @@ class Customer extends Model
         }
 
         return $this->name;
+    }
+
+    public function isTaxExempt(): bool
+    {
+        return $this->tax_exemption_status === 'exempt';
+    }
+
+    public function getGstRegistrationTypeLabelAttribute(): ?string
+    {
+        if (! $this->gst_registration_type) {
+            return null;
+        }
+
+        return config('tax.gst_registration_types.'.$this->gst_registration_type, $this->gst_registration_type);
+    }
+
+    public function getPlaceOfSupplyLabelAttribute(): ?string
+    {
+        $code = $this->place_of_supply ?: $this->billing_state_code;
+
+        if (! $code) {
+            return $this->state;
+        }
+
+        return data_get(config('tax.states.'.$code), 'name', $code);
+    }
+
+    public function getBillingAddressLinesAttribute(): array
+    {
+        return array_values(array_filter([
+            $this->address_line_1,
+            $this->address_line_2,
+            collect([$this->city, $this->state, $this->postal_code])->filter()->join(', ') ?: null,
+            $this->country,
+        ]));
+    }
+
+    public function getShippingAddressLinesAttribute(): array
+    {
+        if ($this->shipping_same_as_billing) {
+            return $this->billing_address_lines;
+        }
+
+        return array_values(array_filter([
+            $this->shipping_address_line_1,
+            $this->shipping_address_line_2,
+            collect([$this->shipping_city, $this->shipping_state, $this->shipping_postal_code])->filter()->join(', ') ?: null,
+            $this->shipping_country,
+        ]));
     }
 }

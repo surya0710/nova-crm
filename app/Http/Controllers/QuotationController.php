@@ -8,17 +8,20 @@ use App\Http\Requests\UpdateQuotationRequest;
 use App\Http\Requests\UpdateQuotationStatusRequest;
 use App\Mail\QuotationMail;
 use App\Models\Customer;
-use App\Models\Opportunity;
-use App\Models\Product;
 use App\Models\Quotation;
+use App\Services\ClientEmailCc;
+use App\Services\CommercialFormData;
 use App\Services\OrganizationMailer;
 use App\Services\QuotationConversionService;
+use App\Services\QuotationPdfService;
 use App\Services\QuotationService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class QuotationController extends Controller
 {
@@ -26,6 +29,8 @@ class QuotationController extends Controller
         protected OrganizationMailer $organizationMailer,
         protected QuotationService $quotationService,
         protected QuotationConversionService $conversionService,
+        protected QuotationPdfService $pdfService,
+        protected CommercialFormData $commercialFormData,
     ) {
         $this->authorizeResource(Quotation::class, 'quotation');
     }
@@ -76,10 +81,11 @@ class QuotationController extends Controller
                 'issue_date' => now()->toDateString(),
                 'valid_until' => now()->addDays(30)->toDateString(),
                 'currency' => $organization?->currency ?? 'USD',
+                'pricing_mode' => 'exclusive',
+                'tax_treatment' => 'standard',
+                'shipping_amount' => 0,
             ]),
-            'customers' => Customer::query()->orderBy('name')->get(),
-            'opportunities' => Opportunity::query()->with('customer')->orderBy('title')->get(),
-            'products' => Product::query()->where('status', 'active')->orderBy('name')->get(),
+            ...$this->commercialFormData->for($tenant),
         ]);
     }
 
@@ -108,15 +114,13 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function edit(Quotation $quotation): View
+    public function edit(Quotation $quotation, TenantContext $tenant): View
     {
         $quotation->load('items');
 
         return view('quotations.edit', [
             'quotation' => $quotation,
-            'customers' => Customer::query()->orderBy('name')->get(),
-            'opportunities' => Opportunity::query()->with('customer')->orderBy('title')->get(),
-            'products' => Product::query()->where('status', 'active')->orderBy('name')->get(),
+            ...$this->commercialFormData->for($tenant),
         ]);
     }
 
@@ -208,17 +212,21 @@ class QuotationController extends Controller
         }
 
         $quotation->load(['customer', 'creator', 'items.product']);
+        $to = $request->validated('email');
+        $wasDraft = $quotation->status === 'draft';
+        $cc = ClientEmailCc::merge($request->user(), $to, $request->input('cc'));
 
         try {
             $this->organizationMailer->send(
                 $organization,
-                $request->validated('email'),
+                $to,
                 new QuotationMail(
                     $quotation,
                     $organization,
                     $request->validated('message'),
                     $request->file('attachments', []),
                 ),
+                $cc,
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -235,8 +243,19 @@ class QuotationController extends Controller
                 ->withErrors($e->errors());
         }
 
+        if (! $wasDraft) {
+            $this->quotationService->recordEmailSent($quotation, $request->user(), $to);
+        }
+
         return redirect()
             ->route('quotations.show', $quotation)
             ->with('status', 'quotation-email-sent');
+    }
+
+    public function pdf(Quotation $quotation): Response|StreamedResponse
+    {
+        $this->authorize('view', $quotation);
+
+        return $this->pdfService->download($quotation);
     }
 }

@@ -33,6 +33,7 @@ class Organization extends Model
         'country',
         'tax_name',
         'tax_number',
+        'gst_state_code',
         'timezone',
         'currency',
         'settings',

@@ -24,6 +24,9 @@
         </x-slot:breadcrumbs>
 
         <x-slot:actions>
+            @can('view', $invoice)
+                <x-ui.button :href="route('invoices.pdf', $invoice)" variant="secondary" size="sm">{{ __('Download PDF') }}</x-ui.button>
+            @endcan
             @can('update', $invoice)
                 <x-ui.button :href="route('invoices.edit', $invoice)" variant="secondary" size="sm">{{ __('Edit') }}</x-ui.button>
             @endcan
@@ -60,40 +63,30 @@
         <x-entity.section :title="__('Line Items')">
             <x-tables.table :columns="[
                 __('Description'),
+                __('SKU'),
                 ['label' => __('Qty'), 'align' => 'right'],
                 ['label' => __('Price'), 'align' => 'right'],
+                ['label' => __('Discount'), 'align' => 'right'],
+                ['label' => __('Tax'), 'align' => 'right'],
                 ['label' => __('Total'), 'align' => 'right'],
             ]" :sticky="false">
                 @foreach ($invoice->items as $item)
                     <tr>
-                        <td class="px-4 py-3 text-sm text-ink-heading">{{ $item->description }}</td>
+                        <td class="px-4 py-3">
+                            <p class="text-sm text-ink-heading">{{ $item->description }}</p>
+                            <p class="mt-0.5 text-xs text-ink-muted">{{ collect([$item->hsn_sac, $item->unit])->filter()->implode(' · ') }}</p>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-ink-muted">{{ $item->sku ?: ($item->product->sku ?? '—') }}</td>
                         <td class="px-4 py-3 text-right text-sm text-ink-muted">{{ number_format((float) $item->quantity, 2) }}</td>
                         <td class="px-4 py-3 text-right text-sm text-ink-muted">{{ number_format((float) $item->unit_price, 2) }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-ink-muted">{{ number_format((float) $item->discount_percent, 2) }}%</td>
+                        <td class="px-4 py-3 text-right text-sm text-ink-muted">{{ number_format((float) $item->tax_amount, 2) }}</td>
                         <td class="px-4 py-3 text-right text-sm font-medium text-ink-heading">{{ number_format((float) $item->line_total, 2) }}</td>
                     </tr>
                 @endforeach
             </x-tables.table>
-            <dl class="mt-4 max-w-xs ms-auto space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <dt class="text-ink-muted">{{ __('Subtotal') }}</dt>
-                    <dd class="text-ink-heading">{{ number_format((float) $invoice->subtotal, 2) }} {{ $invoice->currency }}</dd>
-                </div>
-                @if ((float) $invoice->discount_amount > 0)
-                    <div class="flex justify-between">
-                        <dt class="text-ink-muted">{{ __('Discount') }}</dt>
-                        <dd class="text-ink-heading">-{{ number_format((float) $invoice->discount_amount, 2) }} {{ $invoice->currency }}</dd>
-                    </div>
-                @endif
-                @if ((float) $invoice->tax_total > 0)
-                    <div class="flex justify-between">
-                        <dt class="text-ink-muted">{{ __('Tax') }}</dt>
-                        <dd class="text-ink-heading">{{ number_format((float) $invoice->tax_total, 2) }} {{ $invoice->currency }}</dd>
-                    </div>
-                @endif
-                <div class="flex justify-between border-t border-line pt-2">
-                    <dt class="font-semibold text-ink-heading">{{ __('Total') }}</dt>
-                    <dd class="font-bold text-ink-heading">{{ $invoice->formatted_total }}</dd>
-                </div>
+            @include('commercial._tax-totals', ['document' => $invoice])
+            <dl class="mt-2 max-w-xs ms-auto space-y-2 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-ink-muted">{{ __('Paid') }}</dt>
                     <dd class="text-ink-heading">{{ number_format((float) $invoice->amount_paid, 2) }} {{ $invoice->currency }}</dd>
@@ -145,6 +138,7 @@
                     :description="__('Email this invoice to your customer')"
                     :organization="$organization"
                     :missing-email-hint="! $invoice->customer->email"
+                    :show-cc="true"
                 />
             @endif
         @endcan
@@ -172,11 +166,48 @@
                     @if ($invoice->due_date)
                         <x-entity.definition-item :label="__('Due Date')">{{ $invoice->due_date->format('M j, Y') }}</x-entity.definition-item>
                     @endif
+                    @if ($invoice->placeOfSupplyLabel())
+                        <x-entity.definition-item :label="__('Place of Supply')" :span="2">{{ $invoice->placeOfSupplyLabel() }}</x-entity.definition-item>
+                    @endif
                     <x-entity.definition-item :label="__('Balance Due')" :span="2">
                         <span class="font-semibold text-ink-heading">{{ $invoice->formatted_balance_due }}</span>
                     </x-entity.definition-item>
                 </x-entity.definition-list>
             </x-entity.section>
+            @php
+                $billingLines = $invoice->billingAddressLines();
+                $shippingLines = $invoice->shippingAddressLines();
+                $billing = $invoice->resolvedBillingSnapshot();
+            @endphp
+            @if ($billingLines !== [])
+                <x-entity.section :title="__('Bill To')">
+                    <div class="text-sm leading-relaxed text-ink">
+                        @if (! empty($billing['name']))
+                            <p class="font-medium text-ink-heading">{{ $billing['name'] }}</p>
+                        @endif
+                        @foreach ($billingLines as $line)
+                            {{ $line }}<br>
+                        @endforeach
+                        @if (! empty($billing['gstin']))
+                            <p class="mt-1 text-xs text-ink-muted">{{ __('GSTIN') }}: {{ $billing['gstin'] }}</p>
+                        @endif
+                    </div>
+                </x-entity.section>
+            @endif
+            @if ($shippingLines !== [] && empty($invoice->resolvedShippingSnapshot()['same_as_billing']))
+                <x-entity.section :title="__('Ship To')">
+                    <div class="text-sm leading-relaxed text-ink">
+                        @foreach ($shippingLines as $line)
+                            {{ $line }}<br>
+                        @endforeach
+                    </div>
+                </x-entity.section>
+            @endif
+            @if ($invoice->terms)
+                <x-entity.section :title="__('Payment Terms')">
+                    <div class="text-sm whitespace-pre-line text-ink">{{ $invoice->terms }}</div>
+                </x-entity.section>
+            @endif
             <x-ui.button :href="route('invoices.index')" variant="link" size="sm">← {{ __('Back to :label', ['label' => strtolower(crm_term('invoices'))]) }}</x-ui.button>
         </x-slot:aside>
     </x-layouts.entity-detail>

@@ -244,6 +244,7 @@ use App\Models\PerformanceReview;
 use App\Models\PerformanceReviewAssignment;
 use App\Models\PerformanceReviewTemplate;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\NotificationPreference;
 use App\Models\Portfolio;
 use App\Models\PortfolioReport;
@@ -363,6 +364,7 @@ use App\Policies\PerformanceReviewAssignmentPolicy;
 use App\Policies\PerformanceReviewPolicy;
 use App\Policies\PerformanceReviewTemplatePolicy;
 use App\Policies\ProductPolicy;
+use App\Policies\ProductCategoryPolicy;
 use App\Policies\NotificationPreferencePolicy;
 use App\Policies\PortfolioPolicy;
 use App\Policies\PortfolioReportPolicy;
@@ -529,6 +531,7 @@ class AppServiceProvider extends ServiceProvider
         Opportunity::class => OpportunityPolicy::class,
         Payment::class => PaymentPolicy::class,
         Product::class => ProductPolicy::class,
+        ProductCategory::class => ProductCategoryPolicy::class,
         Project::class => ProjectPolicy::class,
         ProjectCategory::class => ProjectCategoryPolicy::class,
         ProjectType::class => ProjectTypePolicy::class,
@@ -930,6 +933,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Opportunity::class, OpportunityPolicy::class);
         Gate::policy(Payment::class, PaymentPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(ProductCategory::class, ProductCategoryPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(ProjectCategory::class, ProjectCategoryPolicy::class);
         Gate::policy(ProjectType::class, ProjectTypePolicy::class);

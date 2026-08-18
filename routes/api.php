@@ -3,9 +3,13 @@
 use App\Http\Controllers\Api\CapacityForecastController as ApiCapacityForecastController;
 use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
 use App\Http\Controllers\Api\ExecutiveDashboardController as ApiExecutiveDashboardController;
+use App\Http\Controllers\Api\InvoiceController as ApiInvoiceController;
 use App\Http\Controllers\Api\LeadController as ApiLeadController;
 use App\Http\Controllers\Api\NotificationPreferenceController as ApiNotificationPreferenceController;
 use App\Http\Controllers\Api\OpportunityController as ApiOpportunityController;
+use App\Http\Controllers\Api\ProductCategoryController as ApiProductCategoryController;
+use App\Http\Controllers\Api\ProductController as ApiProductController;
+use App\Http\Controllers\Api\QuotationController as ApiQuotationController;
 use App\Http\Controllers\Api\PortfolioController as ApiPortfolioController;
 use App\Http\Controllers\Api\PortfolioForecastController as ApiPortfolioForecastController;
 use App\Http\Controllers\Api\PortfolioReportController as ApiPortfolioReportController;
@@ -107,6 +111,30 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
 
         Route::get('opportunities', [ApiOpportunityController::class, 'index']);
         Route::get('opportunities/{opportunity}', [ApiOpportunityController::class, 'show']);
+
+        Route::get('products', [ApiProductController::class, 'index']);
+        Route::post('products', [ApiProductController::class, 'store']);
+        Route::get('products/{product}', [ApiProductController::class, 'show']);
+        Route::put('products/{product}', [ApiProductController::class, 'update']);
+        Route::patch('products/{product}', [ApiProductController::class, 'update']);
+        Route::delete('products/{product}', [ApiProductController::class, 'destroy']);
+
+        Route::apiResource('product-categories', ApiProductCategoryController::class)
+            ->parameters(['product-categories' => 'productCategory'])
+            ->names('api.product-categories');
+
+        Route::get('quotations', [ApiQuotationController::class, 'index']);
+        Route::post('quotations', [ApiQuotationController::class, 'store']);
+        Route::get('quotations/{quotation}', [ApiQuotationController::class, 'show']);
+        Route::put('quotations/{quotation}', [ApiQuotationController::class, 'update']);
+        Route::patch('quotations/{quotation}', [ApiQuotationController::class, 'update']);
+        Route::post('quotations/{quotation}/convert', [ApiQuotationController::class, 'convert']);
+
+        Route::get('invoices', [ApiInvoiceController::class, 'index']);
+        Route::post('invoices', [ApiInvoiceController::class, 'store']);
+        Route::get('invoices/{invoice}', [ApiInvoiceController::class, 'show']);
+        Route::put('invoices/{invoice}', [ApiInvoiceController::class, 'update']);
+        Route::patch('invoices/{invoice}', [ApiInvoiceController::class, 'update']);
 
         Route::get('projects/executive-summary', [ApiProjectExecutiveController::class, 'summary']);
         Route::get('projects/watching', [ApiProjectWatcherController::class, 'index']);

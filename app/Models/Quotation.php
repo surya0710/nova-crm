@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasCommercialPartySnapshots;
 use App\Services\QuotationCalculationService;
 use Database\Factories\QuotationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Quotation extends Model
 {
     /** @use HasFactory<QuotationFactory> */
-    use Auditable, BelongsToOrganization, HasAttachments, HasFactory;
+    use Auditable, BelongsToOrganization, HasAttachments, HasCommercialPartySnapshots, HasFactory;
 
     protected $fillable = [
         'organization_id',
@@ -30,9 +31,23 @@ class Quotation extends Model
         'currency',
         'subtotal',
         'discount_amount',
+        'taxable_amount',
         'tax_total',
+        'cgst_amount',
+        'sgst_amount',
+        'igst_amount',
+        'utgst_amount',
+        'cess_amount',
+        'other_tax_amount',
+        'shipping_amount',
         'total',
         'notes',
+        'terms',
+        'pricing_mode',
+        'tax_treatment',
+        'place_of_supply',
+        'billing_snapshot',
+        'shipping_snapshot',
         'created_by',
     ];
 
@@ -43,8 +58,18 @@ class Quotation extends Model
             'valid_until' => 'date',
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'taxable_amount' => 'decimal:2',
             'tax_total' => 'decimal:2',
+            'cgst_amount' => 'decimal:2',
+            'sgst_amount' => 'decimal:2',
+            'igst_amount' => 'decimal:2',
+            'utgst_amount' => 'decimal:2',
+            'cess_amount' => 'decimal:2',
+            'other_tax_amount' => 'decimal:2',
+            'shipping_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'billing_snapshot' => 'array',
+            'shipping_snapshot' => 'array',
         ];
     }
 
@@ -136,19 +161,21 @@ class Quotation extends Model
 
     /**
      * @param  array<int, array<string, mixed>>  $items
-     * @return array{subtotal: float, discount_amount: float, tax_total: float, total: float, items: array<int, array<string, mixed>>}
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
      */
-    public static function calculateTotals(array $items): array
+    public static function calculateTotals(array $items, array $context = []): array
     {
-        return app(QuotationCalculationService::class)->calculateTotals($items);
+        return app(QuotationCalculationService::class)->calculateTotals($items, $context);
     }
 
     /**
      * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $context
      * @return array<string, mixed>
      */
-    public static function calculateLine(array $item): array
+    public static function calculateLine(array $item, array $context = []): array
     {
-        return app(QuotationCalculationService::class)->calculateLine($item);
+        return app(QuotationCalculationService::class)->calculateLine($item, $context);
     }
 }

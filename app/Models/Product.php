@@ -21,11 +21,18 @@ class Product extends Model
         'description',
         'type',
         'unit_price',
+        'cost_price',
         'currency',
         'unit',
         'tax_rate',
+        'default_discount_percent',
+        'hsn_sac',
+        'tax_inclusive',
+        'cess_rate',
         'category',
+        'product_category_id',
         'status',
+        'custom_fields',
         'created_by',
     ];
 
@@ -33,13 +40,23 @@ class Product extends Model
     {
         return [
             'unit_price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
+            'default_discount_percent' => 'decimal:2',
+            'cess_rate' => 'decimal:2',
+            'tax_inclusive' => 'boolean',
+            'custom_fields' => 'array',
         ];
     }
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function productCategory(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class);
     }
 
     public function getStatusLabelAttribute(): string
@@ -64,5 +81,30 @@ class Product extends Model
     public function getFormattedPriceAttribute(): string
     {
         return number_format((float) $this->unit_price, 2).' '.$this->currency;
+    }
+
+    public function getHsnSacLabelAttribute(): string
+    {
+        return $this->type === 'service' ? __('SAC') : __('HSN');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function catalogPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'sku' => $this->sku,
+            'description' => $this->description ?: $this->name,
+            'unit' => $this->unit,
+            'unit_price' => (float) $this->unit_price,
+            'tax_rate' => (float) $this->tax_rate,
+            'default_discount_percent' => (float) $this->default_discount_percent,
+            'hsn_sac' => $this->hsn_sac,
+            'tax_inclusive' => (bool) $this->tax_inclusive,
+            'cess_rate' => (float) $this->cess_rate,
+        ];
     }
 }

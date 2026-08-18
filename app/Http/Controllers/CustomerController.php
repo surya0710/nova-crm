@@ -12,6 +12,7 @@ use App\Mail\CustomerMail;
 use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\CommercialTimelineService;
 use App\Services\CustomerService;
 use App\Services\MetadataEntityFormService;
 use App\Services\MetadataQueryDefinitionService;
@@ -116,7 +117,7 @@ class CustomerController extends Controller
             ->with('status', 'customer-created');
     }
 
-    public function show(Customer $customer, TenantContext $tenant, RevenueService $revenue): View
+    public function show(Customer $customer, TenantContext $tenant, RevenueService $revenue, CommercialTimelineService $timeline): View
     {
         $customer->load(['assignee', 'creator', 'lead', 'notes.user', 'attachments.uploader', 'tasks.assignee']);
 
@@ -131,6 +132,7 @@ class CustomerController extends Controller
             'customer' => $customer,
             'organization' => $tenant->get(),
             'statement' => $statement,
+            'timelineItems' => $timeline->forCustomer($customer),
             'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'customer', 'detail'),
             'metadataPresenter' => $this->metadataForms->presenter(),
         ]);

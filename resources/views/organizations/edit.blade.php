@@ -210,9 +210,20 @@
                         </div>
 
                         <div>
-                            <x-input-label for="tax_number" :value="__('Tax Number')" />
+                            <x-input-label for="tax_number" :value="__('Tax Number / GSTIN')" />
                             <x-text-input id="tax_number" class="block mt-1 w-full" type="text" name="tax_number" :value="old('tax_number', $organization->tax_number)" />
                             <x-input-error :messages="$errors->get('tax_number')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="gst_state_code" :value="__('GST state')" />
+                            <select id="gst_state_code" name="gst_state_code" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">{{ __('Not set') }}</option>
+                                @foreach (config('tax.states') as $code => $state)
+                                    <option value="{{ $code }}" @selected(old('gst_state_code', $organization->gst_state_code) === $code)>{{ $code }} — {{ $state['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('gst_state_code')" class="mt-2" />
                         </div>
 
                         <div>

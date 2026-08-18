@@ -8,22 +8,27 @@ use App\Http\Requests\UpdateInvoiceRequest;
 use App\Mail\InvoiceMail;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Opportunity;
-use App\Models\Product;
 use App\Models\Quotation;
+use App\Services\ClientEmailCc;
+use App\Services\CommercialFormData;
+use App\Services\InvoicePdfService;
 use App\Services\InvoiceService;
 use App\Services\OrganizationMailer;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
     public function __construct(
         protected OrganizationMailer $organizationMailer,
         protected InvoiceService $invoiceService,
+        protected InvoicePdfService $pdfService,
+        protected CommercialFormData $commercialFormData,
     ) {
         $this->authorizeResource(Invoice::class, 'invoice');
     }
@@ -79,6 +84,9 @@ class InvoiceController extends Controller
             'issue_date' => now()->toDateString(),
             'due_date' => now()->addDays(30)->toDateString(),
             'currency' => $organization?->currency ?? 'USD',
+            'pricing_mode' => 'exclusive',
+            'tax_treatment' => 'standard',
+            'shipping_amount' => 0,
         ]);
 
         if ($quotation) {
@@ -89,16 +97,19 @@ class InvoiceController extends Controller
                 'title' => $quotation->title,
                 'currency' => $quotation->currency,
                 'notes' => $quotation->notes,
+                'terms' => $quotation->terms,
+                'pricing_mode' => $quotation->pricing_mode,
+                'tax_treatment' => $quotation->tax_treatment,
+                'place_of_supply' => $quotation->place_of_supply,
+                'shipping_amount' => $quotation->shipping_amount,
             ]);
             $invoice->setRelation('items', $quotation->items);
         }
 
         return view('invoices.create', [
             'invoice' => $invoice,
-            'customers' => Customer::query()->orderBy('name')->get(),
-            'opportunities' => Opportunity::query()->with('customer')->orderBy('title')->get(),
-            'products' => Product::query()->where('status', 'active')->orderBy('name')->get(),
             'sourceQuotation' => $quotation,
+            ...$this->commercialFormData->for($tenant),
         ]);
     }
 
@@ -127,15 +138,13 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function edit(Invoice $invoice): View
+    public function edit(Invoice $invoice, TenantContext $tenant): View
     {
         $invoice->load('items');
 
         return view('invoices.edit', [
             'invoice' => $invoice,
-            'customers' => Customer::query()->orderBy('name')->get(),
-            'opportunities' => Opportunity::query()->with('customer')->orderBy('title')->get(),
-            'products' => Product::query()->where('status', 'active')->orderBy('name')->get(),
+            ...$this->commercialFormData->for($tenant),
         ]);
     }
 
@@ -225,23 +234,28 @@ class InvoiceController extends Controller
         }
 
         $invoice->load(['customer', 'creator', 'items.product']);
+        $to = $request->validated('email');
+        $cc = ClientEmailCc::merge($request->user(), $to, $request->input('cc'));
 
         try {
             $this->organizationMailer->send(
                 $organization,
-                $request->validated('email'),
+                $to,
                 new InvoiceMail(
                     $invoice,
                     $organization,
                     $request->validated('message'),
                     $request->file('attachments', []),
                 ),
+                $cc,
             );
         } catch (\Throwable $e) {
             return redirect()
                 ->route('invoices.show', $invoice)
                 ->with('error', __('Failed to send email: :message', ['message' => $e->getMessage()]));
         }
+
+        $this->invoiceService->recordEmailSent($invoice, $request->user(), $to);
 
         try {
             $this->invoiceService->markIssuedAfterEmail($invoice, $request->user());
@@ -255,5 +269,12 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoices.show', $invoice)
             ->with('status', 'invoice-email-sent');
+    }
+
+    public function pdf(Invoice $invoice): Response|StreamedResponse
+    {
+        $this->authorize('view', $invoice);
+
+        return $this->pdfService->download($invoice);
     }
 }
