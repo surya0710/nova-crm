@@ -66,7 +66,7 @@
         <x-forms.field :label="__('GST registration type')" name="gst_registration_type">
             <x-forms.select id="gst_registration_type" name="gst_registration_type">
                 <option value="">{{ __('Not set') }}</option>
-                @foreach (config('tax.gst_registration_types') as $value => $label)
+                @foreach (config('tax.gst_registration_types') ?? [] as $value => $label)
                     <option value="{{ $value }}" @selected(old('gst_registration_type', $customer->gst_registration_type) === $value)>{{ $label }}</option>
                 @endforeach
             </x-forms.select>
@@ -74,7 +74,7 @@
         <x-forms.field :label="__('Tax registration status')" name="tax_registration_status">
             <x-forms.select id="tax_registration_status" name="tax_registration_status">
                 <option value="">{{ __('Not set') }}</option>
-                @foreach (config('tax.tax_registration_statuses') as $value => $label)
+                @foreach (config('tax.tax_registration_statuses') ?? [] as $value => $label)
                     <option value="{{ $value }}" @selected(old('tax_registration_status', $customer->tax_registration_status) === $value)>{{ $label }}</option>
                 @endforeach
             </x-forms.select>
@@ -82,7 +82,7 @@
         <x-forms.field :label="__('Billing state')" name="billing_state_code">
             <x-forms.select id="billing_state_code" name="billing_state_code">
                 <option value="">{{ __('Select GST state') }}</option>
-                @foreach (config('tax.states') as $code => $state)
+                @foreach (config('tax.states') ?? [] as $code => $state)
                     <option value="{{ $code }}" @selected(old('billing_state_code', $customer->billing_state_code) === $code)>{{ $code }} — {{ $state['name'] }}</option>
                 @endforeach
             </x-forms.select>
@@ -90,14 +90,14 @@
         <x-forms.field :label="__('Place of supply')" name="place_of_supply">
             <x-forms.select id="place_of_supply" name="place_of_supply">
                 <option value="">{{ __('Same as billing state') }}</option>
-                @foreach (config('tax.states') as $code => $state)
+                @foreach (config('tax.states') ?? [] as $code => $state)
                     <option value="{{ $code }}" @selected(old('place_of_supply', $customer->place_of_supply) === $code)>{{ $code }} — {{ $state['name'] }}</option>
                 @endforeach
             </x-forms.select>
         </x-forms.field>
         <x-forms.field :label="__('Tax exemption status')" name="tax_exemption_status">
             <x-forms.select id="tax_exemption_status" name="tax_exemption_status">
-                @foreach (config('tax.tax_exemption_statuses') as $value => $label)
+                @foreach (config('tax.tax_exemption_statuses') ?? [] as $value => $label)
                     <option value="{{ $value }}" @selected(old('tax_exemption_status', $customer->tax_exemption_status ?: 'not_exempt') === $value)>{{ $label }}</option>
                 @endforeach
             </x-forms.select>
@@ -108,7 +108,7 @@
         <x-forms.field :label="__('Default tax preference')" name="default_tax_preference">
             <x-forms.select id="default_tax_preference" name="default_tax_preference">
                 <option value="">{{ __('Tax exclusive') }}</option>
-                @foreach (config('tax.tax_preferences') as $value => $label)
+                @foreach (config('tax.tax_preferences') ?? [] as $value => $label)
                     <option value="{{ $value }}" @selected(old('default_tax_preference', $customer->default_tax_preference) === $value)>{{ $label }}</option>
                 @endforeach
             </x-forms.select>

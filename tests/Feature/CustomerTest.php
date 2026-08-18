@@ -99,6 +99,50 @@ class CustomerTest extends TestCase
         $response->assertDontSee('Org B Customer');
     }
 
+    public function test_user_can_open_customer_edit_form(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'name' => 'Edit Form Test',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('customers.edit', $customer))
+            ->assertOk()
+            ->assertSee('Edit Form Test')
+            ->assertSee('GST / Tax Profile')
+            ->assertSee('Regular');
+    }
+
+    public function test_customer_edit_form_renders_when_tax_dropdown_config_is_null(): void
+    {
+        config([
+            'tax.gst_registration_types' => null,
+            'tax.tax_registration_statuses' => null,
+            'tax.states' => null,
+            'tax.tax_exemption_statuses' => null,
+            'tax.tax_preferences' => null,
+        ]);
+
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'name' => 'Null Tax Config',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('customers.edit', $customer))
+            ->assertOk()
+            ->assertSee('Null Tax Config');
+    }
+
     public function test_user_can_view_update_and_delete_customer(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');

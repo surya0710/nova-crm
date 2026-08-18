@@ -146,7 +146,7 @@
         <div>
             <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Pricing') }}</label>
             <select class="w-full rounded-md border-line text-sm shadow-sm" name="pricing_mode" x-model="pricingMode">
-                @foreach (config('tax.pricing_modes') as $value => $label)
+                @foreach (config('tax.pricing_modes') ?? [] as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
             </select>
@@ -154,7 +154,7 @@
         <div>
             <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Tax treatment') }}</label>
             <select class="w-full rounded-md border-line text-sm shadow-sm" name="tax_treatment" x-model="taxTreatment">
-                @foreach (config('tax.treatments') as $value => $label)
+                @foreach (config('tax.treatments') ?? [] as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
             </select>
@@ -163,7 +163,7 @@
             <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Place of supply') }}</label>
             <select class="w-full rounded-md border-line text-sm shadow-sm" name="place_of_supply" x-model="placeOfSupply">
                 <option value="">{{ __('From customer') }}</option>
-                @foreach (config('tax.states') as $code => $state)
+                @foreach (config('tax.states') ?? [] as $code => $state)
                     <option value="{{ $code }}">{{ $code }} — {{ $state['name'] }}</option>
                 @endforeach
             </select>
