@@ -16,6 +16,8 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BacklogController;
 use App\Http\Controllers\Crm\CrmActivitiesController;
+use App\Http\Controllers\Crm\CrmCommunicationsController;
+use App\Http\Controllers\Crm\CrmEmailReportController;
 use App\Http\Controllers\Crm\CrmExportsController;
 use App\Http\Controllers\Crm\CrmHomeController;
 use App\Http\Controllers\Crm\CrmReportsController;
@@ -23,6 +25,8 @@ use App\Http\Controllers\Crm\CrmRevenueController;
 use App\Http\Controllers\Crm\CrmSavedViewsController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerImportController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CustomerTicketController;
 use App\Http\Controllers\Dashboard\DashboardApiController;
 use App\Http\Controllers\Dashboard\DashboardPreferenceController;
 use App\Http\Controllers\Dashboard\DashboardWidgetController;
@@ -158,6 +162,7 @@ use App\Http\Controllers\MarketingProviderOAuthController;
 use App\Http\Controllers\MarketingTrackingController;
 use App\Http\Controllers\MetadataFieldBlueprintActivationController;
 use App\Http\Controllers\MetadataFieldDefinitionController;
+use App\Http\Controllers\CrmEmailWebhookController;
 use App\Http\Controllers\MetaWebhookController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
@@ -165,6 +170,8 @@ use App\Http\Controllers\Operations\OperationsHomeController;
 use App\Http\Controllers\OpportunityController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSettings\HrConfigurationController;
+use App\Http\Controllers\OrganizationSettings\CommercialAutomationController;
+use App\Http\Controllers\OrganizationSettings\CrmEmailTemplateController;
 use App\Http\Controllers\OrganizationSettings\OrganizationSettingsHubController;
 use App\Http\Controllers\OrganizationSetupController;
 use App\Http\Controllers\OrganizationSwitchController;
@@ -211,6 +218,10 @@ use App\Http\Controllers\ProjectTemplateController;
 use App\Http\Controllers\ProjectTypeController;
 use App\Http\Controllers\ProjectWatcherController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\ReceivableController;
+use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\AdjustmentNoteController;
+use App\Http\Controllers\PriceListController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ResourceAllocationController;
 use App\Http\Controllers\ResourceCalendarController;
@@ -274,6 +285,10 @@ Route::post('marketing/track', [MarketingTrackingController::class, 'store'])
 Route::match(['get', 'post'], 'webhooks/marketing/{provider}', [MetaWebhookController::class, 'handle'])
     ->middleware(['throttle:marketing-webhooks'])
     ->name('webhooks.marketing');
+
+Route::post('webhooks/email/{provider}/{token}', [CrmEmailWebhookController::class, 'handle'])
+    ->middleware(['throttle:email-webhooks'])
+    ->name('webhooks.email');
 
 Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->group(function () {
     Route::get('organization/setup', [OrganizationSetupController::class, 'create'])->name('organization.setup');
@@ -1463,8 +1478,13 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::get('crm', CrmHomeController::class)->name('crm.home');
         Route::get('operations', OperationsHomeController::class)->name('operations.home');
         Route::get('crm/activities', CrmActivitiesController::class)->name('crm.activities');
+        Route::post('crm/activities', [CrmActivitiesController::class, 'store'])->name('crm.activities.store');
+        Route::post('crm/activities/{crm_activity}/complete', [CrmActivitiesController::class, 'complete'])->name('crm.activities.complete');
+        Route::get('crm/communications', [CrmCommunicationsController::class, 'index'])->name('crm.communications.index');
+        Route::get('crm/communications/{conversation}', [CrmCommunicationsController::class, 'show'])->name('crm.communications.show');
         Route::get('crm/revenue', CrmRevenueController::class)->name('crm.revenue');
         Route::get('crm/reports', CrmReportsController::class)->name('crm.reports');
+        Route::get('crm/reports/email', CrmEmailReportController::class)->name('crm.email-report');
         Route::get('crm/saved-views', CrmSavedViewsController::class)->name('crm.saved-views');
         Route::get('crm/exports', CrmExportsController::class)->name('crm.exports');
 
@@ -1489,6 +1509,23 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('leads/{lead}/follow-up/acknowledge', [LeadController::class, 'acknowledgeFollowUp'])->name('leads.follow-up.acknowledge');
 
         Route::resource('customers', CustomerController::class);
+        Route::get('contacts', [ContactController::class, 'index'])->name('contacts.index');
+        Route::get('customers/{customer}/contacts/create', [ContactController::class, 'create'])->name('customers.contacts.create');
+        Route::post('customers/{customer}/contacts', [ContactController::class, 'store'])->name('customers.contacts.store');
+        Route::resource('contacts', ContactController::class)->except(['index', 'create', 'store']);
+        Route::post('contacts/{contact}/notes', [ContactController::class, 'storeNote'])->name('contacts.notes.store');
+        Route::post('contacts/{contact}/activities', [ContactController::class, 'storeActivity'])->name('contacts.activities.store');
+        Route::post('contacts/{contact}/send', [ContactController::class, 'sendMail'])->name('contacts.send');
+        Route::get('customers/{customer}/tickets/create', [CustomerTicketController::class, 'create'])->name('customers.tickets.create');
+        Route::post('customers/{customer}/tickets', [CustomerTicketController::class, 'store'])->name('customers.tickets.store');
+        Route::resource('tickets', CustomerTicketController::class)
+            ->parameters(['tickets' => 'ticket'])
+            ->except(['create', 'store']);
+        Route::post('tickets/{ticket}/notes', [CustomerTicketController::class, 'storeNote'])->name('tickets.notes.store');
+        Route::patch('tickets/{ticket}/assign', [CustomerTicketController::class, 'assign'])->name('tickets.assign');
+        Route::post('tickets/{ticket}/reopen', [CustomerTicketController::class, 'reopen'])->name('tickets.reopen');
+        Route::patch('tickets/{ticket}/status', [CustomerTicketController::class, 'transition'])->name('tickets.status');
+        Route::post('tickets/{ticket}/send', [CustomerTicketController::class, 'sendMail'])->name('tickets.send');
         Route::get('imports/customers', [CustomerImportController::class, 'create'])->name('customers.import.create');
         Route::post('imports/customers', [CustomerImportController::class, 'store'])->name('customers.import.store');
         Route::get('imports/customers/{session}', [CustomerImportController::class, 'preview'])->name('customers.import.preview');
@@ -1504,8 +1541,11 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             ->parameters(['pipeline' => 'opportunity']);
         Route::patch('pipeline/{opportunity}/stage', [OpportunityController::class, 'updateStage'])->name('pipeline.stage.update');
         Route::post('pipeline/{opportunity}/notes', [OpportunityController::class, 'storeNote'])->name('pipeline.notes.store');
+        Route::post('pipeline/{opportunity}/activities', [OpportunityController::class, 'storeActivity'])->name('pipeline.activities.store');
+        Route::post('pipeline/{opportunity}/send', [OpportunityController::class, 'sendMail'])->name('pipeline.send');
 
         Route::get('products/search', [ProductController::class, 'search'])->name('products.search');
+        Route::get('products/{product}/price', [ProductController::class, 'resolvePrice'])->name('products.price');
         Route::resource('products', ProductController::class);
         Route::resource('product-categories', ProductCategoryController::class)
             ->parameters(['product-categories' => 'productCategory'])
@@ -1517,6 +1557,12 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::post('quotations/{quotation}/send', [QuotationController::class, 'sendMail'])->name('quotations.send');
         Route::get('quotations/{quotation}/pdf', [QuotationController::class, 'pdf'])->name('quotations.pdf');
 
+        Route::resource('sales-orders', SalesOrderController::class);
+        Route::patch('sales-orders/{sales_order}/status', [SalesOrderController::class, 'updateStatus'])->name('sales-orders.status.update');
+        Route::post('sales-orders/{sales_order}/convert', [SalesOrderController::class, 'convert'])->name('sales-orders.convert');
+        Route::post('sales-orders/{sales_order}/send', [SalesOrderController::class, 'sendMail'])->name('sales-orders.send');
+        Route::get('sales-orders/{sales_order}/pdf', [SalesOrderController::class, 'pdf'])->name('sales-orders.pdf');
+
         Route::resource('invoices', InvoiceController::class);
         Route::post('invoices/{invoice}/issue', [InvoiceController::class, 'issue'])->name('invoices.issue');
         Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
@@ -1526,6 +1572,25 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::resource('payments', PaymentController::class)
             ->only(['index', 'create', 'store', 'show']);
         Route::post('payments/{payment}/send', [PaymentController::class, 'sendMail'])->name('payments.send');
+        Route::get('payments/{payment}/pdf', [PaymentController::class, 'pdf'])->name('payments.pdf');
+
+        Route::get('receivables', [ReceivableController::class, 'index'])->name('receivables.index');
+
+        Route::resource('credit-notes', AdjustmentNoteController::class)->parameters(['credit-notes' => 'adjustment_note']);
+        Route::post('credit-notes/{adjustment_note}/issue', [AdjustmentNoteController::class, 'issue'])->name('credit-notes.issue');
+        Route::post('credit-notes/{adjustment_note}/apply', [AdjustmentNoteController::class, 'apply'])->name('credit-notes.apply');
+        Route::post('credit-notes/{adjustment_note}/cancel', [AdjustmentNoteController::class, 'cancel'])->name('credit-notes.cancel');
+        Route::post('credit-notes/{adjustment_note}/send', [AdjustmentNoteController::class, 'sendMail'])->name('credit-notes.send');
+        Route::get('credit-notes/{adjustment_note}/pdf', [AdjustmentNoteController::class, 'pdf'])->name('credit-notes.pdf');
+
+        Route::resource('debit-notes', AdjustmentNoteController::class)->parameters(['debit-notes' => 'adjustment_note']);
+        Route::post('debit-notes/{adjustment_note}/issue', [AdjustmentNoteController::class, 'issue'])->name('debit-notes.issue');
+        Route::post('debit-notes/{adjustment_note}/apply', [AdjustmentNoteController::class, 'apply'])->name('debit-notes.apply');
+        Route::post('debit-notes/{adjustment_note}/cancel', [AdjustmentNoteController::class, 'cancel'])->name('debit-notes.cancel');
+        Route::post('debit-notes/{adjustment_note}/send', [AdjustmentNoteController::class, 'sendMail'])->name('debit-notes.send');
+        Route::get('debit-notes/{adjustment_note}/pdf', [AdjustmentNoteController::class, 'pdf'])->name('debit-notes.pdf');
+
+        Route::resource('price-lists', PriceListController::class);
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/finance', [ReportController::class, 'finance'])->name('reports.finance');
@@ -1757,6 +1822,8 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
         Route::patch('saved-filters/{saved_filter}', [SavedFilterController::class, 'update'])->name('saved-filters.update');
         Route::delete('saved-filters/{saved_filter}', [SavedFilterController::class, 'destroy'])->name('saved-filters.destroy');
         Route::post('saved-filters/{saved_filter}/duplicate', [SavedFilterController::class, 'duplicate'])->name('saved-filters.duplicate');
+        Route::post('saved-filters/{saved_filter}/default', [SavedFilterController::class, 'setDefault'])->name('saved-filters.default');
+        Route::delete('saved-filters/{saved_filter}/default', [SavedFilterController::class, 'clearDefault'])->name('saved-filters.default.clear');
 
         Route::get('search', [SearchController::class, 'index'])->name('search.index');
         Route::get('knowledge/search', [KnowledgeCenterController::class, 'search'])->name('knowledge.search');
@@ -1968,6 +2035,13 @@ Route::middleware(['auth', 'prevent.platform.tenant', 'set.organization'])->grou
             Route::put('leave-approvers', [HrConfigurationController::class, 'updateLeaveApprovers'])->name('leave-approvers.update');
             Route::get('notifications', [HrConfigurationController::class, 'editNotifications'])->name('notifications.edit');
             Route::put('notifications', [HrConfigurationController::class, 'updateNotifications'])->name('notifications.update');
+            Route::get('commercial-automation', [CommercialAutomationController::class, 'edit'])->name('commercial-automation.edit');
+            Route::put('commercial-automation', [CommercialAutomationController::class, 'update'])->name('commercial-automation.update');
+
+            Route::get('email-templates', [CrmEmailTemplateController::class, 'index'])->name('email-templates.index');
+            Route::post('email-templates', [CrmEmailTemplateController::class, 'store'])->name('email-templates.store');
+            Route::put('email-templates/{template}', [CrmEmailTemplateController::class, 'update'])->name('email-templates.update');
+            Route::delete('email-templates/{template}', [CrmEmailTemplateController::class, 'destroy'])->name('email-templates.destroy');
 
             // Aliases into existing HR controllers (operational services stay shared; nav lives under settings).
             Route::redirect('branches', '/hrms/branches')->name('branches.index');

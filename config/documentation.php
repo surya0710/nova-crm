@@ -333,6 +333,7 @@ return [
     'integrations' => [
         'leads.index',
         'customers.index',
+        'contacts.index',
         'pipeline.index',
         'quotations.index',
         'invoices.index',
@@ -361,9 +362,16 @@ return [
     'route_mappings' => [
         'leads.index' => ['slug' => 'crm/user-guide/leads'],
         'customers.index' => ['slug' => 'crm/user-guide/customers'],
+        'contacts.index' => ['slug' => 'crm/user-guide/contacts'],
         'pipeline.index' => ['slug' => 'crm/user-guide/opportunities'],
         'quotations.index' => ['slug' => 'crm/user-guide/quotations'],
         'invoices.index' => ['slug' => 'crm/user-guide/invoices'],
+        'sales-orders.index' => ['slug' => 'crm/user-guide/sales-orders'],
+        'payments.index' => ['slug' => 'crm/user-guide/payments'],
+        'receivables.index' => ['slug' => 'crm/user-guide/receivables'],
+        'credit-notes.index' => ['slug' => 'crm/user-guide/credit-debit-notes'],
+        'debit-notes.index' => ['slug' => 'crm/user-guide/credit-debit-notes'],
+        'price-lists.index' => ['slug' => 'crm/user-guide/price-lists'],
         'products.index' => ['slug' => 'crm/user-guide/products'],
         'hrms.employees.index' => ['slug' => 'hrms/user-guide/employees'],
         'hrms.attendance.index' => ['slug' => 'hrms/user-guide/attendance'],
@@ -399,6 +407,10 @@ return [
             'admin-guide' => 'crm/admin-guide/overview',
             'api' => 'crm/api/overview',
             'troubleshooting' => 'crm/troubleshooting/overview',
+        ],
+        'contacts.index' => [
+            'user-guide' => 'crm/user-guide/contacts',
+            'api' => 'crm/api/overview',
         ],
         'pipeline.index' => [
             'user-guide' => 'crm/user-guide/opportunities',
@@ -489,8 +501,17 @@ return [
             'icon' => 'building',
             'related' => [
                 'crm/user-guide/leads',
+                'crm/user-guide/contacts',
                 'crm/user-guide/opportunities',
                 'crm/user-guide/invoices',
+            ],
+        ],
+        'crm/user-guide/contacts' => [
+            'keywords' => ['contacts', 'people', 'decision maker', 'primary'],
+            'icon' => 'people',
+            'related' => [
+                'crm/user-guide/customers',
+                'crm/user-guide/opportunities',
             ],
         ],
         'crm/user-guide/opportunities' => [

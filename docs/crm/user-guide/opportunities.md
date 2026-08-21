@@ -12,12 +12,14 @@ Sales reps, sales managers, and revenue operations.
 
 ## Step-by-step instructions
 1. Create opportunity linked to lead/customer.
-2. Set stage, expected close date, and value.
-3. Update progress after each sales activity.
-4. Close as won/lost with reason details.
+2. Set stage, expected close date, deal value, probability, owner, and source.
+3. Link contacts (roles) and products/services when known. Record competitor and lost reason on close.
+4. Log the next activity; it appears on the deal as **Next activity**.
+5. Review weighted pipeline on the board/list (amount × probability).
+6. Close as won/lost. Create a quotation from the deal and follow sales order → invoice → payment on the commercial chain.
 
 ## Expected result
-Pipeline visibility improves forecasting and action planning.
+Pipeline visibility improves forecasting: open value, weighted value, win rate, average deal size, and average sales cycle. The commercial documents stay linked on the opportunity.
 
 ## Best Practices
 Update stage transitions immediately after key events.

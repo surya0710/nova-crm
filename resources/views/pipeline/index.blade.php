@@ -66,6 +66,11 @@
                 :value="number_format($pipelineSummary['open_value'], 0).' '.$currency"
                 :hint="__('Excludes closed deals')"
             />
+            <x-ui.stat-card
+                :label="__('Weighted pipeline')"
+                :value="number_format($pipelineSummary['weighted_value'] ?? 0, 0).' '.$currency"
+                :hint="__('Open value × probability')"
+            />
             <a href="{{ route('pipeline.index', array_merge($queryBase, ['view' => 'list', 'stage' => 'closed_won'])) }}" class="block transition hover:opacity-90">
                 <x-ui.stat-card
                     :label="__('Won')"

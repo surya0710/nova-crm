@@ -1,29 +1,40 @@
 # CRM User Guide - Contacts
 
 ## Purpose
-Track individual stakeholder records linked to customers and deals.
+Track people at a customer company (HubSpot-style contacts under an account).
 
 ## Who should use this feature
-Sales users, account managers, and relationship owners.
+Sales users, account managers, and relationship owners with `customers.view` / `customers.update`.
 
 ## Prerequisites
-- Customer record exists
-- Contact fields and validation rules configured
+- Customer (company) record exists
+
+## Fields
+- Name
+- Designation / title
+- Department
+- Email, phone, WhatsApp
+- Decision-maker flag
+- Primary contact
+- Status (active / inactive)
+- Timeline notes, tasks, calls, meetings, follow-ups
+- Email logging when a company email is sent to this person
 
 ## Step-by-step instructions
-1. Add contact with verified communication details.
-2. Associate contact to customer and relevant opportunities.
-3. Mark role and decision influence level.
-4. Update status after each interaction.
+1. Open the company and choose **Add contact**, or start from **CRM → Contacts**.
+2. Enter verified communication details and role.
+3. Mark **Primary** for the billing/party contact. Mark **Decision maker** when they influence the deal.
+4. Add timeline notes after each interaction.
+5. Optionally link the contact on a company support ticket.
 
 ## Expected result
-Contact data remains actionable and tied to account strategy.
+Each company has one or more contacts. The primary contact name, email, and phone stay aligned with the customer party fields.
 
 ## Best Practices
-Record role context and keep communication preferences updated.
+Keep one primary contact. Prefer company email addresses. Record title and department so routing stays clear.
 
 ## Common Mistakes
 Unlinked contacts and stale phone/email information.
 
 ## FAQ
-Include ownership, duplication, and contact role questions.
+Contacts use the same `customers.*` permissions as the parent company. They are not a separate RBAC module.

@@ -27,6 +27,7 @@ class NoteService
             $subject instanceof Lead => [LeadNote::class, 'lead_id'],
             $subject instanceof Customer => [CustomerNote::class, 'customer_id'],
             $subject instanceof Opportunity => [OpportunityNote::class, 'opportunity_id'],
+            $subject instanceof \App\Models\CustomerTicket => [\App\Models\CustomerTicketNote::class, 'customer_ticket_id'],
             default => throw ValidationException::withMessages(['subject' => 'Notes are not supported for this entity.']),
         };
 

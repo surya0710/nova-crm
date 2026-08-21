@@ -33,13 +33,18 @@
 @endphp
 
 <div class="space-y-8">
-    @if (! empty($sourceQuotation))
+    @if (! empty($sourceSalesOrder))
+        <div class="rounded-lg border border-primary-100 bg-primary-50/50 px-4 py-3 text-sm text-primary-800">
+            {{ __('Creating invoice from :label :number', ['label' => strtolower(crm_term('sales_order')), 'number' => $sourceSalesOrder->number]) }}
+        </div>
+    @elseif (! empty($sourceQuotation))
         <div class="rounded-lg border border-primary-100 bg-primary-50/50 px-4 py-3 text-sm text-primary-800">
             {{ __('Creating invoice from :label :number', ['label' => strtolower(crm_term('quotation')), 'number' => $sourceQuotation->number]) }}
         </div>
     @endif
 
     <input type="hidden" name="quotation_id" value="{{ old('quotation_id', $invoice->quotation_id) }}">
+    <input type="hidden" name="sales_order_id" value="{{ old('sales_order_id', $invoice->sales_order_id) }}">
 
     <x-forms.section :title="__(':label Details', ['label' => crm_term('invoice')])">
         <x-forms.field :label="crm_term('customer')" name="customer_id" required>

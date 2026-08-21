@@ -9,7 +9,10 @@
     <x-flash-messages />
 
     @php
-        $activeTab = 'general';
+        $activeTab = request()->query('tab', 'general');
+        if (! in_array($activeTab, ['general', 'custom_fields', 'brand', 'address', 'preferences', 'terminology', 'email', 'roles'], true)) {
+            $activeTab = 'general';
+        }
         if ($errors->hasAny(['logo', 'remove_logo'])) {
             $activeTab = 'brand';
         } elseif ($errors->hasAny(['address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country'])) {
@@ -20,7 +23,7 @@
             $activeTab = 'terminology';
         } elseif ($errors->hasAny(['custom_fields', 'custom_fields.*'])) {
             $activeTab = 'custom_fields';
-        } elseif ($errors->hasAny(['mail_enabled', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'])) {
+        } elseif ($errors->hasAny(['mail_enabled', 'mail_provider', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name', 'mail_reply_to', 'mail_default_cc', 'mail_default_bcc', 'mail_signature'])) {
             $activeTab = 'email';
         } elseif ($errors->hasAny(['name', 'email', 'phone', 'website', 'description'])) {
             $activeTab = 'general';
@@ -39,6 +42,19 @@
                     if (preset[key]) {
                         this.terms[key] = preset[key];
                     }
+                }
+            },
+            mailPresets: @js($mailProviderPresets ?? []),
+            applyMailProvider(event) {
+                const preset = this.mailPresets[event.target.value] || {};
+                if (preset.host !== undefined && document.getElementById('mail_host') && ! document.getElementById('mail_host').value) {
+                    document.getElementById('mail_host').value = preset.host || '';
+                }
+                if (preset.port && document.getElementById('mail_port')) {
+                    document.getElementById('mail_port').value = preset.port;
+                }
+                if (preset.encryption && document.getElementById('mail_encryption')) {
+                    document.getElementById('mail_encryption').value = preset.encryption;
                 }
             }
         }"
@@ -369,7 +385,8 @@
                 <div x-show="tab === 'email'" x-cloak class="space-y-5">
                     <div>
                         <h3 class="text-base font-semibold text-slate-900">{{ __('Outgoing Email (SMTP)') }}</h3>
-                        <p class="mt-1 text-sm text-slate-500">{{ __('Client emails (quotations, invoices, receipts) are sent from this organization\'s own mail account â€” not from global .env settings.') }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ __('Client emails are sent from this organization\'s mail account — not from global .env settings.') }}</p>
+                        <a href="{{ route('organization.settings.email-templates.index') }}" class="mt-2 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-800">{{ __('Manage email templates') }} →</a>
                     </div>
 
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -382,20 +399,20 @@
                                 class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                 @checked(old('mail_enabled', $mailSettings['enabled']))
                             />
-                            <span class="text-sm font-medium text-slate-900">{{ __('Enable organization email') }}</span>
+                            <span class="text-sm font-medium text-slate-900">{{ __('Enable outgoing CRM email') }}</span>
                         </label>
                         <x-input-error :messages="$errors->get('mail_enabled')" class="mt-2" />
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                            <x-input-label for="mail_driver" :value="__('Driver')" />
-                            <select id="mail_driver" name="mail_driver" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                @foreach ($mailDrivers as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('mail_driver', $mailSettings['driver']) === $value)>{{ $label }}</option>
+                            <x-input-label for="mail_provider" :value="__('Email provider')" />
+                            <select id="mail_provider" name="mail_provider" x-on:change="applyMailProvider($event)" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                @foreach ($mailProviders ?? $mailDrivers as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('mail_provider', $mailSettings['provider'] ?? $mailSettings['driver']) === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <x-input-error :messages="$errors->get('mail_driver')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('mail_provider')" class="mt-2" />
                         </div>
 
                         <div>
@@ -428,7 +445,7 @@
 
                         <div>
                             <x-input-label for="mail_password" :value="__('SMTP Password')" />
-                            <x-text-input id="mail_password" class="block mt-1 w-full" type="password" name="mail_password" autocomplete="new-password" placeholder="{{ $mailSettings['has_password'] ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : '' }}" />
+                            <x-text-input id="mail_password" class="block mt-1 w-full" type="password" name="mail_password" autocomplete="new-password" placeholder="{{ $mailSettings['has_password'] ? '••••••••' : '' }}" />
                             @if ($mailSettings['has_password'])
                                 <p class="mt-1 text-xs text-slate-500">{{ __('Leave blank to keep the current password.') }}</p>
                             @endif
@@ -446,7 +463,45 @@
                             <x-text-input id="mail_from_name" class="block mt-1 w-full" type="text" name="mail_from_name" :value="old('mail_from_name', $mailSettings['from_name'] ?: $organization->name)" />
                             <x-input-error :messages="$errors->get('mail_from_name')" class="mt-2" />
                         </div>
+
+                        <div>
+                            <x-input-label for="mail_reply_to" :value="__('Reply-to')" />
+                            <x-text-input id="mail_reply_to" class="block mt-1 w-full" type="email" name="mail_reply_to" :value="old('mail_reply_to', $mailSettings['reply_to'] ?? '')" placeholder="support@yourcompany.com" />
+                            <x-input-error :messages="$errors->get('mail_reply_to')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="mail_default_cc" :value="__('Default CC')" />
+                            <x-text-input id="mail_default_cc" class="block mt-1 w-full" type="text" name="mail_default_cc" :value="old('mail_default_cc', $mailSettings['default_cc'] ?? '')" placeholder="accounts@yourcompany.com" />
+                            <p class="mt-1 text-xs text-slate-500">{{ __('Added to CRM emails. Separate addresses with commas.') }}</p>
+                            <x-input-error :messages="$errors->get('mail_default_cc')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="mail_default_bcc" :value="__('Default BCC')" />
+                            <x-text-input id="mail_default_bcc" class="block mt-1 w-full" type="text" name="mail_default_bcc" :value="old('mail_default_bcc', $mailSettings['default_bcc'] ?? '')" />
+                            <x-input-error :messages="$errors->get('mail_default_bcc')" class="mt-2" />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <x-input-label for="mail_signature" :value="__('Email signature')" />
+                            <textarea id="mail_signature" name="mail_signature" rows="4" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('mail_signature', $mailSettings['signature'] ?? '') }}</textarea>
+                            <x-input-error :messages="$errors->get('mail_signature')" class="mt-2" />
+                        </div>
                     </div>
+
+                    @if ($mailTracksDelivery ?? false)
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-medium text-slate-900">{{ __('Delivery webhooks') }}</p>
+                            <p class="mt-1 text-xs text-slate-500">{{ __('Point :provider event webhooks at this URL. Events update delivered, bounced, failed, and deferred status for this organization only.', ['provider' => $mailSettings['provider'] ?? 'provider']) }}</p>
+                            @if ($mailWebhookEndpoint ?? null)
+                                <code class="mt-2 block break-all rounded bg-white px-2 py-1.5 text-xs text-slate-700">{{ $mailWebhookEndpoint->url() }}</code>
+                                <p class="mt-2 text-xs text-slate-500">{{ __('Signing secret is stored encrypted. Use it to verify webhook authenticity at the provider.') }}</p>
+                            @else
+                                <p class="mt-2 text-xs text-slate-500">{{ __('Save these email settings to generate a webhook URL.') }}</p>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Save --}}

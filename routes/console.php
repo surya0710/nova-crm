@@ -50,6 +50,10 @@ Artisan::command('marketing:process-meta-webhooks {--limit=100}', function (Meta
     ));
 })->purpose('Automatically process pending Meta webhook deliveries');
 
+Schedule::command('commercial:dispatch-reminders')
+    ->daily()
+    ->withoutOverlapping();
+
 Schedule::command('recruitment:process-integration-retries')
     ->everyFiveMinutes()
     ->withoutOverlapping();

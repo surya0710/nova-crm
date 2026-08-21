@@ -12,6 +12,7 @@ trait ConfiguresOrganizationMail
         $settings = $organization->settings ?? [];
         $settings['mail'] = [
             'enabled' => true,
+            'provider' => $driver,
             'driver' => $driver,
             'host' => $driver === 'smtp' ? 'smtp.example.com' : '',
             'port' => 587,

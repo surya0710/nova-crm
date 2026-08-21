@@ -15,7 +15,7 @@
 
         <form method="POST" action="{{ route('invoices.store') }}">
             @csrf
-            @include('invoices._form', ['invoice' => $invoice, 'customers' => $customers, 'opportunities' => $opportunities, 'products' => $products, 'sourceQuotation' => $sourceQuotation ?? null])
+            @include('invoices._form', ['invoice' => $invoice, 'customers' => $customers, 'opportunities' => $opportunities, 'products' => $products, 'sourceQuotation' => $sourceQuotation ?? null, 'sourceSalesOrder' => $sourceSalesOrder ?? null])
             <x-forms.footer :cancel-href="route('invoices.index')" :submit-label="__('Create :label', ['label' => crm_term('invoice')])" />
         </form>
     </x-layouts.create>

@@ -15,6 +15,7 @@ Sales operations and catalog owners with `products.view` / `products.create`.
 2. Add products or services with SKU, unit, list price, tax rate, HSN/SAC, default discount, and inclusive/exclusive pricing.
 3. Inactive items stay in history but are hidden from document pickers.
 4. Free-text category is kept for older records; assigning a category updates that label automatically.
+5. Optional **Price lists** override catalog unit price by customer, quantity, and effective dates. Catalog price changes are stored in price history.
 
 ## Expected result
 Line items on quotations and invoices inherit SKU, HSN/SAC, unit, tax, cess, and discount defaults.

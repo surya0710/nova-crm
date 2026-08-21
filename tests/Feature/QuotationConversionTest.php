@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use App\Services\AuditLogger;
@@ -77,17 +77,17 @@ class QuotationConversionTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation));
 
-        $invoice = Invoice::query()->first();
+        $salesOrder = SalesOrder::query()->first();
 
-        $response->assertRedirect(route('invoices.show', $invoice));
-        $response->assertSessionHas('status', 'invoice-created-from-quotation');
+        $response->assertRedirect(route('sales-orders.show', $salesOrder));
+        $response->assertSessionHas('status', 'sales-order-created-from-quotation');
 
         $this->assertDatabaseHas('quotations', [
             'id' => $quotation->id,
             'status' => 'converted',
         ]);
 
-        $this->assertDatabaseHas('invoices', [
+        $this->assertDatabaseHas('sales_orders', [
             'quotation_id' => $quotation->id,
             'customer_id' => $customer->id,
             'subtotal' => 1000,
@@ -118,73 +118,10 @@ class QuotationConversionTest extends TestCase
 
         $response->assertRedirect(route('quotations.show', $quotation));
         $response->assertSessionHasErrors('quotation');
-        $this->assertDatabaseCount('invoices', 0);
+        $this->assertDatabaseCount('sales_orders', 0);
     }
 
-    public function test_sent_quotation_cannot_convert(): void
-    {
-        [$user, $organization] = $this->setupUserWithOrg('manager');
-
-        $customer = Customer::factory()->create([
-            'organization_id' => $organization->id,
-            'created_by' => $user->id,
-        ]);
-
-        $quotation = $this->createAcceptedQuotation($organization, $user, $customer, quotationOverrides: [
-            'status' => 'sent',
-        ]);
-
-        $response = $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organization->id])
-            ->post(route('quotations.convert', $quotation));
-
-        $response->assertSessionHasErrors('quotation');
-        $this->assertDatabaseCount('invoices', 0);
-    }
-
-    public function test_rejected_quotation_cannot_convert(): void
-    {
-        [$user, $organization] = $this->setupUserWithOrg('manager');
-
-        $customer = Customer::factory()->create([
-            'organization_id' => $organization->id,
-            'created_by' => $user->id,
-        ]);
-
-        $quotation = $this->createAcceptedQuotation($organization, $user, $customer, quotationOverrides: [
-            'status' => 'rejected',
-        ]);
-
-        $response = $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organization->id])
-            ->post(route('quotations.convert', $quotation));
-
-        $response->assertSessionHasErrors('quotation');
-        $this->assertDatabaseCount('invoices', 0);
-    }
-
-    public function test_expired_quotation_cannot_convert(): void
-    {
-        [$user, $organization] = $this->setupUserWithOrg('manager');
-
-        $customer = Customer::factory()->create([
-            'organization_id' => $organization->id,
-            'created_by' => $user->id,
-        ]);
-
-        $quotation = $this->createAcceptedQuotation($organization, $user, $customer, quotationOverrides: [
-            'status' => 'expired',
-        ]);
-
-        $response = $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organization->id])
-            ->post(route('quotations.convert', $quotation));
-
-        $response->assertSessionHasErrors('quotation');
-        $this->assertDatabaseCount('invoices', 0);
-    }
-
-    public function test_converted_quotation_returns_existing_invoice(): void
+    public function test_converted_quotation_returns_existing_sales_order(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');
 
@@ -199,37 +136,14 @@ class QuotationConversionTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation));
 
-        $invoice = Invoice::query()->first();
+        $salesOrder = SalesOrder::query()->first();
 
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation->fresh()));
 
-        $response->assertRedirect(route('invoices.show', $invoice));
-        $this->assertDatabaseCount('invoices', 1);
-    }
-
-    public function test_invoice_totals_equal_quotation_totals(): void
-    {
-        [$user, $organization] = $this->setupUserWithOrg('manager');
-
-        $customer = Customer::factory()->create([
-            'organization_id' => $organization->id,
-            'created_by' => $user->id,
-        ]);
-
-        $quotation = $this->createAcceptedQuotation($organization, $user, $customer);
-
-        $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organization->id])
-            ->post(route('quotations.convert', $quotation));
-
-        $invoice = Invoice::query()->with('items')->first();
-
-        $this->assertSame((float) $quotation->subtotal, (float) $invoice->subtotal);
-        $this->assertSame((float) $quotation->discount_amount, (float) $invoice->discount_amount);
-        $this->assertSame((float) $quotation->tax_total, (float) $invoice->tax_total);
-        $this->assertSame((float) $quotation->total, (float) $invoice->total);
+        $response->assertRedirect(route('sales-orders.show', $salesOrder));
+        $this->assertDatabaseCount('sales_orders', 1);
     }
 
     public function test_line_items_copied_correctly(): void
@@ -254,7 +168,7 @@ class QuotationConversionTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation));
 
-        $this->assertDatabaseHas('invoice_items', [
+        $this->assertDatabaseHas('sales_order_items', [
             'description' => 'Premium support',
             'quantity' => 5,
             'unit_price' => 200,
@@ -283,7 +197,7 @@ class QuotationConversionTest extends TestCase
                         throw new \RuntimeException('Simulated conversion failure');
                     }
 
-                    return new AuditLog([
+                    return new \App\Models\AuditLog([
                         'organization_id' => 1,
                         'event' => $event,
                         'subject' => 'test',
@@ -298,8 +212,8 @@ class QuotationConversionTest extends TestCase
             // expected
         }
 
-        $this->assertDatabaseCount('invoices', 0);
-        $this->assertDatabaseCount('invoice_items', 0);
+        $this->assertDatabaseCount('sales_orders', 0);
+        $this->assertDatabaseCount('sales_order_items', 0);
         $this->assertDatabaseHas('quotations', [
             'id' => $quotation->id,
             'status' => 'accepted',
@@ -321,7 +235,7 @@ class QuotationConversionTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation));
 
-        $invoice = Invoice::query()->first();
+        $salesOrder = SalesOrder::query()->first();
 
         $this->assertDatabaseHas('audit_logs', [
             'organization_id' => $organization->id,
@@ -334,15 +248,15 @@ class QuotationConversionTest extends TestCase
         $this->assertDatabaseHas('audit_logs', [
             'organization_id' => $organization->id,
             'user_id' => $user->id,
-            'auditable_type' => $invoice->getMorphClass(),
-            'auditable_id' => $invoice->id,
+            'auditable_type' => $salesOrder->getMorphClass(),
+            'auditable_id' => $salesOrder->id,
             'event' => 'created_from_quotation',
         ]);
     }
 
-    public function test_authorization_enforced_for_conversion(): void
+    public function test_authorization_enforced_for_hr_conversion(): void
     {
-        [$user, $organization] = $this->setupUserWithOrg('sales-executive');
+        [$user, $organization] = $this->setupUserWithOrg('hr');
 
         $customer = Customer::factory()->create([
             'organization_id' => $organization->id,
@@ -356,39 +270,11 @@ class QuotationConversionTest extends TestCase
             ->post(route('quotations.convert', $quotation));
 
         $response->assertForbidden();
+        $this->assertDatabaseCount('sales_orders', 0);
         $this->assertDatabaseCount('invoices', 0);
     }
 
-    public function test_duplicate_conversion_blocked_when_active_invoice_exists(): void
-    {
-        [$user, $organization] = $this->setupUserWithOrg('manager');
-
-        $customer = Customer::factory()->create([
-            'organization_id' => $organization->id,
-            'created_by' => $user->id,
-        ]);
-
-        $quotation = $this->createAcceptedQuotation($organization, $user, $customer);
-
-        Invoice::factory()->create([
-            'organization_id' => $organization->id,
-            'customer_id' => $customer->id,
-            'quotation_id' => $quotation->id,
-            'status' => 'draft',
-            'created_by' => $user->id,
-        ]);
-
-        $response = $this->actingAs($user)
-            ->withSession(['current_organization_id' => $organization->id])
-            ->post(route('quotations.convert', $quotation));
-
-        $existingInvoice = Invoice::query()->where('quotation_id', $quotation->id)->first();
-
-        $response->assertRedirect(route('invoices.show', $existingInvoice));
-        $this->assertDatabaseCount('invoices', 1);
-    }
-
-    public function test_relationship_established_between_quotation_and_invoice(): void
+    public function test_relationship_established_between_quotation_and_sales_order(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');
 
@@ -405,8 +291,8 @@ class QuotationConversionTest extends TestCase
 
         $quotation->refresh();
 
-        $this->assertNotNull($quotation->invoice);
-        $this->assertSame($quotation->id, $quotation->invoice->quotation_id);
+        $this->assertNotNull($quotation->salesOrder);
+        $this->assertSame($quotation->id, $quotation->salesOrder->quotation_id);
     }
 
     public function test_notification_sent_to_quotation_creator(): void

@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\QuotationAccepted;
+use App\Events\QuotationCreated;
+use App\Events\QuotationSent;
 use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\Quotation;
@@ -36,6 +39,7 @@ class QuotationService
 
         return DB::transaction(function () use ($organization, $data, $totals, $user) {
             $quotation = Quotation::query()->create([
+                'organization_id' => $organization->id,
                 'number' => Quotation::generateNumber($organization),
                 'customer_id' => $data['customer_id'],
                 'opportunity_id' => $data['opportunity_id'] ?? null,
@@ -53,7 +57,10 @@ class QuotationService
 
             $this->syncItems($quotation, $totals['items']);
 
-            return $quotation->fresh(['items']);
+            $quotation = $quotation->fresh(['items']);
+            event(QuotationCreated::forModel($quotation, ['actor_id' => $user->id]));
+
+            return $quotation;
         });
     }
 
@@ -143,7 +150,23 @@ class QuotationService
                 'to' => $newStatus,
             ], $user);
 
-            return $quotation->fresh();
+            $quotation = $quotation->fresh();
+
+            if ($newStatus === 'accepted') {
+                event(QuotationAccepted::forModel($quotation, [
+                    'actor_id' => $user->id,
+                    'from' => $previousStatus,
+                ]));
+            }
+
+            if ($newStatus === 'sent') {
+                event(QuotationSent::forModel($quotation, [
+                    'actor_id' => $user->id,
+                    'from' => $previousStatus,
+                ]));
+            }
+
+            return $quotation;
         });
     }
 

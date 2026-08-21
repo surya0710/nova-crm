@@ -49,12 +49,23 @@ Organization administrators can manage roles, permissions, and user access from 
 | View / manage products and categories | `products.view` / `create` / `update` / `delete` / `manage` |
 | View / manage quotations | `quotations.view` / `create` / `update` / `delete` / `manage` |
 | Send quotation email | `quotations.update` (`changeStatus`) |
-| Convert quotation → invoice | `invoices.create` **and** `quotations.view` |
+| Convert quotation → sales order | `sales_orders.create` **and** `quotations.view` |
+| View / manage sales orders | `sales_orders.view` / `create` / `update` / `delete` / `manage` |
+| Convert sales order → invoice | `invoices.create` **and** `sales_orders.view` |
 | View / manage invoices | `invoices.view` / `create` / `update` / `delete` / `manage` |
 | Issue, cancel, or email invoices | `invoices.update` |
+| View / record payments | `payments.view` / `payments.create` |
+| Receivables and customer ledger | `invoices.view` **or** `finance.view` |
+| Credit / debit notes | `adjustment_notes.view` / `create` / `update` / `delete` / `manage` |
+| Price lists | `price_lists.view` / `create` / `update` / `delete` / `manage` |
+| Contacts, ticket workspace, and company tickets | `customers.view` / `customers.update` (no extra ticket slugs) |
+| Sales activities | `customers.view` to list; `customers.update` to log/complete (opportunity update also allowed on deals) |
 | REST commercial APIs | `api.access` plus the entity permission above |
+| Customer portal billing | `auth:client` linked to the customer (not staff RBAC) |
 
 Product categories reuse the products permission set (no extra slugs). Documents are organization-scoped; other tenants receive 404.
+
+Default roles: managers have full commercial access; sales executives sell (quotes/orders, not invoices/payments); support can view invoices, payments, receivables, and notes; HR has no commercial catalog or billing access.
 
 ## Notifications
 
@@ -73,3 +84,15 @@ Users receive in-app notifications when:
 | Install templates | `rbac.templates.manage` |
 
 Organization owners and administrators have full access by default.
+
+## CRM email
+
+| Action | Permission |
+|--------|------------|
+| View conversations, delivery, metrics | `crm_email.view` or `customers.view` |
+| Send from records / API | `customers.create` or `customers.update` (plus the record’s own permission) |
+| View templates | `email_templates.view` |
+| Manage templates | `email_templates.manage` |
+| REST API | `api.access` in addition to the row above |
+
+Mail configuration, templates, messages, conversations, attachments, and webhook tokens are organization-scoped. Other-organization URLs return 404. SMTP passwords and webhook secrets are never rendered in APIs.

@@ -6,6 +6,7 @@ return [
         'issued' => 'Issued',
         'partially_paid' => 'Partially Paid',
         'paid' => 'Paid',
+        'overpaid' => 'Overpaid',
         'cancelled' => 'Cancelled',
     ],
 
@@ -18,10 +19,11 @@ return [
         'issued' => ['cancelled'],
         'partially_paid' => ['cancelled'],
         'paid' => [],
+        'overpaid' => [],
         'cancelled' => [],
     ],
 
-    'system_managed_statuses' => ['partially_paid', 'paid'],
+    'system_managed_statuses' => ['partially_paid', 'paid', 'overpaid'],
 
     'fully_editable_statuses' => ['draft'],
 

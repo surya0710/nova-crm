@@ -73,6 +73,7 @@ class SavedFilterController extends Controller
             'lead' => 'leads.index',
             'customer' => 'customers.index',
             'opportunity' => 'pipeline.index',
+            'ticket' => 'tickets.index',
             default => 'dashboard',
         };
 
@@ -93,6 +94,7 @@ class SavedFilterController extends Controller
             'lead' => 'leads.index',
             'customer' => 'customers.index',
             'opportunity' => 'pipeline.index',
+            'ticket' => 'tickets.index',
             default => 'dashboard',
         };
 
@@ -101,5 +103,42 @@ class SavedFilterController extends Controller
                 'saved_filter' => $copy->id,
             ])
             ->with('status', 'saved-filter-duplicated');
+    }
+
+    public function setDefault(SavedFilter $savedFilter, TenantContext $tenant): RedirectResponse
+    {
+        $this->authorize('view', $savedFilter);
+
+        $this->savedFilters->setDefault(request()->user(), $tenant->get(), $savedFilter);
+
+        return redirect()
+            ->route($this->indexRoute($savedFilter->entity_type), [
+                'saved_filter' => $savedFilter->id,
+            ])
+            ->with('status', 'saved-filter-default-set');
+    }
+
+    public function clearDefault(SavedFilter $savedFilter, TenantContext $tenant): RedirectResponse
+    {
+        $this->authorize('view', $savedFilter);
+
+        $this->savedFilters->clearDefault(request()->user(), $tenant->get(), $savedFilter->entity_type);
+
+        return redirect()
+            ->route($this->indexRoute($savedFilter->entity_type), [
+                'saved_filter' => $savedFilter->id,
+            ])
+            ->with('status', 'saved-filter-default-cleared');
+    }
+
+    protected function indexRoute(string $entityType): string
+    {
+        return match ($entityType) {
+            'lead' => 'leads.index',
+            'customer' => 'customers.index',
+            'opportunity' => 'pipeline.index',
+            'ticket' => 'tickets.index',
+            default => 'dashboard',
+        };
     }
 }

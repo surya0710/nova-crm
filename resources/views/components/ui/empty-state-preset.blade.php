@@ -16,6 +16,11 @@ $presets = [
         'title' => __('No search results'),
         'description' => __('Try a different name, company, or email.'),
     ],
+    'contacts' => [
+        'title' => __('No contacts yet'),
+        'description' => __('Add people at a customer company.'),
+        'actionLabel' => __('Add contact'),
+    ],
     'activities' => [
         'title' => __('No activities'),
         'description' => __('Notes, follow-ups, and assignments will show up here.'),

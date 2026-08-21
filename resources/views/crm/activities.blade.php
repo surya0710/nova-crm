@@ -20,6 +20,54 @@
         />
 
         @if ($view === 'list')
+            <form method="GET" action="{{ route('crm.activities') }}" class="mb-4 flex flex-wrap gap-2">
+                <input type="hidden" name="view" value="list">
+                @foreach (['mine' => __('My activities'), 'upcoming' => __('Upcoming'), 'overdue' => __('Overdue'), 'completed' => __('Completed'), 'all' => __('All')] as $scope => $label)
+                    <a href="{{ route('crm.activities', array_merge(request()->except('page'), ['view' => 'list', 'scope' => $scope])) }}"
+                       @class(['rounded-full border px-3 py-1.5 text-xs', 'border-primary-300 bg-primary-50 text-primary-700' => ($filters['scope'] ?? '') === $scope, 'border-line' => ($filters['scope'] ?? '') !== $scope])>{{ $label }}</a>
+                @endforeach
+                <x-forms.select name="type" onchange="this.form.submit()">
+                    <option value="">{{ __('All types') }}</option>
+                    @foreach (config('crm_activities.types') as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['type'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </x-forms.select>
+            </form>
+
+            <x-entity.section class="mb-6" :title="__('Sales activities')" :subtitle="__('Tasks, calls, meetings, follow-ups, notes, and emails')">
+                @forelse ($salesActivities as $activity)
+                    <div class="flex items-start justify-between gap-3 border-b border-line py-2.5 last:border-0">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-ink-heading">{{ $activity->subject }}</p>
+                            <p class="text-xs text-ink-muted">
+                                {{ $activity->type_label }}
+                                @if ($activity->customer) · {{ $activity->customer->display_name }} @endif
+                                @if ($activity->opportunity) · {{ $activity->opportunity->title }} @endif
+                                @if ($activity->assignee) · {{ $activity->assignee->name }} @endif
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            @if ($activity->isOverdue())
+                                <x-ui.badge variant="danger">{{ __('Overdue') }}</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="neutral">{{ $activity->status_label }}</x-ui.badge>
+                            @endif
+                            @if ($activity->isOpen())
+                                <form method="POST" action="{{ route('crm.activities.complete', $activity) }}">
+                                    @csrf
+                                    <x-ui.button type="submit" variant="ghost" size="sm">{{ __('Complete') }}</x-ui.button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <p class="py-4 text-sm text-ink-muted">{{ __('No sales activities in this view.') }}</p>
+                @endforelse
+                @if ($salesActivities->hasPages())
+                    <div class="mt-3">{{ $salesActivities->links() }}</div>
+                @endif
+            </x-entity.section>
+
             @if ($weekStrip->isNotEmpty())
                 <div class="mb-6 grid grid-cols-7 gap-2" aria-label="{{ __('This week\'s follow-ups') }}">
                     @foreach ($weekStrip as $day)

@@ -98,6 +98,11 @@ class Quotation extends Model
         return $this->hasOne(Invoice::class)->latestOfMany();
     }
 
+    public function salesOrder(): HasOne
+    {
+        return $this->hasOne(SalesOrder::class)->latestOfMany();
+    }
+
     public function canConvert(): bool
     {
         return $this->status === 'accepted';

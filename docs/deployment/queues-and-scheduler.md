@@ -23,6 +23,14 @@ php artisan queue:work database --queue=default --sleep=1 --tries=3 --timeout=36
 
 `DB_QUEUE_RETRY_AFTER` must remain greater than `--timeout` so a long job is not delivered twice. The Composer `dev` script starts a development queue listener automatically. Do not use `QUEUE_CONNECTION=sync` to validate asynchronous behavior.
 
+## CRM email (`mail` queue)
+
+`SendCrmEmailJob` runs on the **`mail`** queue (`tries` 3, backoff 30s/120s, timeout 120s, `WithoutOverlapping` per message). Production workers **must** include `mail` in `--queue=` (the Supervisor template already lists `default,imports,exports,bulk,provisioning,mail`).
+
+- Failed sends land in `failed_jobs`; retry with `php artisan queue:retry {id}` after fixing SMTP/provider config.
+- Do not invent Delivered for SMTP; configure SendGrid/Mailgun webhooks if delivery tracking is required. See [email webhooks](../crm/user-guide/email-webhooks.md).
+- Monitor queue depth and failed jobs in Platform Monitoring (existing dashboard), not a separate email monitor.
+
 ## Linux/VPS: Supervisor
 
 Copy [the Supervisor template](../../deploy/supervisor/nova-crm-worker.conf.example) to `/etc/supervisor/conf.d/nova-crm-worker.conf`, replace every placeholder, then:

@@ -64,6 +64,7 @@ A user should immediately know: **where they are**, **what needs attention**, **
 | [navigation-map.md](./navigation-map.md) | Navigation hierarchy |
 | [sidebar-blueprint.md](./sidebar-blueprint.md) | Enterprise sidebar design |
 | [settings-architecture.md](./settings-architecture.md) | Configuration Hub |
+| [configuration-registry.md](./configuration-registry.md) | How to add modules to the hub catalog |
 | [search-architecture.md](./search-architecture.md) | Global search behavior |
 | [dashboard-ownership.md](./dashboard-ownership.md) | Dashboard ownership |
 | [user-personas.md](./user-personas.md) | User personas |

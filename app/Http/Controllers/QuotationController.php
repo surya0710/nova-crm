@@ -8,9 +8,10 @@ use App\Http\Requests\UpdateQuotationRequest;
 use App\Http\Requests\UpdateQuotationStatusRequest;
 use App\Mail\QuotationMail;
 use App\Models\Customer;
+use App\Models\Opportunity;
 use App\Models\Quotation;
-use App\Services\ClientEmailCc;
 use App\Services\CommercialFormData;
+use App\Services\CrmEmailService;
 use App\Services\OrganizationMailer;
 use App\Services\QuotationConversionService;
 use App\Services\QuotationPdfService;
@@ -27,6 +28,7 @@ class QuotationController extends Controller
 {
     public function __construct(
         protected OrganizationMailer $organizationMailer,
+        protected CrmEmailService $crmEmails,
         protected QuotationService $quotationService,
         protected QuotationConversionService $conversionService,
         protected QuotationPdfService $pdfService,
@@ -71,20 +73,38 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function create(TenantContext $tenant): View
+    public function create(Request $request, TenantContext $tenant): View
     {
         $organization = $tenant->get();
+        $opportunity = null;
+
+        if ($opportunityId = $request->integer('opportunity')) {
+            $opportunity = Opportunity::query()->findOrFail($opportunityId);
+            $this->authorize('view', $opportunity);
+        }
+
+        $quotation = new Quotation([
+            'status' => 'draft',
+            'issue_date' => now()->toDateString(),
+            'valid_until' => now()->addDays(30)->toDateString(),
+            'currency' => $organization?->currency ?? 'USD',
+            'pricing_mode' => 'exclusive',
+            'tax_treatment' => 'standard',
+            'shipping_amount' => 0,
+        ]);
+
+        if ($opportunity) {
+            $quotation->fill([
+                'customer_id' => $opportunity->customer_id,
+                'opportunity_id' => $opportunity->id,
+                'title' => $opportunity->title,
+                'currency' => $opportunity->currency ?: $quotation->currency,
+            ]);
+        }
 
         return view('quotations.create', [
-            'quotation' => new Quotation([
-                'status' => 'draft',
-                'issue_date' => now()->toDateString(),
-                'valid_until' => now()->addDays(30)->toDateString(),
-                'currency' => $organization?->currency ?? 'USD',
-                'pricing_mode' => 'exclusive',
-                'tax_treatment' => 'standard',
-                'shipping_amount' => 0,
-            ]),
+            'quotation' => $quotation,
+            'sourceOpportunity' => $opportunity,
             ...$this->commercialFormData->for($tenant),
         ]);
     }
@@ -106,7 +126,7 @@ class QuotationController extends Controller
 
     public function show(Quotation $quotation, TenantContext $tenant): View
     {
-        $quotation->load(['customer', 'opportunity', 'creator', 'items.product', 'attachments.uploader', 'invoice']);
+        $quotation->load(['customer', 'opportunity', 'creator', 'items.product', 'attachments.uploader', 'invoice', 'salesOrder']);
 
         return view('quotations.show', [
             'quotation' => $quotation,
@@ -183,7 +203,7 @@ class QuotationController extends Controller
         $this->authorize('convert', $quotation);
 
         try {
-            $invoice = $this->conversionService->convert($quotation, $request->user());
+            $salesOrder = $this->conversionService->convert($quotation, $request->user());
         } catch (ValidationException $e) {
             return redirect()
                 ->route('quotations.show', $quotation)
@@ -191,8 +211,8 @@ class QuotationController extends Controller
         }
 
         return redirect()
-            ->route('invoices.show', $invoice)
-            ->with('status', 'invoice-created-from-quotation');
+            ->route('sales-orders.show', $salesOrder)
+            ->with('status', 'sales-order-created-from-quotation');
     }
 
     public function sendMail(SendQuotationMailRequest $request, Quotation $quotation, TenantContext $tenant): RedirectResponse
@@ -205,28 +225,23 @@ class QuotationController extends Controller
                 ->with('error', __('Organization not found.'));
         }
 
-        if (! $this->organizationMailer->isConfigured($organization)) {
-            return redirect()
-                ->route('quotations.show', $quotation)
-                ->with('error', __('Configure organization email in Settings → Email before sending.'));
-        }
-
         $quotation->load(['customer', 'creator', 'items.product']);
-        $to = $request->validated('email');
         $wasDraft = $quotation->status === 'draft';
-        $cc = ClientEmailCc::merge($request->user(), $to, $request->input('cc'));
 
         try {
-            $this->organizationMailer->send(
+            $message = $this->crmEmails->send(
                 $organization,
-                $to,
+                $request->user(),
+                $quotation,
+                $request->validated(),
                 new QuotationMail(
                     $quotation,
                     $organization,
                     $request->validated('message'),
-                    $request->file('attachments', []),
+                    $request->file('attachments', []) ?? [],
                 ),
-                $cc,
+                $request->file('attachments', []) ?? [],
+                ccSender: true,
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -239,17 +254,17 @@ class QuotationController extends Controller
         } catch (ValidationException $e) {
             return redirect()
                 ->route('quotations.show', $quotation)
-                ->with('status', 'quotation-email-sent')
+                ->with('status', $message->flashKey('quotation-email-sent'))
                 ->withErrors($e->errors());
         }
 
         if (! $wasDraft) {
-            $this->quotationService->recordEmailSent($quotation, $request->user(), $to);
+            $this->quotationService->recordEmailSent($quotation, $request->user(), $request->validated('email'));
         }
 
         return redirect()
             ->route('quotations.show', $quotation)
-            ->with('status', 'quotation-email-sent');
+            ->with('status', $message->flashKey('quotation-email-sent'));
     }
 
     public function pdf(Quotation $quotation): Response|StreamedResponse

@@ -4,6 +4,7 @@
         'issued' => 'info',
         'partially_paid' => 'warning',
         'paid' => 'success',
+        'overpaid' => 'warning',
         'cancelled' => 'neutral',
     ];
 @endphp
@@ -47,6 +48,12 @@
                     <x-ui.button :href="route('payments.create', ['invoice' => $invoice->id])" variant="primary" size="sm">{{ __('Record :label', ['label' => crm_term('payment')]) }}</x-ui.button>
                 @endif
             @endcan
+            @can('create', App\Models\AdjustmentNote::class)
+                @if (! in_array($invoice->status, ['draft', 'cancelled'], true))
+                    <x-ui.button :href="route('credit-notes.create', ['invoice' => $invoice->id])" variant="secondary" size="sm">{{ __('Credit note') }}</x-ui.button>
+                    <x-ui.button :href="route('debit-notes.create', ['invoice' => $invoice->id])" variant="secondary" size="sm">{{ __('Debit note') }}</x-ui.button>
+                @endif
+            @endcan
             @can('delete', $invoice)
                 <form method="POST" action="{{ route('invoices.destroy', $invoice) }}" onsubmit="return confirm('{{ __('Delete this invoice?') }}')">
                     @csrf
@@ -88,12 +95,28 @@
             @include('commercial._tax-totals', ['document' => $invoice])
             <dl class="mt-2 max-w-xs ms-auto space-y-2 text-sm">
                 <div class="flex justify-between">
+                    <dt class="text-ink-muted">{{ __('Invoice total') }}</dt>
+                    <dd class="text-ink-heading">{{ $invoice->formatted_total }}</dd>
+                </div>
+                <div class="flex justify-between">
                     <dt class="text-ink-muted">{{ __('Paid') }}</dt>
                     <dd class="text-ink-heading">{{ number_format((float) $invoice->amount_paid, 2) }} {{ $invoice->currency }}</dd>
                 </div>
+                @if ($invoice->creditedAmount() > 0)
+                    <div class="flex justify-between">
+                        <dt class="text-ink-muted">{{ __('Credits applied') }}</dt>
+                        <dd class="text-ink-heading">{{ number_format($invoice->creditedAmount(), 2) }} {{ $invoice->currency }}</dd>
+                    </div>
+                @endif
+                @if ($invoice->debitedAmount() > 0)
+                    <div class="flex justify-between">
+                        <dt class="text-ink-muted">{{ __('Debits applied') }}</dt>
+                        <dd class="text-ink-heading">{{ number_format($invoice->debitedAmount(), 2) }} {{ $invoice->currency }}</dd>
+                    </div>
+                @endif
                 <div class="flex justify-between border-t border-line pt-2 font-semibold">
-                    <dt class="text-ink-heading">{{ __('Balance Due') }}</dt>
-                    <dd class="text-ink-heading">{{ $invoice->formatted_balance_due }}</dd>
+                    <dt class="text-ink-heading">{{ __('Outstanding') }}</dt>
+                    <dd class="text-ink-heading">{{ $invoice->formatted_effective_balance }}</dd>
                 </div>
             </dl>
         </x-entity.section>
@@ -129,6 +152,33 @@
             @endif
         </x-entity.section>
 
+        @php
+            $relatedNotes = $invoice->creditNotes->concat($invoice->debitNotes)->sortByDesc('issue_date');
+        @endphp
+        <x-entity.section :title="__('Credit & debit notes')">
+            @if ($relatedNotes->isEmpty())
+                <p class="py-6 text-center text-sm text-ink-muted">{{ __('No credit or debit notes applied to this invoice.') }}</p>
+            @else
+                <x-tables.table :columns="[
+                    __('Number'),
+                    __('Type'),
+                    __('Status'),
+                    ['label' => __('Amount'), 'align' => 'right'],
+                ]" :sticky="false">
+                    @foreach ($relatedNotes as $note)
+                        <tr>
+                            <td class="px-4 py-3">
+                                <a href="{{ route($note->routePrefix().'.show', $note) }}" class="text-sm font-medium text-primary-600 hover:text-primary-700">{{ $note->number }}</a>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-ink-muted">{{ $note->type_label }}</td>
+                            <td class="px-4 py-3 text-sm text-ink-muted">{{ $note->status_label }}</td>
+                            <td class="px-4 py-3 text-right text-sm font-medium">{{ $note->formatted_total }}</td>
+                        </tr>
+                    @endforeach
+                </x-tables.table>
+            @endif
+        </x-entity.section>
+
         @can('send', $invoice)
             @if ($invoice->status !== 'cancelled')
                 <x-client-email-form
@@ -139,6 +189,10 @@
                     :organization="$organization"
                     :missing-email-hint="! $invoice->customer->email"
                     :show-cc="true"
+                    :show-bcc="true"
+                    :cc-sender="true"
+                    module="invoices"
+                    :related="$invoice"
                 />
             @endif
         @endcan
@@ -157,6 +211,11 @@
                     <x-entity.definition-item :label="crm_term('customer')" :span="2">
                         <a href="{{ route('customers.show', $invoice->customer) }}" class="text-primary-600 hover:text-primary-700">{{ $invoice->customer->display_name }}</a>
                     </x-entity.definition-item>
+                    @if ($invoice->salesOrder)
+                        <x-entity.definition-item :label="crm_term('sales_order')" :span="2">
+                            <a href="{{ route('sales-orders.show', $invoice->salesOrder) }}" class="text-primary-600 hover:text-primary-700">{{ $invoice->salesOrder->number }}</a>
+                        </x-entity.definition-item>
+                    @endif
                     @if ($invoice->quotation)
                         <x-entity.definition-item :label="__('Generated from :label', ['label' => crm_term('quotation')])" :span="2">
                             <a href="{{ route('quotations.show', $invoice->quotation) }}" class="text-primary-600 hover:text-primary-700">{{ $invoice->quotation->number }}</a>
@@ -169,9 +228,20 @@
                     @if ($invoice->placeOfSupplyLabel())
                         <x-entity.definition-item :label="__('Place of Supply')" :span="2">{{ $invoice->placeOfSupplyLabel() }}</x-entity.definition-item>
                     @endif
-                    <x-entity.definition-item :label="__('Balance Due')" :span="2">
-                        <span class="font-semibold text-ink-heading">{{ $invoice->formatted_balance_due }}</span>
+                    <x-entity.definition-item :label="__('Invoice total')" :span="2">
+                        <span class="font-semibold text-ink-heading">{{ $invoice->formatted_total }}</span>
                     </x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Outstanding')" :span="2">
+                        <span class="font-semibold text-ink-heading">{{ $invoice->formatted_effective_balance }}</span>
+                    </x-entity.definition-item>
+                    <x-entity.definition-item :label="__('Payment status')" :span="2">
+                        {{ $invoice->payment_status_label }}
+                    </x-entity.definition-item>
+                    @if ($invoice->overpaid_amount > 0)
+                        <x-entity.definition-item :label="__('Overpaid')" :span="2">
+                            {{ number_format($invoice->overpaid_amount, 2) }} {{ $invoice->currency }}
+                        </x-entity.definition-item>
+                    @endif
                 </x-entity.definition-list>
             </x-entity.section>
             @php

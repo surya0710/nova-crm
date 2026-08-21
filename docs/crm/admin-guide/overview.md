@@ -13,8 +13,12 @@ Define how CRM administrators configure and maintain secure day-to-day operation
 - `customers.*`
 - `opportunities.*`
 - `quotations.*`
+- `sales_orders.*`
 - `invoices.*`
 - `payments.*`
+- `adjustment_notes.*`
+- `price_lists.*`
+- `finance.view`
 
 ## Dependencies
 - Organization profile and billing settings
@@ -24,7 +28,7 @@ Define how CRM administrators configure and maintain secure day-to-day operation
 ## Configuration Steps
 1. Configure master settings and numbering sequences.
 2. Configure role-based access and approvals.
-3. Configure follow-up reminders and outbound notifications.
+3. Configure follow-up reminders, commercial automation (invoice due/overdue, quote expiry, payment confirmation, sales order notices), and outbound notifications.
 4. Validate end-to-end sales to billing flow in a test cycle.
 
 ## Best Practices

@@ -29,14 +29,20 @@ class PipelineWidgetProvider extends AbstractWidgetProvider
         app(TenantContext::class)->set($organization);
 
         $stages = Opportunity::query()
-            ->selectRaw('stage, COUNT(*) as count, COALESCE(SUM(value), 0) as total_value')
+            ->selectRaw('stage, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_value')
             ->groupBy('stage')
             ->get();
+
+        $open = Opportunity::query()->whereIn('stage', config('pipeline.open_stages', []));
 
         return [
             'stages' => $stages,
             'total_opportunities' => Opportunity::query()->count(),
-            'total_value' => Opportunity::query()->sum('value'),
+            'total_value' => (float) Opportunity::query()->sum('amount'),
+            'pipeline_value' => (float) (clone $open)->sum('amount'),
+            'weighted_pipeline' => (float) (clone $open)
+                ->selectRaw('COALESCE(SUM(amount * COALESCE(probability, 0) / 100), 0) as weighted')
+                ->value('weighted'),
         ];
     }
 }

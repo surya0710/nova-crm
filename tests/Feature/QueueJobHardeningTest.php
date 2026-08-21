@@ -6,6 +6,7 @@ use App\Jobs\BulkProvisionEmployeeUsersJob;
 use App\Jobs\ProcessBulkOperationJob;
 use App\Jobs\ProcessExportSessionJob;
 use App\Jobs\ProcessImportSessionJob;
+use App\Jobs\SendCrmEmailJob;
 use App\Jobs\SendPayslipEmailJob;
 use App\Listeners\RunTriggeredWorkflows;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -22,6 +23,7 @@ class QueueJobHardeningTest extends TestCase
             [new ProcessBulkOperationJob(1), 'bulk', 1, 1800],
             [new BulkProvisionEmployeeUsersJob(1), 'provisioning', 1, 1800],
             [new SendPayslipEmailJob(1), 'mail', 3, 120],
+            [new SendCrmEmailJob(1), 'mail', 3, 120],
         ];
 
         foreach ($jobs as [$job, $queue, $tries, $timeout]) {

@@ -195,6 +195,11 @@ class LeadConversionService
             'phone' => $data['phone'] ?? $lead->phone,
             'industry' => $lead->industry,
             'status' => 'prospect',
+            'type' => $lead->company ? 'company' : 'individual',
+            'lifecycle_stage' => 'opportunity',
+            'source' => array_key_exists((string) $lead->source, config('customers.sources', []))
+                ? $lead->source
+                : 'other',
             'address_line_1' => $lead->address_line_1,
             'city' => $lead->city,
             'state' => $lead->state,
@@ -207,6 +212,7 @@ class LeadConversionService
         ]);
 
         $this->copyMetadataValues($lead, $customer);
+        app(ContactService::class)->seedPrimaryFromCustomer($customer, $user);
 
         return [$customer, false];
     }

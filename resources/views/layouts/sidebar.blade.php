@@ -74,7 +74,7 @@
                 </div>
             </div>
 
-            @if ($can('leads.view') || $can('customers.view') || $can('opportunities.view') || $can('products.view') || $can('quotations.view') || $can('invoices.view') || $can('payments.view') || $can('tasks.view') || $can('projects.view') || $can('resources.view'))
+            @if ($can('leads.view') || $can('customers.view') || $can('opportunities.view') || $can('products.view') || $can('quotations.view') || $can('sales_orders.view') || $can('invoices.view') || $can('payments.view') || $can('tasks.view') || $can('projects.view') || $can('resources.view'))
                 <div>
                     <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">CRM</p>
                     <div class="space-y-0.5">
@@ -93,11 +93,24 @@
                         @if ($can('quotations.view'))
                             <x-sidebar-link :href="route('quotations.index')" :active="request()->routeIs('quotations.*')" :icon="$iconDoc">{{ crm_term('quotations') }}</x-sidebar-link>
                         @endif
+                        @if ($can('sales_orders.view'))
+                            <x-sidebar-link :href="route('sales-orders.index')" :active="request()->routeIs('sales-orders.*')" :icon="$iconDoc">{{ crm_term('sales_orders') }}</x-sidebar-link>
+                        @endif
                         @if ($can('invoices.view'))
                             <x-sidebar-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*')" :icon="$iconReceipt">{{ crm_term('invoices') }}</x-sidebar-link>
                         @endif
                         @if ($can('payments.view'))
                             <x-sidebar-link :href="route('payments.index')" :active="request()->routeIs('payments.*')" :icon="$iconPayment">{{ crm_term('payments') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('finance.view') || $can('invoices.view'))
+                            <x-sidebar-link :href="route('receivables.index')" :active="request()->routeIs('receivables.*')" :icon="$iconChart">{{ __('Receivables') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('adjustment_notes.view'))
+                            <x-sidebar-link :href="route('credit-notes.index')" :active="request()->routeIs('credit-notes.*')" :icon="$iconReceipt">{{ crm_term('credit_notes') }}</x-sidebar-link>
+                            <x-sidebar-link :href="route('debit-notes.index')" :active="request()->routeIs('debit-notes.*')" :icon="$iconReceipt">{{ crm_term('debit_notes') }}</x-sidebar-link>
+                        @endif
+                        @if ($can('price_lists.view'))
+                            <x-sidebar-link :href="route('price-lists.index')" :active="request()->routeIs('price-lists.*')" :icon="$iconBox">{{ crm_term('price_lists') }}</x-sidebar-link>
                         @endif
                         @if ($can('tasks.view'))
                             <x-sidebar-link :href="route('tasks.index')" :active="request()->routeIs('tasks.*')" :icon="$iconTask">{{ __('Tasks') }}</x-sidebar-link>

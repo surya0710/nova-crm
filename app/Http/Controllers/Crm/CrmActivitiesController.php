@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Crm;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSalesActivityRequest;
+use App\Models\CrmActivity;
 use App\Models\Lead;
 use App\Models\LeadNote;
+use App\Services\CrmActivityService;
 use App\Services\LeadFollowUpService;
 use App\Services\LeadVisibilityService;
 use App\Services\TenantContext;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -20,16 +24,34 @@ class CrmActivitiesController extends Controller
         TenantContext $tenant,
         LeadFollowUpService $followUps,
         LeadVisibilityService $leadVisibility,
+        CrmActivityService $activities,
     ): View {
-        abort_unless($request->user()->hasPermission('leads.view'), 403);
-
         $user = $request->user();
-        $organization = $tenant->get();
+        abort_unless(
+            $user->hasPermission('leads.view')
+                || $user->hasPermission('customers.view')
+                || $user->hasPermission('opportunities.view'),
+            403
+        );
 
+        $organization = $tenant->get();
         $view = $request->query('view', 'list');
         if (! in_array($view, ['list', 'timeline', 'calendar'], true)) {
             $view = 'list';
         }
+
+        $filters = $request->only(['scope', 'type', 'status', 'priority', 'assigned_to', 'search']);
+        if (($filters['scope'] ?? '') === '') {
+            $filters['scope'] = 'upcoming';
+        }
+
+        $activityQuery = CrmActivity::query()->with(['customer', 'contact', 'opportunity', 'assignee']);
+        $activities->applyIndexFilters($activityQuery, $filters, $user);
+        $salesActivities = $activityQuery->orderByRaw("CASE WHEN due_at IS NULL THEN 1 ELSE 0 END")
+            ->orderBy('due_at')
+            ->orderByDesc('occurred_at')
+            ->paginate(20)
+            ->withQueryString();
 
         $dueFollowUps = collect();
         $todaysFollowUps = collect();
@@ -38,12 +60,10 @@ class CrmActivitiesController extends Controller
         $timelineItems = collect();
         $calendarGroups = collect();
 
-        if ($view === 'list') {
+        if ($user->hasPermission('leads.view') && $view === 'list') {
             $dueFollowUps = $followUps->dueForAlertPayloads($user, 20);
-
             $start = $followUps->organizationNow()->copy()->startOfDay()->utc();
             $end = $followUps->organizationNow()->copy()->endOfDay()->utc();
-
             $todaysFollowUps = $leadVisibility->visibleQuery($user, $organization)
                 ->with('assignee')
                 ->whereNotNull('next_follow_up_at')
@@ -51,7 +71,6 @@ class CrmActivitiesController extends Controller
                 ->orderBy('next_follow_up_at')
                 ->limit(25)
                 ->get();
-
             $recentNotes = $this->recentLeadNotes($user, $organization, $leadVisibility);
             $weekStrip = $this->weekStrip($followUps, $user, $organization, $leadVisibility);
         }
@@ -67,6 +86,8 @@ class CrmActivitiesController extends Controller
         return view('crm.activities', [
             'organization' => $organization,
             'view' => $view,
+            'filters' => $filters,
+            'salesActivities' => $salesActivities,
             'dueFollowUps' => $dueFollowUps,
             'todaysFollowUps' => $todaysFollowUps,
             'recentNotes' => $recentNotes,
@@ -74,6 +95,23 @@ class CrmActivitiesController extends Controller
             'timelineItems' => $timelineItems,
             'calendarGroups' => $calendarGroups,
         ]);
+    }
+
+    public function complete(Request $request, CrmActivity $crmActivity, CrmActivityService $activities): RedirectResponse
+    {
+        $this->authorize('update', $crmActivity);
+        $activities->complete($crmActivity, $request->user());
+
+        return back()->with('status', 'activity-completed');
+    }
+
+    public function store(StoreSalesActivityRequest $request, CrmActivityService $activities): RedirectResponse
+    {
+        $data = $request->validated();
+        $data['organization_id'] = app(TenantContext::class)->get()?->id;
+        $activities->create($data, $request->user());
+
+        return back()->with('status', 'activity-logged');
     }
 
     /**
@@ -136,6 +174,10 @@ class CrmActivitiesController extends Controller
         $organization,
         LeadVisibilityService $leadVisibility,
     ): Collection {
+        if (! $user->hasPermission('leads.view')) {
+            return collect();
+        }
+
         $tz = $followUps->organizationTimezone();
 
         $followUpItems = $leadVisibility->visibleQuery($user, $organization)
@@ -182,6 +224,10 @@ class CrmActivitiesController extends Controller
         $organization,
         LeadVisibilityService $leadVisibility,
     ): Collection {
+        if (! $user->hasPermission('leads.view')) {
+            return collect();
+        }
+
         $tz = $followUps->organizationTimezone();
         $startLocal = $followUps->organizationNow()->copy()->startOfDay();
         $endLocal = $followUps->organizationNow()->copy()->addDays(13)->endOfDay();

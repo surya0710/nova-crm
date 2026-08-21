@@ -20,6 +20,7 @@ Konnect Nex uses a dynamic, organization-scoped Role Based Access Control (RBAC)
 - Policies call `$user->hasPermission()` which delegates to the authorization service.
 - Organization owners bypass permission checks.
 - Manage roles and permissions at **Settings → Access Control** (`/rbac/roles`).
+- CRM tickets, contacts, and sales activities reuse `customers.*` (no extra slugs). Opportunity enhancements reuse `opportunities.*`. REST CRM APIs also require `api.access`. Cross-tenant IDs return 404.
 
 ## Verification
 

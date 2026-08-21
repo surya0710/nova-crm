@@ -3,6 +3,10 @@
     <x-ui.page-header :title="$title" :subtitle="$subtitle">
         @isset($breadcrumbs)
             <x-slot:breadcrumbs>{{ $breadcrumbs }}</x-slot:breadcrumbs>
+        @else
+            <x-slot:breadcrumbs>
+                <x-nav.configuration-breadcrumbs :current="$title" />
+            </x-slot:breadcrumbs>
         @endisset
         @isset($actions)
             <x-slot:actions>{{ $actions }}</x-slot:actions>

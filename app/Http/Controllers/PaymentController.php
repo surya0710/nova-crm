@@ -7,18 +7,24 @@ use App\Http\Requests\StorePaymentRequest;
 use App\Mail\PaymentMail;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\CrmEmailService;
 use App\Services\OrganizationMailer;
+use App\Services\PaymentPdfService;
 use App\Services\PaymentService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PaymentController extends Controller
 {
     public function __construct(
         protected OrganizationMailer $organizationMailer,
+        protected CrmEmailService $crmEmails,
         protected PaymentService $paymentService,
+        protected PaymentPdfService $pdfService,
     ) {
         $this->authorizeResource(Payment::class, 'payment', [
             'except' => ['create', 'store'],
@@ -77,9 +83,7 @@ class PaymentController extends Controller
             ->whereIn('status', config('payments.payable_invoice_statuses', []))
             ->where('total', '>', 0)
             ->orderByDesc('issue_date')
-            ->get()
-            ->filter(fn (Invoice $openInvoice) => $openInvoice->balance_due > 0)
-            ->values();
+            ->get();
 
         return view('payments.create', [
             'payment' => new Payment([
@@ -133,24 +137,23 @@ class PaymentController extends Controller
                 ->with('error', __('Organization not found.'));
         }
 
-        if (! $this->organizationMailer->isConfigured($organization)) {
-            return redirect()
-                ->route('payments.show', $payment)
-                ->with('error', __('Configure organization email in Settings → Email before sending.'));
-        }
-
         $payment->load(['invoice', 'customer', 'recorder']);
 
         try {
-            $this->organizationMailer->send(
+            $message = $this->crmEmails->send(
                 $organization,
-                $request->validated('email'),
+                $request->user(),
+                $payment,
+                $request->validated(),
                 new PaymentMail(
                     $payment,
                     $organization,
                     $request->validated('message'),
-                    $request->file('attachments', []),
+                    $request->file('attachments', []) ?? [],
+                    $this->pdfService->output($payment),
                 ),
+                $request->file('attachments', []) ?? [],
+                ccSender: true,
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -160,6 +163,13 @@ class PaymentController extends Controller
 
         return redirect()
             ->route('payments.show', $payment)
-            ->with('status', 'payment-email-sent');
+            ->with('status', $message->flashKey('payment-email-sent'));
+    }
+
+    public function pdf(Payment $payment): Response|StreamedResponse
+    {
+        $this->authorize('view', $payment);
+
+        return $this->pdfService->download($payment);
     }
 }

@@ -59,6 +59,16 @@ class Product extends Model
         return $this->belongsTo(ProductCategory::class);
     }
 
+    public function priceListItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PriceListItem::class);
+    }
+
+    public function priceHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductPriceHistory::class)->latest();
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return config('products.statuses.'.$this->status, ucfirst($this->status));

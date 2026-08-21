@@ -123,6 +123,7 @@ class PipelineTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
+            ->from(route('pipeline.show', $opportunity))
             ->patch(route('pipeline.stage.update', $opportunity), [
                 'stage' => 'proposal',
             ]);
@@ -148,6 +149,7 @@ class PipelineTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
+            ->from(route('pipeline.show', $opportunity))
             ->patch(route('pipeline.stage.update', $opportunity), [
                 'stage' => 'closed_won',
                 'won_at' => '2026-07-07',
@@ -195,6 +197,7 @@ class PipelineTest extends TestCase
 
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
+            ->from(route('pipeline.show', $opportunity))
             ->patch(route('pipeline.stage.update', $opportunity), [
                 'stage' => 'closed_lost',
                 'lost_reason' => 'Chose a competitor',

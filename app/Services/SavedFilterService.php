@@ -4,10 +4,14 @@ namespace App\Services;
 
 use App\Data\MetadataQueryRequest;
 use App\Models\Customer;
+use App\Models\CustomerTicket;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\Organization;
 use App\Models\SavedFilter;
 use App\Models\User;
+use App\Models\UserUiPreference;
+use App\Services\Theme\ThemeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -18,8 +22,17 @@ class SavedFilterService
 {
     protected array $staticFilterKeys = [
         'lead' => ['search', 'status', 'source', 'priority', 'assigned_to', 'state', 'country'],
-        'customer' => ['search', 'status', 'industry', 'assigned_to', 'state', 'country'],
-        'opportunity' => ['search', 'stage', 'customer_id', 'assigned_to'],
+        'customer' => [
+            'search', 'status', 'type', 'lifecycle_stage', 'segment', 'source',
+            'industry', 'assigned_to', 'state', 'country', 'tags',
+            'created_from', 'created_to', 'last_activity_from', 'last_activity_to',
+            'value_min', 'value_max', 'sort', 'sort_direction',
+        ],
+        'opportunity' => ['search', 'stage', 'customer_id', 'assigned_to', 'source'],
+        'ticket' => [
+            'search', 'status', 'priority', 'customer_id', 'contact_id', 'assigned_to',
+            'overdue', 'unassigned', 'sort', 'sort_direction',
+        ],
     ];
 
     public function __construct(
@@ -249,6 +262,51 @@ class SavedFilterService
         return $this->refreshValidation($filter);
     }
 
+    public function defaultFor(User $user, int $organizationId, string $entityType): ?SavedFilter
+    {
+        $prefs = UserUiPreference::query()
+            ->where('organization_id', $organizationId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        $savedFilterId = (int) data_get($prefs?->meta, "default_saved_filters.{$entityType}", 0);
+
+        if ($savedFilterId < 1) {
+            return null;
+        }
+
+        return $this->findAccessible($user, $organizationId, $savedFilterId, $entityType);
+    }
+
+    public function isDefaultFor(User $user, int $organizationId, SavedFilter $filter): bool
+    {
+        $default = $this->defaultFor($user, $organizationId, $filter->entity_type);
+
+        return $default?->is($filter) ?? false;
+    }
+
+    public function setDefault(User $user, Organization $organization, SavedFilter $filter): void
+    {
+        $prefs = app(ThemeService::class)->preferencesFor($user, $organization);
+        $meta = is_array($prefs->meta) ? $prefs->meta : [];
+        $defaults = is_array($meta['default_saved_filters'] ?? null) ? $meta['default_saved_filters'] : [];
+        $defaults[$filter->entity_type] = $filter->id;
+        $meta['default_saved_filters'] = $defaults;
+        $prefs->meta = $meta;
+        $prefs->save();
+    }
+
+    public function clearDefault(User $user, Organization $organization, string $entityType): void
+    {
+        $prefs = app(ThemeService::class)->preferencesFor($user, $organization);
+        $meta = is_array($prefs->meta) ? $prefs->meta : [];
+        $defaults = is_array($meta['default_saved_filters'] ?? null) ? $meta['default_saved_filters'] : [];
+        unset($defaults[$entityType]);
+        $meta['default_saved_filters'] = $defaults;
+        $prefs->meta = $meta;
+        $prefs->save();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -425,6 +483,14 @@ class SavedFilterService
         foreach ($this->staticFilterKeys[$entityType] as $key) {
             $value = $definition['static_filters'][$key] ?? null;
 
+            if (is_array($value)) {
+                if ($value !== []) {
+                    return true;
+                }
+
+                continue;
+            }
+
             if ($value !== null && $value !== '') {
                 return true;
             }
@@ -446,6 +512,7 @@ class SavedFilterService
             'lead' => Lead::query(),
             'customer' => Customer::query(),
             'opportunity' => Opportunity::query(),
+            'ticket' => CustomerTicket::query(),
             default => throw new InvalidArgumentException("Saved filters are not supported for entity type [{$entityType}]."),
         };
 

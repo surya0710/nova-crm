@@ -45,6 +45,18 @@
                     <x-forms.field :label="__('Reference / Transaction ID')" name="reference">
                         <x-forms.input id="reference" name="reference" :value="old('reference')" />
                     </x-forms.field>
+                    <x-forms.field :label="__('Bank name')" name="bank_name">
+                        <x-forms.input id="bank_name" name="bank_name" :value="old('bank_name')" />
+                    </x-forms.field>
+                    <x-forms.field :label="__('Account name')" name="bank_account_name">
+                        <x-forms.input id="bank_account_name" name="bank_account_name" :value="old('bank_account_name')" />
+                    </x-forms.field>
+                    <x-forms.field :label="__('Account number')" name="bank_account_number">
+                        <x-forms.input id="bank_account_number" name="bank_account_number" :value="old('bank_account_number')" />
+                    </x-forms.field>
+                    <x-forms.field :label="__('IFSC / routing')" name="bank_ifsc">
+                        <x-forms.input id="bank_ifsc" name="bank_ifsc" :value="old('bank_ifsc')" />
+                    </x-forms.field>
                     <div class="sm:col-span-2">
                         <x-forms.field :label="__('Notes')" name="notes">
                             <x-forms.textarea id="notes" name="notes" rows="2">{{ old('notes') }}</x-forms.textarea>

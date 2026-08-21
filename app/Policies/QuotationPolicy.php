@@ -41,7 +41,7 @@ class QuotationPolicy
 
     public function convert(User $user, Quotation $quotation): bool
     {
-        return $user->hasPermission('invoices.create', $quotation->organization)
+        return $user->hasPermission('sales_orders.create', $quotation->organization)
             && $user->hasPermission('quotations.view', $quotation->organization);
     }
 }

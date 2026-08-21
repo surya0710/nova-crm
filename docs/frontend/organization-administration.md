@@ -58,7 +58,7 @@ Tenant shell endpoints (`/shell/*`):
 | `AdminDepartmentSearchProvider` | `departments` | â†’ `hrms.departments.*` |
 | `AdminBranchSearchProvider` | `branches` | â†’ `hrms.branches.*` |
 | `AdminRoleSearchProvider` | `roles` | â†’ `rbac.roles.*` |
-| `AdminSettingsSearchProvider` | `settings` | Labels from `config/organization_settings.php` |
+| `AdminSettingsSearchProvider` | `settings` | Labels from `ConfigurationRegistry` (module, plan, and permission gated) |
 | `AdminIntegrationSearchProvider` | `integrations` | `MarketingProviderService::integrationCardsForOrganization` |
 | `AdminTemplateSearchProvider` | `templates` | RBAC + recruitment communication templates |
 
@@ -81,9 +81,9 @@ Tenant shell endpoints (`/shell/*`):
 
 ## Configuration catalog
 
-`config/organization_settings.php` groups: organization Â· structure Â· hr_config Â· crm_config Â· project_config Â· security Â· platform.
+`config/organization_settings.php` is the module-aware Configuration Hub registry: Organization, CRM, Commercial, HRMS, Projects, Marketing, Security, and Platform.
 
-New/expanded sections include modules, security, branding (`administration.branding.edit`), developer, users, audit, business hours, reporting structure.
+`App\Services\Configuration\ConfigurationRegistry` shows a module only when it is enabled, allowed by the plan, and permitted for the current user. Existing settings routes and controllers are unchanged. Hub search, recently used settings, and breadcrumbs stay on this catalog; see [configuration-registry.md](../product/configuration-registry.md).
 
 ---
 

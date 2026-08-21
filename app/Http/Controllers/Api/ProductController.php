@@ -94,7 +94,7 @@ class ProductController extends Controller
             )
             : [];
 
-        $product = $this->products->update($product, $data, $metadataValues);
+        $product = $this->products->update($product, $data, $metadataValues, $request->user());
 
         return new ProductResource($product);
     }

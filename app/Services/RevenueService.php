@@ -159,8 +159,9 @@ class RevenueService
     {
         $query = Invoice::query()
             ->where('status', '!=', 'cancelled')
-            ->whereRaw('total > amount_paid')
-            ->select(['id', 'due_date', 'total', 'amount_paid']);
+            ->where('status', '!=', 'draft')
+            ->with(['creditNotes' => fn ($q) => $q->where('status', 'applied'), 'debitNotes' => fn ($q) => $q->where('status', 'applied')])
+            ->select(['id', 'due_date', 'total', 'amount_paid', 'status']);
 
         if ($filters['customer_id'] ?? null) {
             $query->where('customer_id', $filters['customer_id']);
@@ -177,7 +178,7 @@ class RevenueService
         $today = now()->startOfDay();
 
         foreach ($query->cursor() as $invoice) {
-            $balance = Money::balanceDue((float) $invoice->total, (float) $invoice->amount_paid);
+            $balance = max(0, $invoice->effective_balance);
             if ($balance <= 0) {
                 continue;
             }
@@ -418,23 +419,60 @@ class RevenueService
      */
     public function customerStatement(Customer $customer): array
     {
-        $invoices = Invoice::query()
+        $invoices = Invoice::withoutGlobalScope(\App\Models\Scopes\OrganizationScope::class)
+            ->where('organization_id', $customer->organization_id)
             ->where('customer_id', $customer->id)
             ->where('status', '!=', 'cancelled')
             ->where('status', '!=', 'draft')
+            ->with(['creditNotes' => fn ($q) => $q->withoutGlobalScope(\App\Models\Scopes\OrganizationScope::class)->where('status', 'applied'), 'debitNotes' => fn ($q) => $q->withoutGlobalScope(\App\Models\Scopes\OrganizationScope::class)->where('status', 'applied')])
             ->orderBy('issue_date')
             ->orderBy('id')
-            ->get(['id', 'number', 'issue_date', 'due_date', 'status', 'total', 'amount_paid', 'currency']);
+            ->get();
 
-        $payments = Payment::query()
+        $payments = Payment::withoutGlobalScope(\App\Models\Scopes\OrganizationScope::class)
+            ->where('organization_id', $customer->organization_id)
             ->where('customer_id', $customer->id)
             ->orderBy('payment_date')
             ->orderBy('id')
             ->get(['id', 'number', 'payment_date', 'amount', 'method', 'invoice_id', 'currency']);
 
+        $notes = \App\Models\AdjustmentNote::withoutGlobalScope(\App\Models\Scopes\OrganizationScope::class)
+            ->where('organization_id', $customer->organization_id)
+            ->where('customer_id', $customer->id)
+            ->whereIn('status', ['issued', 'applied'])
+            ->orderBy('issue_date')
+            ->orderBy('id')
+            ->get();
+
         $totalInvoiced = Money::round((float) $invoices->sum('total'));
         $totalPaid = Money::round((float) $payments->sum('amount'));
-        $balanceDue = Money::balanceDue($totalInvoiced, $totalPaid);
+        $totalCredits = Money::round((float) $notes->where('type', 'credit')->sum(fn ($note) => (float) $note->applied_amount ?: 0));
+        $totalDebits = Money::round((float) $notes->where('type', 'debit')->sum(fn ($note) => (float) $note->applied_amount ?: 0));
+        $outstandingBalance = Money::round((float) $invoices->sum(fn (Invoice $invoice) => max(0, $invoice->effective_balance)));
+        $balanceDue = Money::round($totalInvoiced - $totalPaid - $totalCredits + $totalDebits);
+
+        $statusCounts = [
+            'paid' => 0,
+            'partial' => 0,
+            'unpaid' => 0,
+            'overdue' => 0,
+        ];
+        $aging = collect(self::AGING_BUCKETS)->mapWithKeys(fn (string $label, string $key) => [
+            $key => ['label' => $label, 'total' => 0.0, 'count' => 0],
+        ])->all();
+
+        foreach ($invoices as $invoice) {
+            $status = $invoice->collection_status;
+            if (isset($statusCounts[$status])) {
+                $statusCounts[$status]++;
+            }
+            $balance = max(0, $invoice->effective_balance);
+            if ($balance > 0) {
+                $bucket = $invoice->agingBucket();
+                $aging[$bucket]['total'] = round($aging[$bucket]['total'] + $balance, 2);
+                $aging[$bucket]['count']++;
+            }
+        }
 
         $entries = collect();
 
@@ -456,7 +494,9 @@ class RevenueService
                 'type' => 'payment',
                 'date' => $payment->payment_date,
                 'number' => $payment->number,
-                'description' => $payment->number,
+                'description' => $payment->invoice_id
+                    ? __('Allocated to invoice #:id', ['id' => $payment->invoice_id])
+                    : $payment->number,
                 'method' => $payment->method,
                 'debit' => 0.0,
                 'credit' => (float) $payment->amount,
@@ -465,9 +505,34 @@ class RevenueService
             ]);
         }
 
+        foreach ($notes as $note) {
+            $isCredit = $note->type === 'credit';
+            $amount = (float) ($note->applied_amount > 0 ? $note->applied_amount : $note->total);
+            $entries->push([
+                'type' => $note->type.'_note',
+                'date' => $note->issue_date,
+                'number' => $note->number,
+                'description' => $note->reason_label ?: $note->type_label,
+                'status' => $note->status,
+                'debit' => $isCredit ? 0.0 : $amount,
+                'credit' => $isCredit ? $amount : 0.0,
+                'adjustment_note_id' => $note->id,
+                'invoice_id' => $note->invoice_id,
+            ]);
+        }
+
         $runningBalance = 0.0;
         $ledger = $entries
-            ->sortBy(fn ($entry) => [$entry['date']?->format('Y-m-d') ?? '', $entry['type'] === 'invoice' ? 0 : 1])
+            ->sortBy(function ($entry) {
+                $order = match ($entry['type']) {
+                    'invoice' => 0,
+                    'debit_note' => 1,
+                    'credit_note' => 2,
+                    default => 3,
+                };
+
+                return [$entry['date']?->format('Y-m-d') ?? '', $order];
+            })
             ->values()
             ->map(function (array $entry) use (&$runningBalance) {
                 $runningBalance = Money::round($runningBalance + $entry['debit'] - $entry['credit']);
@@ -480,12 +545,15 @@ class RevenueService
             'currency' => $invoices->first()?->currency ?? $customer->organization?->currency ?? 'USD',
             'total_invoiced' => $totalInvoiced,
             'total_paid' => $totalPaid,
-            'balance_due' => $balanceDue,
-            'outstanding_balance' => Money::round((float) $invoices->sum(
-                fn (Invoice $invoice) => Money::balanceDue((float) $invoice->total, (float) $invoice->amount_paid)
-            )),
+            'total_credits' => $totalCredits,
+            'total_debits' => $totalDebits,
+            'balance_due' => max(0, $balanceDue),
+            'outstanding_balance' => $outstandingBalance,
+            'status_counts' => $statusCounts,
+            'aging' => $aging,
             'invoices' => $invoices,
             'payments' => $payments,
+            'notes' => $notes,
             'ledger' => $ledger,
         ];
     }
@@ -496,9 +564,9 @@ class RevenueService
     public function outstandingInvoices(Organization $organization, array $filters = []): Collection
     {
         $query = Invoice::query()
-            ->with(['customer:id,name,company', 'creator:id,name'])
+            ->with(['customer:id,name,company', 'creator:id,name', 'creditNotes' => fn ($q) => $q->where('status', 'applied'), 'debitNotes' => fn ($q) => $q->where('status', 'applied')])
             ->where('status', '!=', 'cancelled')
-            ->whereRaw('total > amount_paid')
+            ->where('status', '!=', 'draft')
             ->orderBy('due_date');
 
         if ($filters['customer_id'] ?? null) {
@@ -513,7 +581,9 @@ class RevenueService
             $query->where('status', $filters['status']);
         }
 
-        return $query->get();
+        return $query->get()
+            ->filter(fn (Invoice $invoice) => $invoice->effective_balance > 0)
+            ->values();
     }
 
     /**

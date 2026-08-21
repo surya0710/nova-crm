@@ -51,6 +51,8 @@
 {{ $invoice->notes }}
 @endif
 
+@include('emails.partials.signature')
+
 {{ __('Thanks,') }}<br>
 {{ $organization->name }}
 @if ($organization->email)

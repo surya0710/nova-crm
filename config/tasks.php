@@ -27,6 +27,7 @@ return [
     'taskable' => [
         'lead' => Lead::class,
         'customer' => Customer::class,
+        'contact' => \App\Models\Contact::class,
         'opportunity' => Opportunity::class,
         'project' => Project::class,
     ],

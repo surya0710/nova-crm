@@ -41,6 +41,16 @@ class StoreOpportunityRequest extends FormRequest
                 'integer',
                 Rule::exists('organization_user', 'user_id')->where('organization_id', $organization?->id),
             ],
+            'source' => ['nullable', 'string', Rule::in(array_keys(config('customers.sources')))],
+            'competitor' => ['nullable', 'string', 'max:255'],
+            'contacts' => ['nullable', 'array'],
+            'contacts.*.contact_id' => ['required_with:contacts', 'integer', 'exists:contacts,id'],
+            'contacts.*.role' => ['nullable', 'string', Rule::in(array_keys(config('pipeline.contact_roles')))],
+            'products' => ['nullable', 'array'],
+            'products.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'products.*.name' => ['nullable', 'string', 'max:255'],
+            'products.*.quantity' => ['nullable', 'numeric', 'min:0'],
+            'products.*.unit_price' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

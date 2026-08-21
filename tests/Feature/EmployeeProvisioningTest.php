@@ -89,12 +89,14 @@ class EmployeeProvisioningTest extends TestCase
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('organization.settings.hub'))
             ->assertOk()
-            ->assertSee('Organization Settings');
+            ->assertSee('Configuration Hub');
     }
 
     public function test_working_days_settings_persist_on_organization(): void
     {
-        [$organization, $owner] = $this->organizationWithOwner();
+        $organization = Organization::factory()->create(['plan' => 'professional']);
+        $owner = User::factory()->create();
+        $organization->addMember($owner, 'organization-owner');
 
         $this->actingAs($owner)
             ->withSession(['current_organization_id' => $organization->id])

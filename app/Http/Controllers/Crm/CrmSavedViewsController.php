@@ -34,6 +34,7 @@ class CrmSavedViewsController extends Controller
                 $savedFilters->availableFor($user, $organization->id, $entity)->map(fn ($filter) => [
                     'filter' => $filter,
                     'entity' => $entity,
+                    'is_default' => $savedFilters->isDefaultFor($user, $organization->id, $filter),
                     'href' => match ($entity) {
                         'lead' => route('leads.index', ['saved_filter' => $filter->id]),
                         'customer' => route('customers.index', ['saved_filter' => $filter->id]),

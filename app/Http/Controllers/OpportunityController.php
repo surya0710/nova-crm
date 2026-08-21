@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AppliesSavedIndexFilters;
+use App\Http\Requests\SendOpportunityMailRequest;
 use App\Http\Requests\StoreOpportunityNoteRequest;
 use App\Http\Requests\StoreOpportunityRequest;
 use App\Http\Requests\UpdateOpportunityRequest;
@@ -12,6 +13,7 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Services\MetadataEntityFormService;
+use App\Services\CrmEmailService;
 use App\Services\MetadataQueryDefinitionService;
 use App\Services\MetadataQueryService;
 use App\Services\NoteService;
@@ -33,6 +35,7 @@ class OpportunityController extends Controller
         protected SavedFilterService $savedFilters,
         protected OpportunityService $opportunityService,
         protected NoteService $noteService,
+        protected CrmEmailService $crmEmails,
     ) {
         $this->authorizeResource(Opportunity::class, 'opportunity');
     }
@@ -117,14 +120,7 @@ class OpportunityController extends Controller
                 ->selectRaw('stage, count(*) as total')
                 ->groupBy('stage')
                 ->pluck('total', 'stage'),
-            'pipelineSummary' => [
-                'open_count' => Opportunity::query()->whereIn('stage', config('pipeline.open_stages'))->count(),
-                'open_value' => (float) Opportunity::query()
-                    ->whereIn('stage', config('pipeline.open_stages'))
-                    ->sum('amount'),
-                'won_count' => Opportunity::query()->where('stage', 'closed_won')->count(),
-                'lost_count' => Opportunity::query()->where('stage', 'closed_lost')->count(),
-            ],
+            'pipelineSummary' => app(\App\Services\SalesForecastService::class)->pipelineSummary(),
         ]);
     }
 
@@ -138,6 +134,8 @@ class OpportunityController extends Controller
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->whereNotIn('status', ['won', 'lost'])->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'products' => \App\Models\Product::query()->orderBy('name')->limit(200)->get(),
+            'availableContacts' => collect(),
             'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'opportunity', 'create'),
             'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
@@ -156,10 +154,25 @@ class OpportunityController extends Controller
 
     public function show(Opportunity $opportunity): View
     {
-        $opportunity->load(['customer', 'lead', 'assignee', 'creator', 'notes.user', 'attachments.uploader', 'tasks.assignee']);
+        $opportunity->load([
+            'customer.contacts',
+            'lead',
+            'assignee',
+            'creator',
+            'notes.user',
+            'attachments.uploader',
+            'tasks.assignee',
+            'quotations',
+            'salesOrders',
+            'invoices',
+            'contacts.contact',
+            'products.product',
+            'activities.assignee',
+        ]);
 
         return view('pipeline.show', [
             'opportunity' => $opportunity,
+            'organization' => $opportunity->organization,
             'metadataFields' => $this->metadataForms->fieldsFor($opportunity->organization, 'opportunity', 'detail'),
             'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
@@ -168,10 +181,12 @@ class OpportunityController extends Controller
     public function edit(Opportunity $opportunity, TenantContext $tenant): View
     {
         return view('pipeline.edit', [
-            'opportunity' => $opportunity,
+            'opportunity' => $opportunity->load(['contacts', 'products']),
             'customers' => Customer::query()->orderBy('company')->orderBy('name')->get(),
             'leads' => Lead::query()->orderBy('name')->get(),
             'assignees' => $this->organizationMembers($tenant->get()),
+            'products' => \App\Models\Product::query()->orderBy('name')->limit(200)->get(),
+            'availableContacts' => $opportunity->customer?->contacts()->orderBy('name')->get() ?? collect(),
             'metadataFields' => $this->metadataForms->fieldsFor($tenant->get(), 'opportunity', 'edit'),
             'metadataPresenter' => $this->metadataForms->presenter(),
         ]);
@@ -222,6 +237,53 @@ class OpportunityController extends Controller
         return redirect()
             ->route('pipeline.show', $opportunity)
             ->with('status', 'opportunity-note-added');
+    }
+
+    public function storeActivity(\App\Http\Requests\StoreSalesActivityRequest $request, Opportunity $opportunity): RedirectResponse
+    {
+        app(\App\Services\CrmActivityService::class)->createForOpportunity($opportunity, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('pipeline.show', $opportunity)
+            ->with('status', 'activity-logged');
+    }
+
+    public function sendMail(SendOpportunityMailRequest $request, Opportunity $opportunity, TenantContext $tenant): RedirectResponse
+    {
+        $organization = $tenant->get() ?? $opportunity->organization;
+
+        if (! $organization) {
+            return redirect()
+                ->route('pipeline.show', $opportunity)
+                ->with('error', __('Organization not found.'));
+        }
+
+        $defaultEmail = $opportunity->customer?->email
+            ?? $opportunity->customer?->primaryContact?->email
+            ?? '';
+
+        $input = $request->validated();
+        if (! filled($input['email'] ?? null)) {
+            $input['email'] = $defaultEmail;
+        }
+
+        try {
+            $message = $this->crmEmails->send(
+                $organization,
+                $request->user(),
+                $opportunity,
+                $input,
+                attachments: $request->file('attachments', []) ?? [],
+            );
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('pipeline.show', $opportunity)
+                ->with('error', __('Failed to send email: :message', ['message' => $e->getMessage()]));
+        }
+
+        return redirect()
+            ->route('pipeline.show', $opportunity)
+            ->with('status', $message->flashKey('opportunity-email-sent'));
     }
 
     protected function organizationMembers(?Organization $organization)

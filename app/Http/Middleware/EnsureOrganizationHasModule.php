@@ -17,6 +17,7 @@ class EnsureOrganizationHasModule
         protected ModuleSubscriptionService $modules,
         protected ModuleRegistry $registry,
         protected WorkspaceResolver $workspaces,
+        protected \App\Services\Configuration\ConfigurationRegistry $configuration,
     ) {}
 
     /**
@@ -29,6 +30,8 @@ class EnsureOrganizationHasModule
         if (! $organization) {
             return $next($request);
         }
+
+        $this->assertCataloguedRouteLicensed($request, $organization);
 
         $moduleKey = $module ?: $this->resolveModuleFromRoute($request);
 
@@ -46,6 +49,23 @@ class EnsureOrganizationHasModule
         }
 
         abort(403, __('Module not licensed.'));
+    }
+
+    protected function assertCataloguedRouteLicensed(Request $request, \App\Models\Organization $organization): void
+    {
+        $routeName = $request->route()?->getName();
+        if (! is_string($routeName) || $routeName === '') {
+            return;
+        }
+
+        $license = $this->configuration->requiredLicenseForRoute($routeName);
+        if ($license === null) {
+            return;
+        }
+
+        if (! $this->modules->moduleAllowed($organization, $license)) {
+            abort(403, __('Module not licensed.'));
+        }
     }
 
     protected function resolveModuleFromRoute(Request $request): ?string

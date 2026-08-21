@@ -320,6 +320,8 @@ class CustomerImportAdapter implements ImportableEntityInterface
                 'country' => $this->stringOrNull($mappedRow['country'] ?? null),
                 'postal_code' => $this->stringOrNull($mappedRow['postal_code'] ?? null),
                 'status' => $status,
+                'type' => $customerType,
+                'source' => $source,
                 'assigned_to' => $owner?->id,
             ], $user);
 

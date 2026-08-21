@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Invoice;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use Illuminate\Support\Facades\DB;
@@ -13,27 +13,27 @@ class QuotationConversionService
 {
     public function __construct(
         protected AuditLogger $auditLogger,
-        protected InvoiceService $invoices,
+        protected SalesOrderService $salesOrders,
     ) {}
 
-    public function convert(Quotation $quotation, User $user): Invoice
+    public function convert(Quotation $quotation, User $user): SalesOrder
     {
         return DB::transaction(function () use ($quotation, $user) {
             $quotation = Quotation::query()
-                ->with(['customer', 'items', 'invoice'])
+                ->with(['customer', 'items', 'salesOrder'])
                 ->whereKey($quotation->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $existingInvoice = $this->findActiveInvoice($quotation);
+            $existingOrder = $this->findActiveSalesOrder($quotation);
 
-            if ($existingInvoice) {
-                return $existingInvoice;
+            if ($existingOrder) {
+                return $existingOrder;
             }
 
             $this->assertEligible($quotation);
 
-            $invoice = $this->invoices->createFromQuotation($quotation, $user);
+            $salesOrder = $this->salesOrders->createFromQuotation($quotation, $user);
 
             $previousStatus = $quotation->status;
 
@@ -42,20 +42,20 @@ class QuotationConversionService
             $this->auditLogger->log($quotation, 'converted', [
                 'from' => $previousStatus,
                 'to' => 'converted',
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoice->number,
+                'sales_order_id' => $salesOrder->id,
+                'sales_order_number' => $salesOrder->number,
                 'quotation_number' => $quotation->number,
             ], $user);
 
-            $this->auditLogger->log($invoice, 'created_from_quotation', [
+            $this->auditLogger->log($salesOrder, 'created_from_quotation', [
                 'quotation_id' => $quotation->id,
                 'quotation_number' => $quotation->number,
-                'invoice_number' => $invoice->number,
+                'sales_order_number' => $salesOrder->number,
             ], $user);
 
-            $this->notifyInternalUsers($quotation, $invoice, $user);
+            $this->notifyInternalUsers($quotation, $salesOrder, $user);
 
-            return $invoice->fresh(['items', 'customer', 'quotation']);
+            return $salesOrder->fresh(['items', 'customer', 'quotation']);
         });
     }
 
@@ -71,7 +71,7 @@ class QuotationConversionService
 
         if ($quotation->status !== 'accepted') {
             throw ValidationException::withMessages([
-                'quotation' => [__('Only accepted quotations can be converted to an invoice. Current status: :status.', [
+                'quotation' => [__('Only accepted quotations can be converted to a sales order. Current status: :status.', [
                     'status' => $quotation->status_label,
                 ])],
             ]);
@@ -96,16 +96,16 @@ class QuotationConversionService
         }
     }
 
-    protected function findActiveInvoice(Quotation $quotation): ?Invoice
+    protected function findActiveSalesOrder(Quotation $quotation): ?SalesOrder
     {
-        return Invoice::query()
+        return SalesOrder::query()
             ->where('quotation_id', $quotation->id)
             ->where('status', '!=', 'cancelled')
             ->latest('id')
             ->first();
     }
 
-    protected function notifyInternalUsers(Quotation $quotation, Invoice $invoice, User $converter): void
+    protected function notifyInternalUsers(Quotation $quotation, SalesOrder $salesOrder, User $converter): void
     {
         $creator = $quotation->creator;
 
@@ -113,17 +113,17 @@ class QuotationConversionService
             return;
         }
 
-        if (! $creator->hasPermission('invoices.view', $quotation->organization)) {
+        if (! $creator->hasPermission('sales_orders.view', $quotation->organization)) {
             return;
         }
 
         $creator->notify(new CrmNotification(
-            title: __('Invoice generated'),
-            message: __('Invoice :invoice was generated from quotation :quotation.', [
-                'invoice' => $invoice->number,
+            title: __('Sales order generated'),
+            message: __('Sales order :order was generated from quotation :quotation.', [
+                'order' => $salesOrder->number,
                 'quotation' => $quotation->number,
             ]),
-            actionUrl: route('invoices.show', $invoice),
+            actionUrl: route('sales-orders.show', $salesOrder),
             organizationId: $quotation->organization_id,
         ));
     }

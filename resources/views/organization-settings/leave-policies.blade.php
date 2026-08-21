@@ -1,6 +1,9 @@
 <x-app-layout>
     <x-slot name="header"><h1 class="text-lg font-semibold text-slate-900">{{ __('Leave Policies') }}</h1></x-slot>
     <x-flash-messages />
+    <div class="mb-4">
+        <x-nav.configuration-breadcrumbs :current="__('Leave Policies')" />
+    </div>
     <p class="mb-4 text-sm text-slate-500">{{ __('Organization defaults. Leave types may override individual rules.') }}</p>
     <form method="POST" action="{{ route('organization.settings.leave-policies.update') }}" class="max-w-xl rounded-xl border border-slate-200 bg-white p-6 space-y-4">
         @csrf @method('PUT')

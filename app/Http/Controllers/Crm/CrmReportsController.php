@@ -36,6 +36,12 @@ class CrmReportsController extends Controller
                 'href' => Route::has('reports.export.outstanding') ? route('reports.export.outstanding') : null,
                 'permission' => ['reports.manage', 'finance.view'],
             ],
+            [
+                'label' => __('CRM email'),
+                'description' => __('Queued, sent, delivered, failed, and bounced email for this organization.'),
+                'href' => Route::has('crm.email-report') ? route('crm.email-report') : route('crm.communications.index'),
+                'permission' => ['crm_email.view', 'customers.view', 'reports.view'],
+            ],
         ])->filter(function (array $item) use ($request) {
             if (! $item['href']) {
                 return false;

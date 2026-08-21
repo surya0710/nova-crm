@@ -29,14 +29,8 @@ class CustomerController extends Controller
     public function index(IndexApiCustomerRequest $request, TenantContext $tenant): AnonymousResourceCollection
     {
         $organization = $tenant->get();
-        $query = Customer::query()->with('assignee');
-
-        $this->customerService->searchQuery($query, $request->validated('search'));
-        $this->customerService->geographicFilterQuery(
-            $query,
-            $request->validated('state'),
-            $request->validated('country'),
-        );
+        $query = Customer::query()->with(['assignee', 'primaryContact']);
+        $this->customerService->applyIndexFilters($query, $request->validated());
 
         $metadataRequest = $this->metadataDefinitions->requestForApi(
             $organization->id,
@@ -44,10 +38,7 @@ class CustomerController extends Controller
             $request->all(),
         );
         $this->metadataQueries->applyForApi($query, $metadataRequest, $organization->id);
-
-        if (! $metadataRequest->sort) {
-            $query->latest();
-        }
+        $this->customerService->applyIndexSort($query, $request->validated(), (bool) $metadataRequest->sort);
 
         return CustomerResource::collection(
             $query->paginate($request->perPage())->withQueryString()
@@ -58,7 +49,7 @@ class CustomerController extends Controller
     {
         $this->authorize('view', $customer);
 
-        $customer->load(['assignee', 'creator']);
+        $customer->load(['assignee', 'creator', 'primaryContact']);
 
         return new CustomerResource($customer);
     }
@@ -79,7 +70,7 @@ class CustomerController extends Controller
         );
 
         $customer = $this->customerService->create($data, $request->user(), $metadataValues);
-        $customer->load(['assignee', 'creator']);
+        $customer->load(['assignee', 'creator', 'primaryContact']);
 
         return (new CustomerResource($customer))
             ->additional(['success' => true])
@@ -105,7 +96,7 @@ class CustomerController extends Controller
             : [];
 
         $customer = $this->customerService->update($customer, $data, $request->user(), $metadataValues);
-        $customer->load(['assignee', 'creator']);
+        $customer->load(['assignee', 'creator', 'primaryContact']);
 
         return new CustomerResource($customer);
     }

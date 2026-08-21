@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Mail\InvoiceMail;
+use App\Mail\PaymentMail;
 use App\Mail\QuotationMail;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
+use App\Models\Payment;
 use App\Models\Quotation;
 use App\Models\User;
 use App\Services\ClientEmailCc;
@@ -127,6 +129,53 @@ class CommercialEmailCcTest extends TestCase
         Mail::assertSent(QuotationMail::class, function (QuotationMail $mail) {
             return $mail->hasTo('buyer@example.com')
                 && $mail->hasCc('rep@acme.test');
+        });
+    }
+
+    public function test_payment_email_ccs_authenticated_sender(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'finance@acme.test']);
+        $organization = Organization::factory()->create();
+        $organization->addMember($user, 'manager');
+        $this->configureOrganizationMail($organization);
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'email' => 'ap@example.com',
+            'created_by' => $user->id,
+        ]);
+
+        $invoice = Invoice::factory()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'status' => 'issued',
+            'total' => 200,
+            'amount_paid' => 200,
+            'created_by' => $user->id,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'organization_id' => $organization->id,
+            'invoice_id' => $invoice->id,
+            'customer_id' => $customer->id,
+            'amount' => 200,
+            'recorded_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('payments.send', $payment), [
+                'email' => 'ap@example.com',
+                'cc' => 'controller@example.com',
+            ])
+            ->assertRedirect(route('payments.show', $payment));
+
+        Mail::assertSent(PaymentMail::class, function (PaymentMail $mail) {
+            return $mail->hasTo('ap@example.com')
+                && $mail->hasCc('finance@acme.test')
+                && $mail->hasCc('controller@example.com');
         });
     }
 

@@ -24,6 +24,10 @@ class Payment extends Model
         'payment_date',
         'method',
         'reference',
+        'bank_name',
+        'bank_account_name',
+        'bank_account_number',
+        'bank_ifsc',
         'notes',
         'recorded_by',
     ];
@@ -59,6 +63,11 @@ class Payment extends Model
     public function getFormattedAmountAttribute(): string
     {
         return number_format((float) $this->amount, 2).' '.$this->currency;
+    }
+
+    public function requiresBankDetails(): bool
+    {
+        return in_array($this->method, config('payments.methods_requiring_bank_details', []), true);
     }
 
     public static function generateNumber(Organization $organization): string

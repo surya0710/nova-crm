@@ -16,31 +16,35 @@ Centralized **Configuration Hub** for Konnect Nex. Operational screens stay in w
 
 ## Current state audit
 
-Source: `config/organization_settings.php` + sidebar Settings.
+Source: `config/organization_settings.php` + `App\Services\Configuration\ConfigurationRegistry`.
 
-| Setting / page | Current location | Issue |
-|----------------|------------------|-------|
-| Organization Profile | Hub + `organization.edit` | OK |
-| Branding | Hub tab | OK |
-| Subscription / Billing | Hub | OK |
-| Branches / Departments / Designations | Hub → redirects to HRMS | Split mental model |
-| Working Days, Shifts, Holidays, Leave Types/Policies/Approvers, Attendance Rules | Hub / redirects | OK direction |
-| Access Control | Hub + sidebar | Duplicate entry |
-| Dashboard link | Hub (optional) | Misplaced (not a setting) |
-| Notifications (org) | Hub | OK |
-| Email | Org edit tab | OK |
-| Integrations | Hub + sidebar | Duplicate |
-| API Tokens | Hub + sidebar | Duplicate |
-| Workflows | Sidebar only | Missing from Hub |
-| Metadata Fields | Sidebar only | Missing from Hub |
-| Assignment rules | Orphan routes | Missing from Hub |
-| Project catalogs / task catalogs | Orphan / module-local | Missing from Hub |
-| Recruitment careers/portal settings | Inside Recruitment | Acceptable ops-adjacent; also link from Hub |
-| Payroll / Performance config | Inside modules | Need Hub cards |
-| User notification preferences | Hidden routes | Belong under User menu |
-| Knowledge Center | Sidebar Settings | Not a setting → Help |
-| Profile | Sidebar Settings | Not org setting → User menu |
-| Team (Users) | Sidebar | Administration, not Hub card only |
+The hub is a **presentation catalog**. Settings still live on existing routes/controllers (`organization.settings.*`, Administration, HRMS catalogs, CRM screens). There is no per-module settings app.
+
+| Setting / page | Owning hub module | License | Notes |
+|----------------|-------------------|---------|-------|
+| Organization Profile / Email | Organization | — | `organization.edit` |
+| Branding / Modules / Subscription / Billing | Organization | — | Administration + settings aliases |
+| Users | Organization | — | Deep link to Team |
+| Lead / Customer / Pipeline | CRM | `crm` | Catalog deep links until dedicated config pages exist |
+| Assignment rules | CRM → Sales | `crm` | `organization.settings.assignments` |
+| Tax / GST, Products, Price Lists, Quotations, Invoices, Payments, Automation | Commercial | `crm` | GST state on org profile; automation on `organizations.settings` |
+| Employee, Branches, Departments, Designations, Working Days, Shifts, Leave, Holidays, Attendance, WFH, Payroll | HRMS | `hrms` | Hidden on starter / when HRMS is disabled |
+| Careers + Candidate Portal | HRMS | `recruitment` | Section-level license override |
+| Project + task catalogs | Projects | `projects` | Previously missing from hub |
+| Marketing providers | Marketing | `marketing` | Previously missing from hub |
+| Security / Access Control / Audit | Security | — | Also linked from Administration nav |
+| Notifications, Workflows, Custom Fields, Integrations, API, Developer | Platform | Workflows require `workflow` | Dashboard card removed (not a setting) |
+
+### Duplicates / overlaps (presentation only)
+
+- Working Days and Business Hours previously both pointed at `working-days.edit` — merged.
+- Reporting Structure duplicated Departments — dropped from the hub.
+- Access Control, Integrations, and API remain in Administration nav **and** the hub (deep links, not second implementations).
+- Commercial Automation previously sat under a generic “CRM Configuration” group and was shown even when CRM was not licensed.
+
+### Settings previously shown without the related module
+
+Before the registry, the hub filtered **permissions only**. Starter (CRM-only) organizations still saw HR Configuration, Project Defaults, and Commercial Automation cards. Those groups are now gated by `ModuleSubscriptionService::moduleAllowed()`.
 
 ---
 
@@ -154,21 +158,37 @@ Personal preferences → **User menu**, not Hub.
 ## Hub IA wireframe
 
 ```
-Configuration
+Configuration Hub
 ├── Organization
-├── Users & Security
 ├── CRM
+│   ├── Lead Settings
+│   ├── Customer Settings
+│   ├── Pipeline
+│   └── Sales
+├── Commercial
+│   ├── Tax / GST
+│   ├── Products
+│   ├── Quotations
+│   ├── Invoices
+│   ├── Payments
+│   └── Automation
+├── HRMS
+│   ├── Employee
+│   ├── Branches
+│   ├── Shifts
+│   ├── Leave
+│   ├── Holidays
+│   ├── Attendance
+│   ├── WFH
+│   ├── Payroll
+│   └── Recruitment
 ├── Projects
-├── HR
 ├── Marketing
-├── Automation
-├── Notifications
-├── Custom Fields
-├── Integrations
-└── Billing
+├── Security
+└── Platform
 ```
 
-Each group page = card grid (current hub pattern), not a second mega-sidebar.
+Each module is a card grid of sections, not a second mega-sidebar. Modules with no visible sections are omitted.
 
 ---
 
@@ -196,8 +216,9 @@ Keep in Administration nav: Users, Roles, Billing, Configuration.
 
 ## Migration guidance (Phase 14)
 
-1. Extend `config/organization_settings.php` groups to match A–K.  
-2. Add missing section entries (workflows, metadata, assignments, project catalogs).  
-3. Remove duplicate sidebar links.  
-4. Keep redirects for HR structure URLs.  
-5. Remove Dashboard card from settings catalog.
+1. `config/organization_settings.php` is the module-aware registry; `ConfigurationRegistry` filters by plan, enabled modules, and permissions.
+2. Missing section entries added (workflows, custom fields, assignments, project catalogs, payroll, recruitment).
+3. Remove remaining duplicate sidebar links in a later pass; hub cards are deep links.
+4. Keep redirects for HR structure URLs (`organization.settings.branches` → `/hrms/branches`, etc.).
+5. Dashboard card removed from the settings catalog.
+6. Hub polish (search, empty states, breadcrumbs, recently used) stays on this catalog — see [configuration-registry.md](./configuration-registry.md).

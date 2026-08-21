@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\AdjustmentNote;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 
 return [
     'enabled' => (bool) env('ATTACHMENTS_ENABLED', true),
@@ -30,6 +32,8 @@ return [
         'customer' => Customer::class,
         'invoice' => Invoice::class,
         'quotation' => Quotation::class,
+        'sales_order' => SalesOrder::class,
+        'adjustment_note' => AdjustmentNote::class,
         'opportunity' => Opportunity::class,
     ],
 ];

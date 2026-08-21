@@ -4,6 +4,7 @@
         'issued' => 'info',
         'partially_paid' => 'warning',
         'paid' => 'success',
+        'overpaid' => 'warning',
         'cancelled' => 'neutral',
     ];
     $density = $shellNav['density'] ?? 'comfortable';

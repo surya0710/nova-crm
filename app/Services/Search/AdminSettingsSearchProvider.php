@@ -4,11 +4,15 @@ namespace App\Services\Search;
 
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Configuration\ConfigurationRegistry;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Route;
 
 class AdminSettingsSearchProvider implements SearchProviderInterface
 {
+    public function __construct(
+        protected ConfigurationRegistry $registry,
+    ) {}
+
     public function key(): string
     {
         return 'settings';
@@ -21,48 +25,30 @@ class AdminSettingsSearchProvider implements SearchProviderInterface
 
     public function search(User $user, Organization $organization, string $query, int $limit = 10): Collection
     {
-        if (! $user->hasAnyPermission(['settings.manage', 'organization.hr_config.manage', 'hrms.view', 'rbac.view', 'integrations.view', 'api.tokens'])) {
-            return collect();
-        }
-
-        $query = trim(mb_strtolower($query));
+        $query = trim($query);
         if ($query === '') {
             return collect();
         }
 
-        $sections = config('organization_settings.sections', []);
+        $sections = $this->registry->visibleSectionsForSearch($user, $organization);
+        if ($sections === []) {
+            return collect();
+        }
 
-        return collect($sections)
-            ->filter(function (array $section) use ($user, $query) {
-                $label = mb_strtolower((string) ($section['label'] ?? ''));
-                if ($label === '' || ! str_contains($label, $query)) {
-                    return false;
-                }
-
-                $permission = $section['permission'] ?? null;
-                $fallback = $section['fallback_permission'] ?? null;
-
-                if ($permission && ! $user->hasPermission($permission)) {
-                    if (! $fallback || ! $user->hasPermission($fallback)) {
-                        return false;
-                    }
-                }
-
-                $routeName = $section['route'] ?? null;
-
-                return $routeName && Route::has($routeName);
-            })
+        return collect($this->registry->filterSectionsByQuery($sections, $query))
             ->take($limit)
             ->map(function (array $section) {
-                $routeName = $section['route'];
-                $url = route($routeName, $section['query'] ?? []);
+                $subtitle = collect([
+                    $section['module_name'] ?? null,
+                    $section['description'] ?? null,
+                ])->filter()->implode(' · ');
 
                 return [
                     'type' => __('Setting'),
                     'label' => $this->label(),
                     'title' => __($section['label']),
-                    'subtitle' => __($section['group'] ?? 'organization'),
-                    'url' => $url,
+                    'subtitle' => $subtitle !== '' ? __($subtitle) : null,
+                    'url' => $section['href'],
                     'workspace' => 'administration',
                 ];
             })

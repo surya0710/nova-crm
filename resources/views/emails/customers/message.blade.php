@@ -9,6 +9,8 @@
 {{ __('Please see the message from our team below.') }}
 @endif
 
+@include('emails.partials.signature')
+
 {{ __('Thanks,') }}<br>
 {{ $organization->name }}
 @if ($organization->email)

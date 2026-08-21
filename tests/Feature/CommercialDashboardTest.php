@@ -28,8 +28,11 @@ class CommercialDashboardTest extends TestCase
     public function test_commercial_widgets_are_registered(): void
     {
         $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'commercial_quotations']);
+        $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'commercial_sales_orders']);
         $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'commercial_invoices']);
+        $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'commercial_receivables']);
         $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'commercial_revenue']);
+        $this->assertDatabaseHas('dashboard_widgets', ['widget_key' => 'crm_email_metrics']);
     }
 
     public function test_quotation_widget_returns_counts_and_conversion_rate(): void
@@ -116,5 +119,68 @@ class CommercialDashboardTest extends TestCase
         $response->assertJsonPath('outstanding_count', 1);
         $response->assertJsonPath('overdue_count', 1);
         $response->assertJsonPath('outstanding_value', 300);
+    }
+
+    public function test_sales_order_and_revenue_widgets_include_commercial_metrics(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
+        $organization->addMember($user, 'manager');
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+        ]);
+
+        \App\Models\SalesOrder::factory()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'status' => 'confirmed',
+            'total' => 750,
+            'created_by' => $user->id,
+        ]);
+
+        Invoice::factory()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'status' => 'paid',
+            'total' => 200,
+            'amount_paid' => 200,
+            'created_by' => $user->id,
+        ]);
+
+        Sanctum::actingAs($user, ['*']);
+        $headers = [
+            'X-Organization-Id' => (string) $organization->id,
+            'Accept' => 'application/json',
+        ];
+
+        $this->getJson('/api/v1/dashboard/widgets/commercial_sales_orders/data', $headers)
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('confirmed_count', 1)
+            ->assertJsonPath('value', 750);
+
+        $this->getJson('/api/v1/dashboard/widgets/commercial_receivables/data', $headers)
+            ->assertOk()
+            ->assertJsonPath('outstanding_count', 0);
+
+        $this->getJson('/api/v1/dashboard/widgets/commercial_revenue/data', $headers)
+            ->assertOk()
+            ->assertJsonStructure(['revenue', 'customers', 'products', 'salespeople', 'monthly', 'collection_rate']);
+    }
+
+    public function test_commercial_widgets_are_hidden_without_permission(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create(['plan' => 'enterprise']);
+        $organization->addMember($user, 'hr');
+
+        Sanctum::actingAs($user, ['*']);
+
+        $this->getJson('/api/v1/dashboard/widgets/commercial_quotations/data', [
+            'X-Organization-Id' => (string) $organization->id,
+            'Accept' => 'application/json',
+        ])->assertOk()->assertJsonPath('error', 'unauthorized');
     }
 }

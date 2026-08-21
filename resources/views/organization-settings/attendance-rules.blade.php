@@ -1,6 +1,9 @@
 <x-app-layout>
     <x-slot name="header"><h1 class="text-lg font-semibold text-slate-900">{{ __('Attendance Rules') }}</h1></x-slot>
     <x-flash-messages />
+    <div class="mb-4">
+        <x-nav.configuration-breadcrumbs :current="__('Attendance')" />
+    </div>
     <form method="POST" action="{{ route('organization.settings.attendance-rules.update') }}" class="max-w-xl rounded-xl border border-slate-200 bg-white p-6 space-y-4">
         @csrf @method('PUT')
         <div>

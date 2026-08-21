@@ -27,6 +27,11 @@ final class Money
         return max(0, self::round($total - $amountPaid));
     }
 
+    public static function outstanding(float $total, float $paid, float $credits = 0, float $debits = 0): float
+    {
+        return self::round($total - $paid - $credits + $debits);
+    }
+
     public static function percentage(float $part, float $whole, int $precision = 1): ?float
     {
         if ($whole <= 0) {

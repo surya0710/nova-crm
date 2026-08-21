@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 
 class CommercialPartySnapshot
 {
@@ -73,7 +74,7 @@ class CommercialPartySnapshot
     /**
      * @return array{billing_snapshot: array<string, mixed>, shipping_snapshot: array<string, mixed>}
      */
-    public function fromDocument(Quotation|Invoice $document): array
+    public function fromDocument(Quotation|Invoice|SalesOrder $document): array
     {
         $billing = is_array($document->billing_snapshot) ? $document->billing_snapshot : [];
         $shipping = is_array($document->shipping_snapshot) ? $document->shipping_snapshot : [];

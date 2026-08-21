@@ -1,15 +1,26 @@
 <?php
 
 use App\Http\Controllers\Api\CapacityForecastController as ApiCapacityForecastController;
+use App\Http\Controllers\Api\CrmEmailController as ApiCrmEmailController;
+use App\Http\Controllers\Api\CrmEmailTemplateApiController as ApiCrmEmailTemplateController;
 use App\Http\Controllers\Api\CustomerController as ApiCustomerController;
+use App\Http\Controllers\Api\ContactController as ApiContactController;
+use App\Http\Controllers\Api\CustomerTicketController as ApiCustomerTicketController;
+use App\Http\Controllers\Api\CrmActivityController as ApiCrmActivityController;
 use App\Http\Controllers\Api\ExecutiveDashboardController as ApiExecutiveDashboardController;
 use App\Http\Controllers\Api\InvoiceController as ApiInvoiceController;
 use App\Http\Controllers\Api\LeadController as ApiLeadController;
 use App\Http\Controllers\Api\NotificationPreferenceController as ApiNotificationPreferenceController;
 use App\Http\Controllers\Api\OpportunityController as ApiOpportunityController;
+use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
+use App\Http\Controllers\Api\PriceListController as ApiPriceListController;
 use App\Http\Controllers\Api\ProductCategoryController as ApiProductCategoryController;
 use App\Http\Controllers\Api\ProductController as ApiProductController;
 use App\Http\Controllers\Api\QuotationController as ApiQuotationController;
+use App\Http\Controllers\Api\ReceivableController as ApiReceivableController;
+use App\Http\Controllers\Api\SalesOrderController as ApiSalesOrderController;
+use App\Http\Controllers\Api\SalesForecastController as ApiSalesForecastController;
+use App\Http\Controllers\Api\AdjustmentNoteController as ApiAdjustmentNoteController;
 use App\Http\Controllers\Api\PortfolioController as ApiPortfolioController;
 use App\Http\Controllers\Api\PortfolioForecastController as ApiPortfolioForecastController;
 use App\Http\Controllers\Api\PortfolioReportController as ApiPortfolioReportController;
@@ -108,9 +119,51 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
         Route::get('customers/{customer}', [ApiCustomerController::class, 'show']);
         Route::put('customers/{customer}', [ApiCustomerController::class, 'update']);
         Route::patch('customers/{customer}', [ApiCustomerController::class, 'update']);
+        Route::get('customers/{customer}/contacts', [ApiContactController::class, 'index']);
+        Route::post('customers/{customer}/contacts', [ApiContactController::class, 'store']);
+        Route::get('contacts', [ApiContactController::class, 'index']);
+        Route::get('contacts/{contact}', [ApiContactController::class, 'show']);
+        Route::put('contacts/{contact}', [ApiContactController::class, 'update']);
+        Route::patch('contacts/{contact}', [ApiContactController::class, 'update']);
+        Route::delete('contacts/{contact}', [ApiContactController::class, 'destroy']);
+        Route::get('contacts/{contact}/activities', [ApiContactController::class, 'activities']);
+        Route::post('contacts/{contact}/activities', [ApiContactController::class, 'storeActivity']);
+        Route::get('contacts/{contact}/timeline', [ApiContactController::class, 'timeline']);
+        Route::post('crm/email/send', [ApiCrmEmailController::class, 'send']);
+        Route::get('crm/email/messages', [ApiCrmEmailController::class, 'messages']);
+        Route::get('crm/email/messages/{message}', [ApiCrmEmailController::class, 'showMessage']);
+        Route::get('crm/email/conversations', [ApiCrmEmailController::class, 'conversations']);
+        Route::get('crm/email/conversations/{conversation}', [ApiCrmEmailController::class, 'showConversation']);
+        Route::get('crm/email/conversations/{conversation}/messages', [ApiCrmEmailController::class, 'conversationMessages']);
+        Route::get('crm/email/metrics', [ApiCrmEmailController::class, 'metrics']);
+        Route::get('crm/email/templates', [ApiCrmEmailTemplateController::class, 'index']);
+        Route::post('crm/email/templates', [ApiCrmEmailTemplateController::class, 'store']);
+        Route::get('crm/email/templates/{template}', [ApiCrmEmailTemplateController::class, 'show']);
+        Route::put('crm/email/templates/{template}', [ApiCrmEmailTemplateController::class, 'update']);
+        Route::patch('crm/email/templates/{template}', [ApiCrmEmailTemplateController::class, 'update']);
+        Route::delete('crm/email/templates/{template}', [ApiCrmEmailTemplateController::class, 'destroy']);
+        Route::get('customers/{customer}/tickets', [ApiCustomerTicketController::class, 'index']);
+        Route::post('customers/{customer}/tickets', [ApiCustomerTicketController::class, 'store']);
+        Route::get('tickets', [ApiCustomerTicketController::class, 'index']);
+        Route::get('tickets/{ticket}', [ApiCustomerTicketController::class, 'show']);
+        Route::put('tickets/{ticket}', [ApiCustomerTicketController::class, 'update']);
+        Route::patch('tickets/{ticket}', [ApiCustomerTicketController::class, 'update']);
+        Route::post('tickets/{ticket}/notes', [ApiCustomerTicketController::class, 'storeNote']);
+        Route::patch('tickets/{ticket}/assign', [ApiCustomerTicketController::class, 'assign']);
+        Route::post('tickets/{ticket}/reopen', [ApiCustomerTicketController::class, 'reopen']);
 
         Route::get('opportunities', [ApiOpportunityController::class, 'index']);
+        Route::post('opportunities', [ApiOpportunityController::class, 'store']);
         Route::get('opportunities/{opportunity}', [ApiOpportunityController::class, 'show']);
+        Route::put('opportunities/{opportunity}', [ApiOpportunityController::class, 'update']);
+        Route::patch('opportunities/{opportunity}', [ApiOpportunityController::class, 'update']);
+        Route::patch('opportunities/{opportunity}/stage', [ApiOpportunityController::class, 'updateStage']);
+        Route::post('opportunities/{opportunity}/activities', [ApiOpportunityController::class, 'storeActivity']);
+
+        Route::get('activities', [ApiCrmActivityController::class, 'index']);
+        Route::post('activities', [ApiCrmActivityController::class, 'store']);
+        Route::post('activities/{crm_activity}/complete', [ApiCrmActivityController::class, 'complete']);
+        Route::get('sales/forecast', ApiSalesForecastController::class);
 
         Route::get('products', [ApiProductController::class, 'index']);
         Route::post('products', [ApiProductController::class, 'store']);
@@ -130,11 +183,55 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api', 'set.organizati
         Route::patch('quotations/{quotation}', [ApiQuotationController::class, 'update']);
         Route::post('quotations/{quotation}/convert', [ApiQuotationController::class, 'convert']);
 
+        Route::get('sales-orders', [ApiSalesOrderController::class, 'index']);
+        Route::post('sales-orders', [ApiSalesOrderController::class, 'store']);
+        Route::get('sales-orders/{sales_order}', [ApiSalesOrderController::class, 'show']);
+        Route::put('sales-orders/{sales_order}', [ApiSalesOrderController::class, 'update']);
+        Route::patch('sales-orders/{sales_order}', [ApiSalesOrderController::class, 'update']);
+        Route::get('sales-orders/{sales_order}/items', [ApiSalesOrderController::class, 'items']);
+        Route::post('sales-orders/{sales_order}/convert', [ApiSalesOrderController::class, 'convert']);
+
+        Route::get('adjustment-notes', [ApiAdjustmentNoteController::class, 'index']);
+        Route::post('adjustment-notes', [ApiAdjustmentNoteController::class, 'store']);
+        Route::get('adjustment-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'show']);
+        Route::put('adjustment-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update']);
+        Route::patch('adjustment-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update']);
+        Route::post('adjustment-notes/{adjustment_note}/apply', [ApiAdjustmentNoteController::class, 'apply']);
+
+        Route::get('credit-notes', [ApiAdjustmentNoteController::class, 'index'])->name('api.credit-notes.index');
+        Route::post('credit-notes', [ApiAdjustmentNoteController::class, 'store'])->name('api.credit-notes.store');
+        Route::get('credit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'show'])->name('api.credit-notes.show');
+        Route::put('credit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update'])->name('api.credit-notes.update');
+        Route::patch('credit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update']);
+        Route::post('credit-notes/{adjustment_note}/apply', [ApiAdjustmentNoteController::class, 'apply'])->name('api.credit-notes.apply');
+
+        Route::get('debit-notes', [ApiAdjustmentNoteController::class, 'index'])->name('api.debit-notes.index');
+        Route::post('debit-notes', [ApiAdjustmentNoteController::class, 'store'])->name('api.debit-notes.store');
+        Route::get('debit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'show'])->name('api.debit-notes.show');
+        Route::put('debit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update'])->name('api.debit-notes.update');
+        Route::patch('debit-notes/{adjustment_note}', [ApiAdjustmentNoteController::class, 'update']);
+        Route::post('debit-notes/{adjustment_note}/apply', [ApiAdjustmentNoteController::class, 'apply'])->name('api.debit-notes.apply');
+
         Route::get('invoices', [ApiInvoiceController::class, 'index']);
         Route::post('invoices', [ApiInvoiceController::class, 'store']);
         Route::get('invoices/{invoice}', [ApiInvoiceController::class, 'show']);
         Route::put('invoices/{invoice}', [ApiInvoiceController::class, 'update']);
         Route::patch('invoices/{invoice}', [ApiInvoiceController::class, 'update']);
+        Route::post('invoices/{invoice}/payments', [ApiPaymentController::class, 'allocate']);
+
+        Route::get('payments', [ApiPaymentController::class, 'index']);
+        Route::post('payments', [ApiPaymentController::class, 'store']);
+        Route::get('payments/{payment}', [ApiPaymentController::class, 'show']);
+
+        Route::get('receivables', [ApiReceivableController::class, 'index']);
+        Route::get('customers/{customer}/ledger', [ApiReceivableController::class, 'ledger']);
+
+        Route::get('price-lists', [ApiPriceListController::class, 'index']);
+        Route::post('price-lists', [ApiPriceListController::class, 'store']);
+        Route::get('price-lists/{price_list}', [ApiPriceListController::class, 'show']);
+        Route::put('price-lists/{price_list}', [ApiPriceListController::class, 'update']);
+        Route::patch('price-lists/{price_list}', [ApiPriceListController::class, 'update']);
+        Route::delete('price-lists/{price_list}', [ApiPriceListController::class, 'destroy']);
 
         Route::get('projects/executive-summary', [ApiProjectExecutiveController::class, 'summary']);
         Route::get('projects/watching', [ApiProjectWatcherController::class, 'index']);
@@ -353,6 +450,19 @@ Route::prefix('v1/portal/{organization:slug}')
     ->middleware(['web', 'portal.organization', 'auth:client', 'portal.client', 'throttle:60,1'])
     ->group(function () {
         Route::get('dashboard', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'dashboard']);
+        Route::get('billing', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'overview']);
+        Route::get('quotations', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'quotations']);
+        Route::get('quotations/{quotation}', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'showQuotation']);
+        Route::post('quotations/{quotation}/accept', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'acceptQuotation']);
+        Route::post('quotations/{quotation}/reject', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'rejectQuotation']);
+        Route::get('sales-orders', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'salesOrders']);
+        Route::get('sales-orders/{sales_order}', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'showSalesOrder']);
+        Route::get('invoices', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'invoices']);
+        Route::get('invoices/{invoice}', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'showInvoice']);
+        Route::post('invoices/{invoice}/pay', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'payInvoice']);
+        Route::get('payments', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'payments']);
+        Route::get('notes', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'notes']);
+        Route::get('ledger', [\App\Http\Controllers\Api\Portal\PortalCommercialApiController::class, 'ledger']);
         Route::get('projects/{project}', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'project']);
         Route::get('projects/{project}/deliverables', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'deliverables']);
         Route::post('approvals/{approval}/approve', [\App\Http\Controllers\Api\Portal\PortalApiController::class, 'approve']);

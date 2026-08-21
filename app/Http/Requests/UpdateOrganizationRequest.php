@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesClientEmailFields;
 use App\Services\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateOrganizationRequest extends FormRequest
 {
+    use ValidatesClientEmailFields;
+
     public function authorize(): bool
     {
         $organization = app(TenantContext::class)->get();
@@ -22,7 +25,9 @@ class UpdateOrganizationRequest extends FormRequest
 
     protected function mailUsesSmtp(): bool
     {
-        return $this->input('mail_driver', 'smtp') === 'smtp';
+        $provider = $this->input('mail_provider', $this->input('mail_driver', 'smtp'));
+
+        return ($provider ?? 'smtp') !== 'log';
     }
 
     public function rules(): array
@@ -50,6 +55,7 @@ class UpdateOrganizationRequest extends FormRequest
             'terminology' => ['nullable', 'array'],
             'terminology.*' => ['nullable', 'string', 'max:50'],
             'mail_enabled' => ['nullable', 'boolean'],
+            'mail_provider' => ['nullable', 'string', Rule::in(array_keys(config('organization_mail.providers')))],
             'mail_driver' => ['nullable', 'string', Rule::in(array_keys(config('organization_mail.drivers')))],
             'mail_host' => [
                 Rule::requiredIf(fn () => $this->mailEnabled() && $this->mailUsesSmtp()),
@@ -70,6 +76,10 @@ class UpdateOrganizationRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->mailEnabled()),
                 'nullable', 'string', 'max:255',
             ],
+            'mail_reply_to' => ['nullable', 'email', 'max:255'],
+            'mail_default_cc' => ['nullable', 'string', 'max:1000', $this->recipientsRule()],
+            'mail_default_bcc' => ['nullable', 'string', 'max:1000', $this->recipientsRule()],
+            'mail_signature' => ['nullable', 'string', 'max:5000'],
             'locale' => ['nullable', 'string', 'max:20'],
             'fiscal_year_start_month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'date_format' => ['nullable', 'string', 'max:32'],

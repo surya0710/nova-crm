@@ -2,11 +2,13 @@
 
 use App\Workflow\Actions\AddNoteAction;
 use App\Workflow\Actions\AssignOwnerAction;
+use App\Workflow\Actions\ChangeCustomerLifecycleAction;
 use App\Workflow\Actions\ChangeLeadStatusAction;
 use App\Workflow\Actions\CreateActivityAction;
 use App\Workflow\Actions\CreateTaskAction;
 use App\Workflow\Actions\NotifyUserAction;
 use App\Workflow\Actions\ReassignOwnerAction;
+use App\Workflow\Actions\SendCrmEmailAction;
 use App\Workflow\Actions\UpdateMetadataAction;
 
 $hrmsTriggers = require __DIR__.'/hrms_workflow_triggers.php';
@@ -24,8 +26,30 @@ return [
         'customer.updated' => ['entity' => 'customer', 'label' => 'Customer updated', 'description' => 'Runs after customer details change.'],
         'opportunity.created' => ['entity' => 'opportunity', 'label' => 'Opportunity created', 'description' => 'Runs when an opportunity is created.'],
         'opportunity.stage_changed' => ['entity' => 'opportunity', 'label' => 'Opportunity stage changed', 'description' => 'Runs when an opportunity moves stage.'],
+        'opportunity.won' => ['entity' => 'opportunity', 'label' => 'Opportunity won', 'description' => 'Runs when an opportunity is marked closed won.'],
+        'opportunity.lost' => ['entity' => 'opportunity', 'label' => 'Opportunity lost', 'description' => 'Runs when an opportunity is marked closed lost.'],
+        'quotation.accepted' => ['entity' => 'quotation', 'label' => 'Quotation accepted', 'description' => 'Runs when a quotation is accepted.'],
+        'sales_order.confirmed' => ['entity' => 'sales_order', 'label' => 'Sales order confirmed', 'description' => 'Runs when a sales order is confirmed.'],
+        'customer.first_invoice' => ['entity' => 'invoice', 'label' => 'Customer first invoice', 'description' => 'Runs when a customer receives their first issued invoice.'],
+        'customer.first_payment' => ['entity' => 'payment', 'label' => 'Customer first payment', 'description' => 'Runs when the first payment is recorded for a customer.'],
+        'ticket.created' => ['entity' => 'ticket', 'label' => 'Ticket created', 'description' => 'Runs when a customer ticket is created.'],
+        'ticket.status_changed' => ['entity' => 'ticket', 'label' => 'Ticket status changed', 'description' => 'Runs when a ticket moves between Open, Pending, Resolved, or Closed.'],
+        'ticket.assigned' => ['entity' => 'ticket', 'label' => 'Ticket assigned', 'description' => 'Runs when a ticket assignee changes.'],
+        'ticket.escalated' => ['entity' => 'ticket', 'label' => 'Ticket escalated', 'description' => 'Runs when a ticket priority is raised to high or urgent.'],
+        'customer.lifecycle_changed' => ['entity' => 'customer', 'label' => 'Customer lifecycle changed', 'description' => 'Runs when a customer lifecycle stage changes.'],
         'invoice.created' => ['entity' => 'invoice', 'label' => 'Invoice created', 'description' => 'Runs when an invoice is created.'],
+        'invoice.issued' => ['entity' => 'invoice', 'label' => 'Invoice issued', 'description' => 'Runs when an invoice is issued.'],
+        'invoice.due_soon' => ['entity' => 'invoice', 'label' => 'Invoice due soon', 'description' => 'Runs when an invoice is approaching its due date.'],
+        'invoice.overdue' => ['entity' => 'invoice', 'label' => 'Invoice overdue', 'description' => 'Runs when an invoice is past due with a remaining balance.'],
         'payment.received' => ['entity' => 'payment', 'label' => 'Payment received', 'description' => 'Runs when a payment is recorded.'],
+        'payment.confirmed' => ['entity' => 'payment', 'label' => 'Payment confirmed', 'description' => 'Runs after a payment confirmation is sent to the customer.'],
+        'quotation.created' => ['entity' => 'quotation', 'label' => 'Quotation created', 'description' => 'Runs when a quotation is created.'],
+        'quotation.sent' => ['entity' => 'quotation', 'label' => 'Quotation sent', 'description' => 'Runs when a quotation is emailed or marked sent.'],
+        'quotation.expiring' => ['entity' => 'quotation', 'label' => 'Quotation expiring', 'description' => 'Runs when a quotation is approaching its valid-until date.'],
+        'sales_order.created' => ['entity' => 'sales_order', 'label' => 'Sales order created', 'description' => 'Runs when a sales order is created.'],
+        'sales_order.status_changed' => ['entity' => 'sales_order', 'label' => 'Sales order status changed', 'description' => 'Runs when a sales order status changes.'],
+        'adjustment_note.created' => ['entity' => 'adjustment_note', 'label' => 'Credit/debit note created', 'description' => 'Runs when a credit or debit note is created.'],
+        'adjustment_note.applied' => ['entity' => 'adjustment_note', 'label' => 'Credit/debit note applied', 'description' => 'Runs when a credit or debit note is applied to an invoice.'],
         'marketing.lead_imported' => ['entity' => 'lead', 'label' => 'Marketing lead imported', 'description' => 'Runs when a marketing provider imports a lead.'],
         'project.created' => ['entity' => 'project', 'label' => 'Project created', 'description' => 'Runs when a project is created.'],
         'project.updated' => ['entity' => 'project', 'label' => 'Project updated', 'description' => 'Runs after project details change.'],
@@ -142,7 +166,7 @@ return [
         ],
         'create_task' => [
             'label' => 'Create task', 'description' => 'Creates a task related to the triggering record.',
-            'handler' => CreateTaskAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'project', 'task'], 'fields' => ['title'],
+            'handler' => CreateTaskAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'project', 'task', 'ticket', 'quotation', 'sales_order', 'invoice', 'payment'], 'fields' => ['title'],
             'form_fields' => [
                 'title' => ['label' => 'Title', 'type' => 'text', 'required' => true],
                 'description' => ['label' => 'Description', 'type' => 'textarea'],
@@ -153,7 +177,7 @@ return [
         ],
         'create_activity' => [
             'label' => 'Create activity', 'description' => 'Adds an activity entry to the record timeline.',
-            'handler' => CreateActivityAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'invoice', 'payment'], 'fields' => ['event'],
+            'handler' => CreateActivityAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'invoice', 'payment', 'quotation', 'sales_order', 'adjustment_note', 'ticket'], 'fields' => ['event'],
             'form_fields' => [
                 'event' => ['label' => 'Event name', 'type' => 'text', 'required' => true],
                 'properties' => ['label' => 'Properties', 'type' => 'key_value'],
@@ -161,7 +185,7 @@ return [
         ],
         'add_note' => [
             'label' => 'Add note', 'description' => 'Adds an internal note to the record.',
-            'handler' => AddNoteAction::class, 'entities' => ['lead', 'customer', 'opportunity'], 'fields' => ['body'],
+            'handler' => AddNoteAction::class, 'entities' => ['lead', 'customer', 'opportunity', 'ticket'], 'fields' => ['body'],
             'form_fields' => ['body' => ['label' => 'Note', 'type' => 'textarea', 'required' => true]],
         ],
         'change_lead_status' => [
@@ -172,17 +196,68 @@ return [
                 'converted' => 'Converted', 'won' => 'Won', 'lost' => 'Lost',
             ]]],
         ],
+        'change_customer_lifecycle' => [
+            'label' => 'Change customer lifecycle stage', 'description' => 'Advances the related customer lifecycle stage.',
+            'handler' => ChangeCustomerLifecycleAction::class,
+            'entities' => ['customer', 'opportunity', 'quotation', 'sales_order', 'invoice', 'payment'],
+            'fields' => ['lifecycle_stage'],
+            'form_fields' => ['lifecycle_stage' => ['label' => 'Lifecycle stage', 'type' => 'select', 'required' => true, 'options' => [
+                'subscriber' => 'Subscriber',
+                'lead' => 'Lead',
+                'marketing_qualified' => 'Marketing qualified',
+                'sales_qualified' => 'Sales qualified',
+                'opportunity' => 'Opportunity',
+                'customer' => 'Customer',
+                'evangelist' => 'Evangelist',
+            ]]],
+        ],
         'update_metadata' => [
             'label' => 'Update metadata', 'description' => 'Sets one or more dynamic metadata values.',
             'handler' => UpdateMetadataAction::class, 'entities' => ['lead', 'customer', 'opportunity'], 'fields' => ['values'],
             'form_fields' => ['values' => ['label' => 'Metadata values', 'type' => 'key_value', 'required' => true]],
+        ],
+        'send_crm_email' => [
+            'label' => 'Send CRM email',
+            'description' => 'Sends an email through organization mail using the CRM email service.',
+            'handler' => SendCrmEmailAction::class,
+            'entities' => ['lead', 'customer', 'opportunity', 'invoice', 'payment', 'quotation', 'sales_order', 'adjustment_note', 'ticket'],
+            'fields' => ['recipient'],
+            'form_fields' => [
+                'recipient' => ['label' => 'Recipient', 'type' => 'select', 'required' => true, 'options' => [
+                    'customer' => 'Customer',
+                    'contact' => 'Primary contact',
+                    'record_owner' => 'Record owner',
+                ]],
+                'subject' => ['label' => 'Subject', 'type' => 'text'],
+                'message' => ['label' => 'Message', 'type' => 'textarea'],
+                'template_id' => ['label' => 'Template ID', 'type' => 'text'],
+                'cc' => ['label' => 'CC', 'type' => 'text'],
+                'bcc' => ['label' => 'BCC', 'type' => 'text'],
+            ],
+        ],
+        'send_crm_email_template' => [
+            'label' => 'Send CRM email template',
+            'description' => 'Sends an organization CRM email template through the CRM email service.',
+            'handler' => SendCrmEmailAction::class,
+            'entities' => ['lead', 'customer', 'opportunity', 'invoice', 'payment', 'quotation', 'sales_order', 'adjustment_note', 'ticket'],
+            'fields' => ['recipient', 'template_id'],
+            'form_fields' => [
+                'recipient' => ['label' => 'Recipient', 'type' => 'select', 'required' => true, 'options' => [
+                    'customer' => 'Customer',
+                    'contact' => 'Primary contact',
+                    'record_owner' => 'Record owner',
+                ]],
+                'template_id' => ['label' => 'Template ID', 'type' => 'text', 'required' => true],
+                'cc' => ['label' => 'CC', 'type' => 'text'],
+                'bcc' => ['label' => 'BCC', 'type' => 'text'],
+            ],
         ],
         'notify_user' => [
             'label' => 'Notify user', 'description' => 'Sends an in-app notification to an organization member.',
             'handler' => NotifyUserAction::class,
             // Entity-agnostic notification action — CRM + HRMS subject entities.
             'entities' => array_values(array_unique(array_merge(
-                ['lead', 'customer', 'opportunity', 'invoice', 'payment'],
+                ['lead', 'customer', 'opportunity', 'invoice', 'payment', 'quotation', 'sales_order', 'adjustment_note', 'ticket'],
                 $hrmsEntities,
             ))),
             'fields' => ['user_id', 'title', 'message'],

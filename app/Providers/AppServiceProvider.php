@@ -38,6 +38,9 @@ use App\Events\ChecklistCompleted;
 use App\Events\CommentAdded;
 use App\Events\CompensationRecommended;
 use App\Events\CustomerCreated;
+use App\Events\CustomerFirstInvoice;
+use App\Events\CustomerFirstPayment;
+use App\Events\CustomerLifecycleChanged;
 use App\Events\CustomerUpdated;
 use App\Events\DependencyCreated;
 use App\Events\DependencyRemoved;
@@ -75,6 +78,12 @@ use App\Events\InterviewCancelled;
 use App\Events\InterviewCompleted;
 use App\Events\InterviewScheduled;
 use App\Events\InvoiceCreated;
+use App\Events\InvoiceDueSoon;
+use App\Events\InvoiceIssued;
+use App\Events\InvoiceOverdue;
+use App\Events\SalesOrderConfirmed;
+use App\Events\SalesOrderCreated;
+use App\Events\SalesOrderStatusChanged;
 use App\Events\JobApplied;
 use App\Events\JobOpeningPublished;
 use App\Events\LeadAssigned;
@@ -95,8 +104,17 @@ use App\Events\MilestoneCompleted;
 use App\Events\MilestoneDelayed;
 use App\Events\ProgressUpdated;
 use App\Events\OpportunityCreated;
+use App\Events\OpportunityLost;
 use App\Events\OpportunityStageChanged;
+use App\Events\OpportunityWon;
+use App\Events\PaymentConfirmed;
 use App\Events\PaymentReceived;
+use App\Events\QuotationAccepted;
+use App\Events\QuotationCreated;
+use App\Events\QuotationExpiring;
+use App\Events\QuotationSent;
+use App\Events\AdjustmentNoteApplied;
+use App\Events\AdjustmentNoteCreated;
 use App\Events\PayrollAdjustmentApproved;
 use App\Events\PayrollApproved;
 use App\Events\PayrollBankExported;
@@ -160,9 +178,14 @@ use App\Events\TaskCreated;
 use App\Events\TaskReassigned;
 use App\Events\TaskRestored;
 use App\Events\TaskStarted;
+use App\Events\TicketAssigned;
+use App\Events\TicketCreated;
+use App\Events\TicketEscalated;
+use App\Events\TicketStatusChanged;
 use App\Events\TaskUpdated;
 use App\Events\TimelineUpdated;
 use App\Events\TimeLogged;
+use App\Listeners\AdvanceCustomerLifecycle;
 use App\Listeners\RunTriggeredWorkflows;
 use App\Models\AppraisalCalibration;
 use App\Models\AppraisalSession;
@@ -176,6 +199,9 @@ use App\Models\Branch;
 use App\Models\Competency;
 use App\Models\CompetencyCategory;
 use App\Models\Customer;
+use App\Models\Contact;
+use App\Models\CrmActivity;
+use App\Models\CustomerTicket;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Employee;
@@ -227,6 +253,7 @@ use App\Models\Permission;
 use App\Models\PermissionGroup;
 use App\Models\PermissionTemplate;
 use App\Models\Payment;
+use App\Models\Invoice;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollBankExport;
 use App\Models\PayrollConfiguration;
@@ -266,7 +293,10 @@ use App\Models\ProjectType;
 use App\Models\ResourceAllocation;
 use App\Models\ResourceCalendar;
 use App\Models\Role;
+use App\Models\AdjustmentNote;
+use App\Models\PriceList;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Models\SalaryAdvance;
 use App\Models\SalaryComponent;
 use App\Models\SalaryStructure;
@@ -303,6 +333,9 @@ use App\Policies\WfhPolicy;
 use App\Policies\CompetencyCategoryPolicy;
 use App\Policies\CompetencyPolicy;
 use App\Policies\CustomerPolicy;
+use App\Policies\ContactPolicy;
+use App\Policies\CrmActivityPolicy;
+use App\Policies\CustomerTicketPolicy;
 use App\Policies\DepartmentPolicy;
 use App\Policies\DesignationPolicy;
 use App\Policies\EmployeeAppraisalPolicy;
@@ -347,6 +380,7 @@ use App\Policies\OfferTemplatePolicy;
 use App\Policies\OpportunityPolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\PaymentPolicy;
+use App\Policies\InvoicePolicy;
 use App\Policies\PayrollAdjustmentPolicy;
 use App\Policies\PayrollBankExportPolicy;
 use App\Policies\PayrollConfigurationPolicy;
@@ -386,7 +420,10 @@ use App\Policies\ProjectRiskPolicy;
 use App\Policies\ProjectStatusPolicy;
 use App\Policies\ProjectTemplatePolicy;
 use App\Policies\ProjectTypePolicy;
+use App\Policies\AdjustmentNotePolicy;
+use App\Policies\PriceListPolicy;
 use App\Policies\QuotationPolicy;
+use App\Policies\SalesOrderPolicy;
 use App\Policies\RbacPolicy;
 use App\Policies\ResourceAllocationPolicy;
 use App\Policies\ResourceCalendarPolicy;
@@ -486,6 +523,7 @@ use App\Services\Search\AnalyticsKpiSearchProvider;
 use App\Services\Search\AnalyticsViewSearchProvider;
 use App\Services\Search\CrmActivitySearchProvider;
 use App\Services\Search\CrmCustomerSearchProvider;
+use App\Services\Search\CrmContactSearchProvider;
 use App\Services\Search\CrmLeadSearchProvider;
 use App\Services\Search\CrmOpportunitySearchProvider;
 use App\Services\Search\CrmRevenueSearchProvider;
@@ -527,9 +565,15 @@ class AppServiceProvider extends ServiceProvider
         Lead::class => LeadPolicy::class,
         MetadataFieldDefinition::class => MetadataFieldDefinitionPolicy::class,
         Customer::class => CustomerPolicy::class,
+        Contact::class => ContactPolicy::class,
+        CrmActivity::class => CrmActivityPolicy::class,
+        CustomerTicket::class => CustomerTicketPolicy::class,
         Invoice::class => InvoicePolicy::class,
         Opportunity::class => OpportunityPolicy::class,
         Payment::class => PaymentPolicy::class,
+        SalesOrder::class => SalesOrderPolicy::class,
+        AdjustmentNote::class => AdjustmentNotePolicy::class,
+        PriceList::class => PriceListPolicy::class,
         Product::class => ProductPolicy::class,
         ProductCategory::class => ProductCategoryPolicy::class,
         Project::class => ProjectPolicy::class,
@@ -683,6 +727,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(LegacySearchProvider::class));
             $registry->register($app->make(CrmLeadSearchProvider::class));
             $registry->register($app->make(CrmCustomerSearchProvider::class));
+            $registry->register($app->make(CrmContactSearchProvider::class));
             $registry->register($app->make(CrmOpportunitySearchProvider::class));
             $registry->register($app->make(CrmRevenueSearchProvider::class));
             $registry->register($app->make(CrmSavedViewSearchProvider::class));
@@ -741,8 +786,30 @@ class AppServiceProvider extends ServiceProvider
             CustomerUpdated::class,
             OpportunityCreated::class,
             OpportunityStageChanged::class,
+            OpportunityWon::class,
+            OpportunityLost::class,
             InvoiceCreated::class,
+            InvoiceIssued::class,
+            SalesOrderCreated::class,
+            SalesOrderStatusChanged::class,
+            SalesOrderConfirmed::class,
             PaymentReceived::class,
+            PaymentConfirmed::class,
+            QuotationCreated::class,
+            QuotationSent::class,
+            QuotationAccepted::class,
+            QuotationExpiring::class,
+            CustomerFirstInvoice::class,
+            CustomerFirstPayment::class,
+            CustomerLifecycleChanged::class,
+            TicketCreated::class,
+            TicketStatusChanged::class,
+            TicketAssigned::class,
+            TicketEscalated::class,
+            InvoiceDueSoon::class,
+            InvoiceOverdue::class,
+            AdjustmentNoteCreated::class,
+            AdjustmentNoteApplied::class,
             MarketingLeadImported::class,
             EmployeeCreated::class,
             EmployeeUpdated::class,
@@ -896,6 +963,17 @@ class AppServiceProvider extends ServiceProvider
             OverallocationDetected::class,
         ], RunTriggeredWorkflows::class);
 
+        Event::listen([
+            CustomerCreated::class,
+            OpportunityCreated::class,
+            OpportunityWon::class,
+            OpportunityLost::class,
+            QuotationAccepted::class,
+            SalesOrderConfirmed::class,
+            CustomerFirstInvoice::class,
+            CustomerFirstPayment::class,
+        ], AdvanceCustomerLifecycle::class);
+
         Event::listen(
             \App\Listeners\DispatchRecruitmentOutboundIntegrations::subscribedEvents(),
             \App\Listeners\DispatchRecruitmentOutboundIntegrations::class,
@@ -929,9 +1007,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(MetadataFieldDefinition::class, MetadataFieldDefinitionPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
+        Gate::policy(Contact::class, ContactPolicy::class);
+        Gate::policy(\App\Models\CrmEmailConversation::class, \App\Policies\CrmEmailConversationPolicy::class);
+        Gate::policy(\App\Models\CrmEmailMessage::class, \App\Policies\CrmEmailMessagePolicy::class);
+        Gate::policy(\App\Models\CrmEmailTemplate::class, \App\Policies\CrmEmailTemplatePolicy::class);
+        Gate::policy(CrmActivity::class, CrmActivityPolicy::class);
+        Gate::policy(CustomerTicket::class, CustomerTicketPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(Opportunity::class, OpportunityPolicy::class);
         Gate::policy(Payment::class, PaymentPolicy::class);
+        Gate::policy(SalesOrder::class, SalesOrderPolicy::class);
+        Gate::policy(AdjustmentNote::class, AdjustmentNotePolicy::class);
+        Gate::policy(PriceList::class, PriceListPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(ProductCategory::class, ProductCategoryPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
@@ -1088,9 +1175,8 @@ class AppServiceProvider extends ServiceProvider
                 ->by($request->ip());
         });
 
-        RateLimiter::for('marketing-webhooks', function (Request $request) {
-            return Limit::perMinute((int) config('marketing.providers.webhook_rate_limit_per_minute', 120))
-                ->by($request->ip());
+        RateLimiter::for('email-webhooks', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
         });
 
         RateLimiter::for('candidate-auth', function (Request $request) {

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexApiQuotationRequest;
 use App\Http\Requests\StoreQuotationRequest;
 use App\Http\Requests\UpdateQuotationRequest;
-use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\QuotationResource;
+use App\Http\Resources\SalesOrderResource;
 use App\Models\Quotation;
 use App\Services\QuotationConversionService;
 use App\Services\QuotationService;
@@ -87,12 +87,12 @@ class QuotationController extends Controller
     {
         $this->authorize('convert', $quotation);
 
-        $existing = $quotation->invoice()
+        $existing = $quotation->salesOrder()
             ->where('status', '!=', 'cancelled')
             ->exists();
 
         try {
-            $invoice = $this->conversion->convert($quotation, $request->user());
+            $salesOrder = $this->conversion->convert($quotation, $request->user());
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => __('The given data was invalid.'),
@@ -100,9 +100,9 @@ class QuotationController extends Controller
             ], 422);
         }
 
-        $invoice->load(['customer', 'items', 'quotation']);
+        $salesOrder->load(['customer', 'items', 'quotation']);
 
-        return (new InvoiceResource($invoice))
+        return (new SalesOrderResource($salesOrder))
             ->additional(['success' => true])
             ->response()
             ->setStatusCode($existing ? 200 : 201);

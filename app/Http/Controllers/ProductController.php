@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\MetadataEntityFormService;
+use App\Services\PriceResolutionService;
 use App\Services\ProductService;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +21,7 @@ class ProductController extends Controller
     public function __construct(
         protected ProductService $products,
         protected MetadataEntityFormService $metadataForms,
+        protected PriceResolutionService $prices,
     ) {
         $this->authorizeResource(Product::class, 'product');
     }
@@ -66,8 +69,40 @@ class ProductController extends Controller
         $query = Product::query()->where('status', 'active');
         $this->products->searchQuery($query, $request->string('q')->trim()->toString());
 
+        $customer = null;
+        if ($customerId = $request->integer('customer_id')) {
+            $customer = Customer::query()->find($customerId);
+        }
+        $quantity = max(0.01, (float) $request->input('quantity', 1));
+
         return response()->json(
-            $query->orderBy('name')->limit(25)->get()->map->catalogPayload()->values()
+            $query->orderBy('name')->limit(25)->get()->map(function (Product $product) use ($customer, $quantity) {
+                $payload = $product->catalogPayload();
+                $resolved = $this->prices->resolve($product, $customer, $quantity);
+                $payload['unit_price'] = $resolved['unit_price'];
+                $payload['default_discount_percent'] = $resolved['discount_percent'];
+                $payload['tax_inclusive'] = $resolved['tax_inclusive'];
+                $payload['price_source'] = $resolved['source'];
+                $payload['price_list_id'] = $resolved['price_list_id'];
+
+                return $payload;
+            })->values()
+        );
+    }
+
+    public function resolvePrice(Request $request, Product $product): JsonResponse
+    {
+        $this->authorize('view', $product);
+
+        $customer = null;
+        if ($customerId = $request->integer('customer_id')) {
+            $customer = Customer::query()
+                ->where('organization_id', $product->organization_id)
+                ->find($customerId);
+        }
+
+        return response()->json(
+            $this->prices->resolve($product, $customer, max(0.01, (float) $request->input('quantity', 1)))
         );
     }
 
@@ -133,7 +168,7 @@ class ProductController extends Controller
     {
         $metadataValues = $this->metadataForms->validatedValuesFromRequest($product, $tenant->get(), 'product', 'edit', $request);
 
-        $this->products->update($product, $request->validated(), $metadataValues);
+        $this->products->update($product, $request->validated(), $metadataValues, $request->user());
 
         return redirect()
             ->route('products.show', $product)

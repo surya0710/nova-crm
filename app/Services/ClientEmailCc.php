@@ -33,20 +33,60 @@ class ClientEmailCc
      */
     public static function merge(?User $sender, string $to, mixed $manualCc = null): array
     {
-        $toNorm = strtolower(trim($to));
+        return self::resolve($sender, $to, $manualCc, ccSender: true)['cc'];
+    }
+
+    /**
+     * @param  list<string>|string|null  $defaultCc
+     * @param  list<string>|string|null  $defaultBcc
+     * @return array{to: list<string>, cc: list<string>, bcc: list<string>}
+     */
+    public static function resolve(
+        ?User $sender,
+        mixed $to,
+        mixed $cc = null,
+        mixed $bcc = null,
+        mixed $defaultCc = [],
+        mixed $defaultBcc = [],
+        bool $ccSender = false,
+    ): array {
+        $toList = self::parse($to);
+        $toSet = array_flip($toList);
+
+        $ccList = collect(self::parse($cc))->merge(self::parse($defaultCc));
         $senderEmail = strtolower(trim((string) $sender?->email));
 
-        $cc = collect(self::parse($manualCc));
-
-        if ($senderEmail !== '' && $senderEmail !== $toNorm && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-            $cc->prepend($senderEmail);
+        if (
+            $ccSender
+            && $senderEmail !== ''
+            && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)
+            && ! isset($toSet[$senderEmail])
+        ) {
+            $ccList = $ccList->prepend($senderEmail);
         }
 
-        return $cc
+        $ccList = $ccList
             ->map(fn ($email) => strtolower(trim((string) $email)))
-            ->filter(fn ($email) => $email !== '' && $email !== $toNorm && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->filter(fn ($email) => $email !== '' && ! isset($toSet[$email]) && filter_var($email, FILTER_VALIDATE_EMAIL))
             ->unique()
-            ->values()
-            ->all();
+            ->values();
+
+        $ccSet = array_flip($ccList->all());
+
+        $bccList = collect(self::parse($bcc))
+            ->merge(self::parse($defaultBcc))
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->filter(fn ($email) => $email !== ''
+                && ! isset($toSet[$email])
+                && ! isset($ccSet[$email])
+                && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        return [
+            'to' => $toList,
+            'cc' => $ccList->all(),
+            'bcc' => $bccList->all(),
+        ];
     }
 }

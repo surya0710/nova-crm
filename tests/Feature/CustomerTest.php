@@ -72,6 +72,41 @@ class CustomerTest extends TestCase
 
         $customer = Customer::query()->where('company', 'Smith Industries')->first();
         $this->assertEquals(['vip', 'enterprise'], $customer->tags);
+        $this->assertSame('company', $customer->type);
+        $this->assertDatabaseHas('contacts', [
+            'customer_id' => $customer->id,
+            'name' => 'John Smith',
+            'is_primary' => 1,
+        ]);
+    }
+
+    public function test_customer_show_lists_company_relationships(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'company' => 'Hub Company',
+            'lifecycle_stage' => 'customer',
+            'created_by' => $user->id,
+        ]);
+
+        \App\Models\Contact::factory()->primary()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'name' => 'Priya Shah',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('customers.show', $customer))
+            ->assertOk()
+            ->assertSee('Priya Shah')
+            ->assertSee('Contacts')
+            ->assertSee('Opportunities')
+            ->assertSee('Tickets')
+            ->assertSee('Value & activity');
     }
 
     public function test_customers_are_scoped_to_organization(): void

@@ -96,6 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'marketing/track',
             'webhooks/marketing/*',
+            'webhooks/email/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

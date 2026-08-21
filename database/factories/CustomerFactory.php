@@ -25,10 +25,15 @@ class CustomerFactory extends Factory
             'website' => fake()->optional()->url(),
             'industry' => fake()->randomElement(['Technology', 'Healthcare', 'Finance', 'Retail', 'Manufacturing']),
             'status' => fake()->randomElement(array_keys(config('customers.statuses'))),
+            'type' => fake()->randomElement(array_keys(config('customers.types'))),
+            'lifecycle_stage' => fake()->randomElement(array_keys(config('customers.lifecycle_stages'))),
+            'segment' => fake()->optional()->randomElement(array_keys(config('customers.segments'))),
+            'source' => fake()->optional()->randomElement(array_keys(config('customers.sources'))),
             'city' => fake()->city(),
             'country' => fake()->country(),
             'tags' => fake()->optional()->randomElements(['vip', 'enterprise', 'recurring'], fake()->numberBetween(0, 2)),
             'created_by' => User::factory(),
+            'last_activity_at' => now(),
         ];
     }
 }

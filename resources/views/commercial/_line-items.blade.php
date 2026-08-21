@@ -59,6 +59,27 @@
             this.items[index].discount_percent = product.default_discount_percent || 0;
             this.items[index].cess_rate = product.cess_rate || 0;
             this.items[index].tax_inclusive = !! product.tax_inclusive;
+            this.applyResolvedPrice(index);
+        },
+        async applyResolvedPrice(index) {
+            const item = this.items[index];
+            if (! item.product_id) return;
+            const params = new URLSearchParams({
+                customer_id: this.customerId() || '',
+                quantity: item.quantity || 1,
+            });
+            try {
+                const res = await fetch(@js(url('/products')) + '/' + item.product_id + '/price?' + params.toString(), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (! res.ok) return;
+                const data = await res.json();
+                this.items[index].unit_price = data.unit_price;
+                this.items[index].discount_percent = data.discount_percent;
+                this.items[index].tax_rate = data.tax_rate;
+                this.items[index].tax_inclusive = !! data.tax_inclusive;
+                if (data.cess_rate !== undefined) this.items[index].cess_rate = data.cess_rate;
+            } catch (e) {}
         },
         customerId() {
             const el = document.getElementById('customer_id');
@@ -216,7 +237,7 @@
                     </div>
                     <div class="lg:col-span-2">
                         <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Qty') }}</label>
-                        <input type="number" step="0.01" min="0.01" class="w-full rounded-md border-line text-sm shadow-sm" :name="'items[' + index + '][quantity]'" x-model="item.quantity" required>
+                        <input type="number" step="0.01" min="0.01" class="w-full rounded-md border-line text-sm shadow-sm" :name="'items[' + index + '][quantity]'" x-model="item.quantity" @change="applyResolvedPrice(index)" required>
                     </div>
                     <div class="lg:col-span-2">
                         <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('Unit price') }}</label>

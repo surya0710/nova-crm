@@ -28,6 +28,11 @@ trait ValidatesInvoiceItems
                 'integer',
                 Rule::exists('quotations', 'id')->where('organization_id', $organization?->id),
             ],
+            'sales_order_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('sales_orders', 'id')->where('organization_id', $organization?->id),
+            ],
             'opportunity_id' => [
                 'nullable',
                 'integer',

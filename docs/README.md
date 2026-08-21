@@ -21,7 +21,7 @@ The goal is to make it easy for **developers**, **operators**, and **recruiters/
   - Organization provisioning and scope: [`developer/employee-provisioning.md`](developer/employee-provisioning.md), `OrganizationScope` and related docs referenced from Phase 13 stabilization.
 - **APIs**
   - API overview and conventions: [`api/overview.md`](api/overview.md)
-  - CRM/Projects/Resources APIs: [`projects/apis.md`](projects/apis.md), [`resources/apis.md`](resources/apis.md)
+  - CRM/Projects/Resources APIs: [`projects/apis.md`](projects/apis.md), [`resources/apis.md`](resources/apis.md), [`crm/api/email.md`](crm/api/email.md)
   - Imports and exports APIs: [`api/imports.md`](api/imports.md), [`exports/troubleshooting.md`](exports/troubleshooting.md)
   - Mobile and HRMS APIs: `mobile/README.md`, `hrms/overview.md`, and linked API guides.
 - **Database & data contracts**

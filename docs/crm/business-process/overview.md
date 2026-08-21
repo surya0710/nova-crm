@@ -10,14 +10,18 @@ Defines standard flow from lead capture to payment completion.
 - Customer
 
 ## Workflow Diagram
-Lead -> Qualification -> Opportunity -> Quotation -> Invoice -> Payment -> Reporting
+Lead -> Opportunity -> Customer -> Quotation -> Sales Order -> Invoice -> Payment
+
+Credit and debit notes adjust outstanding without changing stored invoice totals. Scheduled reminders cover due/overdue invoices, quote expiry, payment confirmation, and sales order status.
 
 ## Detailed Steps
 1. Capture and qualify leads.
-2. Convert qualified lead to opportunity.
-3. Issue quotation and negotiate terms.
-4. Convert to invoice and collect payment.
-5. Reconcile and publish reports.
+2. Convert qualified lead to opportunity and customer.
+3. Issue quotation (price list resolution applies) and negotiate terms.
+4. Convert accepted quotation to sales order, then to invoice.
+5. Collect payment; apply credit/debit notes when needed.
+6. Reconcile receivables aging and publish reports.
+7. Log sales activities and tickets on the customer; lifecycle stage advances from opportunity/quote/order/invoice/payment milestones via Workflow (see lifecycle-automation).
 
 ## Exceptions
 - Duplicate lead detected

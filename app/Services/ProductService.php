@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductPriceHistory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -70,12 +71,25 @@ class ProductService
      * @param  array<string, mixed>  $data
      * @param  array<string, mixed>  $metadataValues
      */
-    public function update(Product $product, array $data, array $metadataValues = []): Product
+    public function update(Product $product, array $data, array $metadataValues = [], ?User $user = null): Product
     {
+        $oldPrice = (float) $product->unit_price;
         $product->update($this->syncCategoryName($product->organization, $data));
         $this->metadataForms->persistValidatedValues($product, $metadataValues);
+        $product = $product->fresh(['productCategory', 'creator']);
 
-        return $product->fresh(['productCategory', 'creator']);
+        if ($product && round($oldPrice, 2) !== round((float) $product->unit_price, 2)) {
+            ProductPriceHistory::query()->create([
+                'organization_id' => $product->organization_id,
+                'product_id' => $product->id,
+                'price_list_id' => null,
+                'old_unit_price' => $oldPrice,
+                'new_unit_price' => $product->unit_price,
+                'changed_by' => $user?->id ?? auth()->id(),
+            ]);
+        }
+
+        return $product;
     }
 
     public function delete(Product $product): void

@@ -11,12 +11,12 @@ Sales teams with `quotations.view` / `quotations.create` / `quotations.update`.
 - Product catalog for reusable lines, or ad-hoc service descriptions
 
 ## Step-by-step instructions
-1. Create a **draft** quotation. New quotations cannot skip draft.
-2. Add product or free-text lines: quantity, UOM, unit price, line discount, tax/cess, inclusive flag.
+1. Create a **draft** quotation from CRM or from an opportunity (**New quotation**). New quotations cannot skip draft.
+2. Add product or free-text lines: quantity, UOM, unit price, line discount, tax/cess, inclusive flag. Catalog products resolve customer and quantity price lists automatically.
 3. Set place of supply, shipping/other charges, validity (valid until), and terms.
 4. Download PDF or email the customer. Sending a draft marks it **sent**. Your mailbox is added to CC automatically; extra CC addresses are preserved and de-duplicated.
-5. Mark **accepted** or **rejected**. Only accepted quotations can convert to an invoice.
-6. Convert copies line items and the tax snapshot onto a new draft invoice. It does not recalculate historical tax. Repeat convert returns the existing non-cancelled invoice.
+5. Mark **accepted** or **rejected**. Only accepted quotations can convert to a sales order.
+6. Convert copies line items and the tax snapshot onto a new draft sales order. Repeat convert returns the existing non-cancelled sales order.
 
 ## Expected result
 Quotations are priced consistently, emailed with a sender CC, and convertible without changing past tax.

@@ -1,0 +1,391 @@
+<?php
+
+namespace App\Services\Configuration;
+
+use App\Models\Organization;
+use App\Models\User;
+use App\Services\Dashboard\ModuleSubscriptionService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * Module-aware Configuration Hub catalog.
+ *
+ * Reads config/organization_settings.php and filters by plan, enabled modules,
+ * and the current user's permissions. Does not own settings storage.
+ */
+class ConfigurationRegistry
+{
+    public function __construct(
+        protected ModuleSubscriptionService $modules,
+    ) {}
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function all(): array
+    {
+        return config('organization_settings.modules', []);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function get(string $key): ?array
+    {
+        return $this->all()[$key] ?? null;
+    }
+
+    /**
+     * Presentation modules the user may see in the Configuration Hub.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function visibleModules(User $user, Organization $organization): array
+    {
+        return collect($this->all())
+            ->sortBy(fn (array $module) => $module['order'] ?? 100)
+            ->map(function (array $module) use ($user, $organization) {
+                if (! $this->moduleLicenseAllowed($organization, $module['license'] ?? null)) {
+                    return null;
+                }
+
+                if (! $this->userCanAccessModule($user, $organization, $module)) {
+                    return null;
+                }
+
+                $sections = $this->visibleSections($user, $organization, $module);
+                if ($sections === []) {
+                    return null;
+                }
+
+                return [
+                    'key' => $module['key'],
+                    'name' => $module['name'],
+                    'description' => $module['description'] ?? '',
+                    'icon' => $module['icon'] ?? 'cog',
+                    'license' => $module['license'] ?? null,
+                    'order' => $module['order'] ?? 100,
+                    'sections' => $sections,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Flat section list for search and command palette.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function visibleSectionsForSearch(User $user, Organization $organization): array
+    {
+        return collect($this->visibleModules($user, $organization))
+            ->flatMap(function (array $module) {
+                return collect($module['sections'])->map(function (array $section) use ($module) {
+                    $section['module_key'] = $module['key'];
+                    $section['module_name'] = $module['name'];
+                    $section['module_description'] = $module['description'] ?? '';
+
+                    return $section;
+                });
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $module
+     * @return list<array<string, mixed>>
+     */
+    public function visibleSections(User $user, Organization $organization, array $module): array
+    {
+        $inheritedLicense = $module['license'] ?? null;
+
+        return collect($module['sections'] ?? [])
+            ->sortBy(fn (array $section) => $section['order'] ?? 100)
+            ->map(function (array $section, string $key) use ($user, $organization, $inheritedLicense) {
+                $license = $section['license'] ?? $inheritedLicense;
+                if (! $this->moduleLicenseAllowed($organization, $license)) {
+                    return null;
+                }
+
+                if (! $this->userCanAccessSection($user, $organization, $section)) {
+                    return null;
+                }
+
+                $href = $this->href($section);
+                if ($href === null) {
+                    return null;
+                }
+
+                return [
+                    'key' => $key,
+                    'label' => $section['label'],
+                    'description' => $section['description'] ?? '',
+                    'keywords' => $this->sectionKeywords($key, $section),
+                    'route' => $section['route'] ?? null,
+                    'href' => $href,
+                    'permission' => $section['permission'] ?? null,
+                    'license' => $license,
+                    'order' => $section['order'] ?? 100,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $section
+     */
+    public function userCanAccessSection(User $user, Organization $organization, array $section): bool
+    {
+        $any = $section['any_permissions'] ?? null;
+        if (is_array($any) && $any !== []) {
+            return $user->hasAnyPermission($any, $organization);
+        }
+
+        $permission = $section['permission'] ?? null;
+        $fallback = $section['fallback_permission'] ?? null;
+
+        if ($permission && $user->hasPermission($permission, $organization)) {
+            return true;
+        }
+
+        if ($fallback && $user->hasPermission($fallback, $organization)) {
+            return true;
+        }
+
+        return $permission === null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $module
+     */
+    public function userCanAccessModule(User $user, Organization $organization, array $module): bool
+    {
+        $permission = $module['permission'] ?? null;
+        if ($permission === null) {
+            return true;
+        }
+
+        return $user->hasPermission($permission, $organization);
+    }
+
+    public function moduleLicenseAllowed(Organization $organization, ?string $license): bool
+    {
+        if ($license === null || $license === '') {
+            return true;
+        }
+
+        return $this->modules->moduleAllowed($organization, $license);
+    }
+
+    /**
+     * @param  array<string, mixed>  $section
+     */
+    public function href(array $section): ?string
+    {
+        $routeName = $section['route'] ?? null;
+        if (! is_string($routeName) || $routeName === '' || ! Route::has($routeName)) {
+            return null;
+        }
+
+        return route($routeName, $section['query'] ?? []);
+    }
+
+    /**
+     * License that must be allowed to open this route from a catalogued section.
+     *
+     * Shared routes (for example organization.edit) that also serve unlicensed
+     * sections return null so profile/email stay reachable.
+     */
+    public function requiredLicenseForRoute(string $routeName): ?string
+    {
+        $licenses = collect($this->rawSectionsForRoute($routeName))
+            ->map(fn (array $section) => $section['license'] ?? null)
+            ->unique()
+            ->values();
+
+        if ($licenses->isEmpty() || $licenses->contains(null) || $licenses->contains('')) {
+            return null;
+        }
+
+        if ($licenses->count() === 1) {
+            $license = $licenses->first();
+
+            return is_string($license) && $license !== '' ? $license : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * First catalogued section for a route (used for recents and breadcrumbs).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function sectionByRoute(string $routeName): ?array
+    {
+        $matches = $this->rawSectionsForRoute($routeName);
+
+        return $matches[0] ?? null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function rawSectionsForRoute(string $routeName): array
+    {
+        $matches = [];
+
+        foreach ($this->all() as $module) {
+            $inheritedLicense = $module['license'] ?? null;
+            foreach ($module['sections'] ?? [] as $key => $section) {
+                if (($section['route'] ?? null) !== $routeName) {
+                    continue;
+                }
+
+                $matches[] = [
+                    'key' => $key,
+                    'label' => $section['label'] ?? $key,
+                    'description' => $section['description'] ?? '',
+                    'route' => $routeName,
+                    'query' => $section['query'] ?? [],
+                    'license' => $section['license'] ?? $inheritedLicense,
+                    'module_key' => $module['key'],
+                    'module_name' => $module['name'],
+                    'href' => $this->href($section),
+                ];
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $sections
+     * @return list<array<string, mixed>>
+     */
+    public function filterSectionsByQuery(array $sections, string $query): array
+    {
+        $query = trim(mb_strtolower($query));
+        if ($query === '') {
+            return $sections;
+        }
+
+        return collect($sections)
+            ->filter(fn (array $section) => $this->sectionMatchesQuery($section, $query))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $section
+     */
+    public function sectionMatchesQuery(array $section, string $query): bool
+    {
+        $haystack = mb_strtolower(implode(' ', array_filter([
+            $section['key'] ?? '',
+            str_replace('_', ' ', (string) ($section['key'] ?? '')),
+            $section['label'] ?? '',
+            $section['description'] ?? '',
+            $section['module_key'] ?? '',
+            $section['module_name'] ?? '',
+            $section['module_description'] ?? '',
+            implode(' ', $section['keywords'] ?? []),
+        ])));
+
+        $tokens = preg_split('/\s+/', trim(mb_strtolower($query))) ?: [];
+        if ($tokens === [] || $tokens === ['']) {
+            return false;
+        }
+
+        foreach ($tokens as $token) {
+            if ($token === '' || ! str_contains($haystack, $token)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return list<array{label: string, href?: string|null, current?: bool}>
+     */
+    public function breadcrumbItems(?string $routeName, ?string $currentLabel = null): array
+    {
+        $hubHref = Route::has('organization.settings.hub') ? route('organization.settings.hub') : null;
+        $items = [
+            [
+                'label' => __('Administration'),
+                'href' => Route::has('administration.home') ? route('administration.home') : null,
+            ],
+        ];
+
+        $isHub = $routeName === 'organization.settings.hub';
+        $section = (! $isHub && $routeName) ? $this->sectionByRoute($routeName) : null;
+
+        if ($isHub || ($section === null && ($currentLabel === null || $currentLabel === 'Configuration Hub'))) {
+            $items[] = [
+                'label' => __('Configuration Hub'),
+                'current' => true,
+            ];
+
+            return $items;
+        }
+
+        $items[] = [
+            'label' => __('Configuration Hub'),
+            'href' => $hubHref,
+        ];
+
+        if ($section) {
+            $items[] = [
+                'label' => __($section['module_name']),
+                'href' => $hubHref ? $hubHref.'#module-'.$section['module_key'] : null,
+            ];
+            $label = $currentLabel ?: $section['label'];
+            $items[] = [
+                'label' => __($label),
+                'current' => true,
+            ];
+
+            return $items;
+        }
+
+        $items[] = [
+            'label' => __($currentLabel ?: 'Settings'),
+            'current' => true,
+        ];
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $section
+     * @return list<string>
+     */
+    protected function sectionKeywords(string $key, array $section): array
+    {
+        $keywords = array_merge(
+            [$key, str_replace('_', ' ', $key)],
+            is_array($section['keywords'] ?? null) ? $section['keywords'] : [],
+        );
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn ($word) => is_string($word) ? trim($word) : '',
+            $keywords,
+        ))));
+    }
+
+    /**
+     * @return Collection<string, array<string, mixed>>
+     */
+    public function futureModules(): Collection
+    {
+        return collect(config('organization_settings.future_modules', []));
+    }
+}

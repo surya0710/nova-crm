@@ -420,6 +420,10 @@ class TaskController extends Controller
                 'id' => $customer->id,
                 'label' => $customer->display_name,
             ])->all(),
+            'contact' => \App\Models\Contact::query()->orderBy('name')->get()->map(fn (\App\Models\Contact $contact) => [
+                'id' => $contact->id,
+                'label' => $contact->name,
+            ])->all(),
             'opportunity' => Opportunity::query()->orderBy('title')->get()->map(fn (Opportunity $opportunity) => [
                 'id' => $opportunity->id,
                 'label' => $opportunity->title,

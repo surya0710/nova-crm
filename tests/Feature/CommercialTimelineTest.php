@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
+use App\Models\Payment;
 use App\Models\Quotation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +81,19 @@ class CommercialTimelineTest extends TestCase
             ->post(route('invoices.issue', $invoice))
             ->assertRedirect();
 
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('payments.store'), [
+                'invoice_id' => $invoice->id,
+                'amount' => 40,
+                'payment_date' => now()->toDateString(),
+                'method' => 'upi',
+                'reference' => 'UPI-1',
+            ])
+            ->assertRedirect();
+
+        $payment = Payment::query()->first();
+
         $response = $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
             ->get(route('customers.show', $customer));
@@ -90,7 +104,62 @@ class CommercialTimelineTest extends TestCase
         $response->assertSee('Quotation accepted');
         $response->assertSee('Invoice created');
         $response->assertSee('Invoice issued');
+        $response->assertSee('Payment recorded');
         $response->assertSee($quotation->number);
         $response->assertSee($invoice->number);
+        $response->assertSee($payment->number);
+        $response->assertSee('Payment allocated');
+        $response->assertSee('Payment received');
+    }
+
+    public function test_timeline_includes_sales_order_and_credit_note_events(): void
+    {
+        $user = User::factory()->create();
+        $organization = Organization::factory()->create();
+        $organization->addMember($user, 'manager');
+
+        $customer = Customer::factory()->create([
+            'organization_id' => $organization->id,
+            'created_by' => $user->id,
+        ]);
+
+        $order = \App\Models\SalesOrder::factory()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'status' => 'draft',
+            'total' => 100,
+            'created_by' => $user->id,
+        ]);
+        $order->items()->create([
+            'description' => 'Line',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'line_total' => 100,
+            'sort_order' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->patch(route('sales-orders.status.update', $order), ['status' => 'confirmed'])
+            ->assertRedirect();
+
+        $note = \App\Models\AdjustmentNote::factory()->create([
+            'organization_id' => $organization->id,
+            'customer_id' => $customer->id,
+            'type' => 'credit',
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('customers.show', $customer));
+
+        $response->assertOk();
+        $response->assertSee('Sales Order created');
+        $response->assertSee('Sales order confirmed');
+        $response->assertSee('Credit Note created');
+        $response->assertSee($order->number);
+        $response->assertSee($note->number);
     }
 }

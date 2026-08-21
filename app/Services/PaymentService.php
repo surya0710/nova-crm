@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CustomerFirstPayment;
 use App\Events\PaymentReceived;
 use App\Models\Invoice;
 use App\Models\Organization;
@@ -37,6 +38,10 @@ class PaymentService
                 'payment_date' => $data['payment_date'],
                 'method' => $data['method'],
                 'reference' => $data['reference'] ?? null,
+                'bank_name' => $data['bank_name'] ?? null,
+                'bank_account_name' => $data['bank_account_name'] ?? null,
+                'bank_account_number' => $data['bank_account_number'] ?? null,
+                'bank_ifsc' => $data['bank_ifsc'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'recorded_by' => $user->id,
             ]);
@@ -51,6 +56,12 @@ class PaymentService
                 'invoice_number' => $invoice->number,
                 'amount' => (float) $payment->amount,
                 'method' => $payment->method,
+            ], $user);
+
+            $this->auditLogger->log($payment, 'received', [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->number,
+                'amount' => (float) $payment->amount,
             ], $user);
 
             $this->auditLogger->log($invoice, 'payment_applied', [
@@ -68,6 +79,14 @@ class PaymentService
                 ], $user);
             }
 
+            if ($invoice->status === 'overpaid' && $previousStatus !== 'overpaid') {
+                $this->auditLogger->log($invoice, 'overpaid', [
+                    'payment_id' => $payment->id,
+                    'payment_number' => $payment->number,
+                    'overpaid_amount' => $invoice->overpaid_amount,
+                ], $user);
+            }
+
             $this->notifyPaymentRecorded($invoice, $payment, $user);
 
             $payment = $payment->fresh(['invoice', 'customer', 'recorder']);
@@ -76,6 +95,13 @@ class PaymentService
                 'invoice_id' => $invoice->id,
                 'amount' => (float) $payment->amount,
             ]));
+            if (Payment::query()->where('customer_id', $payment->customer_id)->count() === 1) {
+                event(CustomerFirstPayment::forModel($payment, [
+                    'actor_id' => $user->id,
+                    'customer_id' => $payment->customer_id,
+                ]));
+            }
+            app(CommercialAutomationService::class)->notifyPaymentRecorded($payment);
 
             return $payment;
         });
@@ -98,16 +124,6 @@ class PaymentService
         if ($amount <= 0) {
             throw ValidationException::withMessages([
                 'amount' => [__('Payment amount must be greater than zero.')],
-            ]);
-        }
-
-        $balanceDue = $invoice->balance_due;
-
-        if ($amount > $balanceDue) {
-            throw ValidationException::withMessages([
-                'amount' => [__('Payment exceeds balance due (:balance).', [
-                    'balance' => number_format($balanceDue, 2).' '.$invoice->currency,
-                ])],
             ]);
         }
     }

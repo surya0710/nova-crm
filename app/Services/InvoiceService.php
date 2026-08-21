@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\CustomerFirstInvoice;
 use App\Events\InvoiceCreated;
+use App\Events\InvoiceIssued;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Models\User;
 use App\Notifications\CrmNotification;
 use App\Services\Tax\CommercialDocumentFields;
@@ -69,15 +72,47 @@ class InvoiceService
         return $this->persistNewInvoice($quotation->organization, $data, $totals, $user);
     }
 
+    public function createFromSalesOrder(SalesOrder $salesOrder, User $user): Invoice
+    {
+        $salesOrder->loadMissing(['organization', 'items', 'quotation']);
+
+        $snapshots = $this->partySnapshot->fromDocument($salesOrder);
+
+        $data = [
+            'customer_id' => $salesOrder->customer_id,
+            'quotation_id' => $salesOrder->quotation_id,
+            'sales_order_id' => $salesOrder->id,
+            'opportunity_id' => $salesOrder->opportunity_id,
+            'title' => $salesOrder->title,
+            'status' => 'draft',
+            'issue_date' => now()->toDateString(),
+            'due_date' => ($salesOrder->expected_delivery_date ?? now()->addDays(30))->toDateString(),
+            'currency' => $salesOrder->currency,
+            'notes' => $this->salesOrderInvoiceNotes($salesOrder),
+            'terms' => $salesOrder->terms,
+            ...$snapshots,
+        ];
+        $totals = [
+            ...CommercialDocumentFields::documentFromTotals($salesOrder->only(CommercialDocumentFields::documentKeys())),
+            'items' => $salesOrder->items->map(fn ($item): array => CommercialDocumentFields::itemFromCalculated(
+                $item->only(CommercialDocumentFields::itemKeys())
+            ))->all(),
+        ];
+
+        return $this->persistNewInvoice($salesOrder->organization, $data, $totals, $user);
+    }
+
     protected function persistNewInvoice(Organization $organization, array $data, array $totals, User $user): Invoice
     {
         return DB::transaction(function () use ($organization, $data, $totals, $user) {
             $snapshots = $this->snapshotsFor($data);
 
             $invoice = Invoice::query()->create([
+                'organization_id' => $organization->id,
                 'number' => Invoice::generateNumber($organization),
                 'customer_id' => $data['customer_id'],
                 'quotation_id' => $data['quotation_id'] ?? null,
+                'sales_order_id' => $data['sales_order_id'] ?? null,
                 'opportunity_id' => $data['opportunity_id'] ?? null,
                 'title' => $data['title'] ?? null,
                 'status' => 'draft',
@@ -135,7 +170,8 @@ class InvoiceService
         DB::transaction(function () use ($invoice, $data, $totals, $user, $previousTotal, $previousSubtotal) {
             $invoice->update([
                 'customer_id' => $data['customer_id'],
-                'quotation_id' => $data['quotation_id'] ?? null,
+                'quotation_id' => $data['quotation_id'] ?? $invoice->quotation_id,
+                'sales_order_id' => $data['sales_order_id'] ?? $invoice->sales_order_id,
                 'opportunity_id' => $data['opportunity_id'] ?? null,
                 'title' => $data['title'] ?? null,
                 'issue_date' => $data['issue_date'],
@@ -270,6 +306,19 @@ class InvoiceService
             ], $user);
 
             $this->notifyIssued($invoice, $user);
+
+            event(InvoiceIssued::forModel($invoice, ['actor_id' => $user->id]));
+
+            $issuedCount = Invoice::query()
+                ->where('customer_id', $invoice->customer_id)
+                ->whereNotIn('status', ['draft', 'cancelled'])
+                ->count();
+            if ($issuedCount === 1) {
+                event(CustomerFirstInvoice::forModel($invoice, [
+                    'actor_id' => $user->id,
+                    'customer_id' => $invoice->customer_id,
+                ]));
+            }
 
             return $invoice->fresh(['items', 'customer']);
         });
@@ -445,6 +494,17 @@ class InvoiceService
         $reference = __('Generated from quotation :number.', ['number' => $quotation->number]);
 
         return $quotation->notes ? $reference."\n\n".$quotation->notes : $reference;
+    }
+
+    protected function salesOrderInvoiceNotes(SalesOrder $salesOrder): string
+    {
+        $reference = __('Generated from sales order :number.', ['number' => $salesOrder->number]);
+
+        if ($salesOrder->quotation) {
+            $reference .= ' '.__('Quotation :number.', ['number' => $salesOrder->quotation->number]);
+        }
+
+        return $salesOrder->notes ? $reference."\n\n".$salesOrder->notes : $reference;
     }
 
     protected function notifyIssued(Invoice $invoice, User $actor): void

@@ -27,6 +27,7 @@ class InvoiceFactory extends Factory
             'number' => 'INV-'.now()->format('Y').'-'.str_pad((string) fake()->unique()->numberBetween(1, 9999), 4, '0', STR_PAD_LEFT),
             'customer_id' => Customer::factory(),
             'quotation_id' => null,
+            'sales_order_id' => null,
             'opportunity_id' => null,
             'title' => fake()->optional()->sentence(3),
             'status' => 'draft',

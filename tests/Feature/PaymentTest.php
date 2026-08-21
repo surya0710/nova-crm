@@ -86,8 +86,12 @@ class PaymentTest extends TestCase
         [$user, $organization] = $this->setupUserWithOrg('manager');
         $invoice = $this->createIssuedInvoice($organization, $user);
 
-        $response = $this->recordPayment($user, $organization, $invoice, 400, [
+        $response =         $this->recordPayment($user, $organization, $invoice, 400, [
             'reference' => 'TXN-123',
+            'bank_name' => 'HDFC Bank',
+            'bank_account_name' => 'Acme Pvt Ltd',
+            'bank_account_number' => '1234567890',
+            'bank_ifsc' => 'HDFC0001234',
         ]);
 
         $response->assertRedirect();
@@ -95,6 +99,8 @@ class PaymentTest extends TestCase
             'invoice_id' => $invoice->id,
             'amount' => 400,
             'reference' => 'TXN-123',
+            'bank_name' => 'HDFC Bank',
+            'bank_ifsc' => 'HDFC0001234',
             'recorded_by' => $user->id,
         ]);
         $this->assertDatabaseHas('invoices', [
@@ -115,6 +121,7 @@ class PaymentTest extends TestCase
         $this->assertSame(300.0, (float) $invoice->amount_paid);
         $this->assertSame(700.0, $invoice->balance_due);
         $this->assertSame('partially_paid', $invoice->status);
+        $this->assertSame('partial', $invoice->payment_status);
     }
 
     public function test_multiple_payments_eventually_pay_invoice(): void
@@ -129,6 +136,7 @@ class PaymentTest extends TestCase
         $this->assertSame(1000.0, (float) $invoice->amount_paid);
         $this->assertSame(0.0, $invoice->balance_due);
         $this->assertSame('paid', $invoice->status);
+        $this->assertSame('paid', $invoice->payment_status);
         $this->assertDatabaseCount('payments', 2);
     }
 
@@ -146,15 +154,19 @@ class PaymentTest extends TestCase
         ]);
     }
 
-    public function test_payment_cannot_exceed_invoice_balance(): void
+    public function test_overpayment_marks_invoice_overpaid(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');
         $invoice = $this->createIssuedInvoice($organization, $user, 500);
 
         $response = $this->recordPayment($user, $organization, $invoice, 600);
 
-        $response->assertSessionHasErrors('amount');
-        $this->assertDatabaseCount('payments', 0);
+        $response->assertRedirect();
+        $invoice->refresh();
+        $this->assertSame(600.0, (float) $invoice->amount_paid);
+        $this->assertSame('overpaid', $invoice->status);
+        $this->assertSame('overpaid', $invoice->payment_status);
+        $this->assertSame(100.0, $invoice->overpaid_amount);
     }
 
     public function test_draft_invoice_payment_is_rejected(): void
@@ -181,16 +193,18 @@ class PaymentTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
-    public function test_paid_invoice_payment_is_rejected(): void
+    public function test_paid_invoice_can_accept_overpayment(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');
         $invoice = $this->createIssuedInvoice($organization, $user, 500);
-        $invoice->update(['amount_paid' => 500, 'status' => 'paid']);
 
-        $response = $this->recordPayment($user, $organization, $invoice, 100);
+        $this->recordPayment($user, $organization, $invoice, 500)->assertRedirect();
+        $response = $this->recordPayment($user, $organization, $invoice, 50);
 
-        $response->assertSessionHasErrors('invoice_id');
-        $this->assertDatabaseCount('payments', 0);
+        $response->assertRedirect();
+        $invoice->refresh();
+        $this->assertSame('overpaid', $invoice->status);
+        $this->assertSame(550.0, (float) $invoice->amount_paid);
     }
 
     public function test_payments_are_immutable(): void
@@ -341,5 +355,26 @@ class PaymentTest extends TestCase
             $this->assertSame(0.0, (float) $invoice->amount_paid);
             $this->assertSame('issued', $invoice->status);
         }
+    }
+
+    public function test_payment_pdf_downloads(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('manager');
+        $invoice = $this->createIssuedInvoice($organization, $user, 400);
+
+        $this->recordPayment($user, $organization, $invoice, 400)->assertRedirect();
+
+        $payment = Payment::query()->first();
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('payments.pdf', $payment));
+
+        $response->assertOk();
+        $content = $response->getContent();
+        if ($content === '' || $content === false) {
+            $content = $response->streamedContent();
+        }
+        $this->assertStringStartsWith('%PDF', (string) $content);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Configuration\ConfigurationRecentSettingsService;
+use App\Services\Configuration\ConfigurationRegistry;
 use App\Services\Navigation\RecentPagesService;
 use App\Services\Navigation\WorkspaceResolver;
 use App\Services\TenantContext;
@@ -14,6 +16,8 @@ class RecordRecentPage
     public function __construct(
         protected RecentPagesService $recents,
         protected TenantContext $tenant,
+        protected ConfigurationRegistry $configuration,
+        protected ConfigurationRecentSettingsService $recentSettings,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -30,6 +34,10 @@ class RecordRecentPage
         }
 
         $routeName = $request->route()?->getName();
+        if (is_string($routeName) && $routeName !== '') {
+            $this->recordSetting($request->user(), $organization, $routeName);
+        }
+
         if (! $routeName || ! $this->shouldRecord($routeName)) {
             return $response;
         }
@@ -46,6 +54,26 @@ class RecordRecentPage
         ]);
 
         return $response;
+    }
+
+    protected function recordSetting(\App\Models\User $user, \App\Models\Organization $organization, string $routeName): void
+    {
+        if ($routeName === 'organization.settings.hub') {
+            return;
+        }
+
+        $section = $this->configuration->sectionByRoute($routeName);
+        if ($section === null || empty($section['href'])) {
+            return;
+        }
+
+        $this->recentSettings->record($user, $organization, [
+            'key' => $section['key'],
+            'label' => $section['label'],
+            'href' => $section['href'],
+            'module_key' => $section['module_key'] ?? null,
+            'module_name' => $section['module_name'] ?? null,
+        ]);
     }
 
     protected function shouldRecord(string $routeName): bool

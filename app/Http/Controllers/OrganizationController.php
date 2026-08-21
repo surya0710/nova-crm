@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SendOrganizationTestMailRequest;
 use App\Http\Requests\UpdateOrganizationRequest;
 use App\Mail\TestOrganizationMail;
+use App\Services\CrmEmailWebhookEndpointService;
 use App\Services\MetadataEntityFormService;
 use App\Services\OrganizationLogoService;
 use App\Services\OrganizationMailConfig;
@@ -12,6 +13,7 @@ use App\Services\OrganizationMailer;
 use App\Services\OrganizationTerminology;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\View\View;
 
 class OrganizationController extends Controller
@@ -30,6 +32,7 @@ class OrganizationController extends Controller
         $this->authorize('viewSettings', $organization);
 
         $mailConfig = app(OrganizationMailConfig::class)->for($organization);
+        $mailProvider = $mailConfig->provider();
 
         return view('organizations.edit', [
             'organization' => $organization,
@@ -45,7 +48,17 @@ class OrganizationController extends Controller
                 ->all(),
             'mailSettings' => $mailConfig->toSettingsArray(),
             'mailDrivers' => config('organization_mail.drivers'),
+            'mailProviders' => collect(config('organization_mail.providers', []))
+                ->mapWithKeys(fn ($provider, $key) => [$key => $provider['label'] ?? $key])
+                ->all(),
+            'mailProviderPresets' => collect(config('organization_mail.providers', []))
+                ->map(fn ($provider) => Arr::only($provider, ['driver', 'host', 'port', 'encryption']))
+                ->all(),
             'mailEncryptions' => config('organization_mail.encryptions'),
+            'mailWebhookEndpoint' => app(CrmEmailWebhookEndpointService::class)
+                ->findActive($organization, $mailProvider),
+            'mailTracksDelivery' => app(CrmEmailWebhookEndpointService::class)
+                ->providerSupportsTracking($mailProvider),
             'metadataFields' => $this->metadataForms->fieldsFor($organization, 'organization', 'edit'),
             'metadataPresenter' => $this->metadataForms->presenter(),
             'regional' => array_merge([
@@ -66,8 +79,9 @@ class OrganizationController extends Controller
 
         $data = $request->safe()->except([
             'logo', 'remove_logo',
-            'mail_enabled', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption',
+            'mail_enabled', 'mail_provider', 'mail_driver', 'mail_host', 'mail_port', 'mail_encryption',
             'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name',
+            'mail_reply_to', 'mail_default_cc', 'mail_default_bcc', 'mail_signature',
             'locale', 'fiscal_year_start_month', 'date_format', 'time_format',
         ]);
 
@@ -109,6 +123,7 @@ class OrganizationController extends Controller
 
         $organization->update($data);
         $this->metadataForms->persistValidatedValues($organization, $metadataValues);
+        app(CrmEmailWebhookEndpointService::class)->ensure($organization->fresh());
 
         return redirect()
             ->route('organization.edit')

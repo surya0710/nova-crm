@@ -1,6 +1,9 @@
 <x-app-layout>
     <x-slot name="header"><h1 class="text-lg font-semibold text-slate-900">{{ __('WFH Policies') }}</h1></x-slot>
     <x-flash-messages />
+    <div class="mb-4">
+        <x-nav.configuration-breadcrumbs :current="__('WFH')" />
+    </div>
     <form method="POST" action="{{ route('organization.settings.wfh-policies.update') }}" class="max-w-xl rounded-xl border border-slate-200 bg-white p-6 space-y-4">
         @csrf @method('PUT')
         <label class="flex items-center gap-2 text-sm">

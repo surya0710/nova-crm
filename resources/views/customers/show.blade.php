@@ -23,6 +23,7 @@
 
         <x-slot:actions>
             @can('update', $customer)
+                <x-ui.button :href="route('customers.show', $customer).'#email-composer'" variant="secondary" size="sm">{{ __('Email') }}</x-ui.button>
                 <x-ui.button :href="route('customers.edit', $customer)" variant="secondary" size="sm">{{ __('Edit') }}</x-ui.button>
             @endcan
             @can('delete', $customer)
@@ -36,6 +37,7 @@
 
         <x-slot:tabs>
             <x-ui.badge :variant="$statusVariant[$customer->status] ?? 'neutral'">{{ $customer->status_label }}</x-ui.badge>
+            <x-ui.badge variant="primary">{{ $customer->lifecycle_stage_label }}</x-ui.badge>
             @if ($customer->assignee)
                 <span class="ms-2 text-xs text-ink-muted">{{ __('Managed by :name', ['name' => $customer->assignee->name]) }}</span>
             @endif
@@ -53,6 +55,10 @@
                     </x-entity.definition-item>
                 @endif
                 <x-entity.definition-item :label="__('Industry')">{{ $customer->industry ?? '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Type')">{{ $customer->type_label }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Lifecycle')">{{ $customer->lifecycle_stage_label }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Segment')">{{ $customer->segment ? $customer->segment_label : '—' }}</x-entity.definition-item>
+                <x-entity.definition-item :label="__('Source')">{{ $customer->source ? $customer->source_label : '—' }}</x-entity.definition-item>
                 <x-entity.definition-item :label="__('Account Manager')">{{ $customer->assignee?->name ?? __('Unassigned') }}</x-entity.definition-item>
                 @if ($customer->tax_number)
                     <x-entity.definition-item :label="__('Tax Number')">{{ $customer->tax_number }}</x-entity.definition-item>
@@ -86,6 +92,8 @@
             'record' => $customer,
         ])
 
+        @include('customers._relationships')
+
         @if ($statement)
             <x-entity.section :title="__('Account Statement')" :subtitle="__('Read-only financial summary')">
                 <x-slot:actions>
@@ -102,6 +110,31 @@
                     <x-ui.stat-card :label="__('Total paid')" :value="$fmt($statement['total_paid'])" />
                     <x-ui.stat-card :label="__('Balance due')" :value="$fmt($statement['balance_due'])" />
                 </div>
+                @if (! empty($statement['total_credits']) || ! empty($statement['total_debits']))
+                    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <x-ui.stat-card :label="__('Credits applied')" :value="$fmt((float) ($statement['total_credits'] ?? 0))" />
+                        <x-ui.stat-card :label="__('Debits applied')" :value="$fmt((float) ($statement['total_debits'] ?? 0))" />
+                        <x-ui.stat-card :label="__('Outstanding')" :value="$fmt((float) ($statement['outstanding_balance'] ?? $statement['balance_due']))" />
+                    </div>
+                @endif
+                @if (! empty($statement['status_counts']))
+                    <div class="mb-6 flex flex-wrap gap-2 text-xs">
+                        @foreach ($statement['status_counts'] as $status => $count)
+                            <x-ui.badge variant="neutral">{{ __(ucfirst($status)) }}: {{ $count }}</x-ui.badge>
+                        @endforeach
+                    </div>
+                @endif
+                @if (! empty($statement['aging']))
+                    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        @foreach ($statement['aging'] as $bucket)
+                            <div class="rounded-lg border border-line px-3 py-2">
+                                <p class="text-xs text-ink-muted">{{ $bucket['label'] }}</p>
+                                <p class="text-sm font-semibold text-ink-heading">{{ $fmt((float) $bucket['total']) }}</p>
+                                <p class="text-xs text-ink-muted">{{ trans_choice(':count invoice|:count invoices', $bucket['count'], ['count' => $bucket['count']]) }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
                 @if ($statement['ledger']->isEmpty())
                     <p class="py-6 text-center text-sm text-ink-muted">{{ __('No invoices or payments yet.') }}</p>
                 @else
@@ -110,15 +143,30 @@
                             <tr>
                                 <td class="px-4 py-2 text-sm text-ink">{{ $entry['date']?->format('M j, Y') ?? '—' }}</td>
                                 <td class="px-4 py-2">
-                                    <x-ui.badge :variant="$entry['type'] === 'invoice' ? 'primary' : 'success'">
-                                        {{ $entry['type'] === 'invoice' ? __('Invoice') : __('Payment') }}
-                                    </x-ui.badge>
+                                    @php
+                                        $ledgerType = $entry['type'];
+                                        $ledgerLabel = match ($ledgerType) {
+                                            'invoice' => __('Invoice'),
+                                            'payment' => __('Payment'),
+                                            'credit_note' => __('Credit note'),
+                                            'debit_note' => __('Debit note'),
+                                            default => ucfirst(str_replace('_', ' ', $ledgerType)),
+                                        };
+                                        $ledgerVariant = match ($ledgerType) {
+                                            'invoice', 'debit_note' => 'primary',
+                                            'credit_note' => 'warning',
+                                            default => 'success',
+                                        };
+                                    @endphp
+                                    <x-ui.badge :variant="$ledgerVariant">{{ $ledgerLabel }}</x-ui.badge>
                                 </td>
                                 <td class="px-4 py-2 text-sm">
-                                    @if ($entry['type'] === 'invoice' && isset($entry['invoice_id']))
+                                    @if ($ledgerType === 'invoice' && isset($entry['invoice_id']))
                                         <a href="{{ route('invoices.show', $entry['invoice_id']) }}" class="text-primary-600 hover:text-primary-700">{{ $entry['number'] }}</a>
-                                    @elseif ($entry['type'] === 'payment' && isset($entry['payment_id']))
+                                    @elseif ($ledgerType === 'payment' && isset($entry['payment_id']))
                                         <a href="{{ route('payments.show', $entry['payment_id']) }}" class="text-primary-600 hover:text-primary-700">{{ $entry['number'] }}</a>
+                                    @elseif (in_array($ledgerType, ['credit_note', 'debit_note'], true) && isset($entry['adjustment_note_id']))
+                                        <a href="{{ route($ledgerType === 'credit_note' ? 'credit-notes.show' : 'debit-notes.show', $entry['adjustment_note_id']) }}" class="text-primary-600 hover:text-primary-700">{{ $entry['number'] }}</a>
                                     @else
                                         {{ $entry['number'] }}
                                     @endif
@@ -170,7 +218,7 @@
             </x-entity.section>
         @endif
 
-        <x-entity.section :title="__('Activity')">
+        <x-entity.section id="activity" class="scroll-mt-24" :title="__('Activity')">
             <x-activity.timeline
                 :empty="($timelineItems ?? collect())->isEmpty()"
                 :empty-title="__('No activity yet')"
@@ -183,7 +231,8 @@
                             <x-forms.field :label="__('Add a note')" name="body" required>
                                 <x-forms.textarea id="body" name="body" rows="3" required>{{ old('body') }}</x-forms.textarea>
                             </x-forms.field>
-                            <div class="flex justify-end">
+                            <div class="flex justify-end gap-2">
+                                <x-ui.button :href="'#email-composer'" variant="secondary" size="sm">{{ __('Email') }}</x-ui.button>
                                 <x-ui.button type="submit" variant="primary" size="sm">{{ __('Add Note') }}</x-ui.button>
                             </div>
                         </form>
@@ -210,6 +259,8 @@
             :can-delete="auth()->user()->can('attachments.delete')"
         />
 
+        <x-crm-email-conversations :related="$customer" />
+
         <x-tasks-panel
             taskable-type="customer"
             :taskable-id="$customer->id"
@@ -220,14 +271,18 @@
         @can('update', $customer)
             <x-client-email-form
                 :action="route('customers.send', $customer)"
-                :email="old('email', $customer->email)"
+                :email="old('email', $customer->email ?? $customer->primaryContact?->email)"
                 :submit-label="__('Send Email')"
                 :title="__('Email Client')"
                 :description="__('Send a message to this customer with optional file attachments')"
                 :organization="$organization"
                 :show-subject="true"
                 :subject="old('subject', __('Message from :name', ['name' => $organization?->name ?? config('app.name')]))"
-                :missing-email-hint="! $customer->email"
+                :missing-email-hint="! $customer->email && ! $customer->primaryContact?->email"
+                :show-bcc="true"
+                module="customers"
+                :related="$customer"
+                :suggested-recipients="$customer->contacts->pluck('email')->push($customer->email)->filter()->unique()->values()"
             />
         @endcan
 

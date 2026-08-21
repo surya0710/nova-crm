@@ -203,12 +203,26 @@ class CommercialFoundationTest extends TestCase
             ->post(route('quotations.convert', $quotation->fresh()))
             ->assertRedirect();
 
+        $salesOrder = \App\Models\SalesOrder::query()->first();
+        $this->assertSame((float) $quotation->total, (float) $salesOrder->total);
+        $this->assertSame((float) $quotation->igst_amount, (float) $salesOrder->igst_amount);
+        $this->assertSame($quotation->terms, $salesOrder->terms);
+        $this->assertSame('CRM-1', $salesOrder->items()->first()->sku);
+        $this->assertSame('converted', $quotation->fresh()->status);
+        $this->assertNotEmpty($salesOrder->billing_snapshot);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->post(route('sales-orders.convert', $salesOrder))
+            ->assertRedirect();
+
         $invoice = \App\Models\Invoice::query()->first();
         $this->assertSame((float) $quotation->total, (float) $invoice->total);
         $this->assertSame((float) $quotation->igst_amount, (float) $invoice->igst_amount);
         $this->assertSame($quotation->terms, $invoice->terms);
         $this->assertSame('CRM-1', $invoice->items()->first()->sku);
-        $this->assertSame('converted', $quotation->fresh()->status);
+        $this->assertSame($salesOrder->id, $invoice->sales_order_id);
+        $this->assertSame($quotation->id, $invoice->quotation_id);
         $this->assertNotEmpty($invoice->billing_snapshot);
         $this->assertSame($quotation->billing_snapshot['gstin'] ?? $customer->gstin, $invoice->billing_snapshot['gstin'] ?? null);
 

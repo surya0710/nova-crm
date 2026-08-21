@@ -24,6 +24,7 @@
             <nav class="flex items-center gap-3 text-sm">
                 @auth('client')
                     <a href="{{ route('portal.dashboard', $portalOrganization) }}" class="text-slate-600 hover:text-slate-900">{{ __('Dashboard') }}</a>
+                    <a href="{{ route('portal.commercial.overview', $portalOrganization) }}" class="text-slate-600 hover:text-slate-900">{{ __('Billing') }}</a>
                     <form method="POST" action="{{ route('portal.logout', $portalOrganization) }}" class="inline">@csrf<button class="text-slate-600 hover:text-slate-900">{{ __('Logout') }}</button></form>
                 @else
                     <a href="{{ route('portal.login', $portalOrganization) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-white">{{ __('Login') }}</a>

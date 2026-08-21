@@ -28,4 +28,20 @@ return [
         'Lost contact',
         'Other',
     ],
+
+    'stage_probabilities' => [
+        'qualification' => 20,
+        'proposal' => 50,
+        'negotiation' => 75,
+        'closed_won' => 100,
+        'closed_lost' => 0,
+    ],
+
+    'contact_roles' => [
+        'decision_maker' => 'Decision maker',
+        'champion' => 'Champion',
+        'influencer' => 'Influencer',
+        'evaluator' => 'Evaluator',
+        'other' => 'Other',
+    ],
 ];

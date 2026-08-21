@@ -3,19 +3,19 @@
 namespace App\Mail;
 
 use App\Mail\Concerns\AttachesUploadedFiles;
+use App\Mail\Concerns\HasEmailSignature;
 use App\Mail\Concerns\UsesOrganizationMailFrom;
 use App\Models\Customer;
 use App\Models\Organization;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class CustomerMail extends Mailable
 {
-    use AttachesUploadedFiles, Queueable, SerializesModels, UsesOrganizationMailFrom;
+    use AttachesUploadedFiles, HasEmailSignature, Queueable, SerializesModels, UsesOrganizationMailFrom;
 
     public function __construct(
         public Customer $customer,
@@ -36,9 +36,7 @@ class CustomerMail extends Mailable
         return new Envelope(
             from: $this->organizationFrom($this->organization),
             subject: $this->mailSubject,
-            replyTo: $replyTo
-                ? [new Address($replyTo, $this->organization->name)]
-                : [],
+            replyTo: $this->organizationReplyTo($this->organization, $replyTo),
         );
     }
 

@@ -6,6 +6,7 @@ use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\HasCommercialPartySnapshots;
+use App\Models\Scopes\OrganizationScope;
 use App\Services\InvoiceCalculationService;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +24,7 @@ class Invoice extends Model
         'number',
         'customer_id',
         'quotation_id',
+        'sales_order_id',
         'opportunity_id',
         'title',
         'status',
@@ -85,6 +87,11 @@ class Invoice extends Model
         return $this->belongsTo(Quotation::class);
     }
 
+    public function salesOrder(): BelongsTo
+    {
+        return $this->belongsTo(SalesOrder::class);
+    }
+
     public function opportunity(): BelongsTo
     {
         return $this->belongsTo(Opportunity::class);
@@ -103,6 +110,101 @@ class Invoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class)->latest('payment_date');
+    }
+
+    public function adjustmentNotes(): HasMany
+    {
+        return $this->hasMany(AdjustmentNote::class);
+    }
+
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(AdjustmentNote::class)->where('type', 'credit');
+    }
+
+    public function debitNotes(): HasMany
+    {
+        return $this->hasMany(AdjustmentNote::class)->where('type', 'debit');
+    }
+
+    public function creditedAmount(): float
+    {
+        return round((float) $this->creditNotes()
+            ->withoutGlobalScope(OrganizationScope::class)
+            ->where('adjustment_notes.organization_id', $this->organization_id)
+            ->where('status', 'applied')
+            ->sum('applied_amount'), 2);
+    }
+
+    public function debitedAmount(): float
+    {
+        return round((float) $this->debitNotes()
+            ->withoutGlobalScope(OrganizationScope::class)
+            ->where('adjustment_notes.organization_id', $this->organization_id)
+            ->where('status', 'applied')
+            ->sum('applied_amount'), 2);
+    }
+
+    public function getEffectiveBalanceAttribute(): float
+    {
+        return round(
+            (float) $this->total - (float) $this->amount_paid - $this->creditedAmount() + $this->debitedAmount(),
+            2
+        );
+    }
+
+    public function isOverdue(): bool
+    {
+        if (in_array($this->status, ['draft', 'cancelled', 'paid', 'overpaid'], true)) {
+            return false;
+        }
+
+        if ($this->effective_balance <= 0) {
+            return false;
+        }
+
+        return $this->due_date && $this->due_date->startOfDay()->lt(now()->startOfDay());
+    }
+
+    public function agingBucket(?\Illuminate\Support\Carbon $asOf = null): string
+    {
+        $asOf = ($asOf ?? now())->startOfDay();
+        $dueDate = $this->due_date?->startOfDay() ?? $asOf;
+        $daysOverdue = $dueDate->lte($asOf) ? (int) $dueDate->diffInDays($asOf) : 0;
+
+        if ($daysOverdue === 0) {
+            return 'current';
+        }
+        if ($daysOverdue <= 30) {
+            return '1_30';
+        }
+        if ($daysOverdue <= 60) {
+            return '31_60';
+        }
+        if ($daysOverdue <= 90) {
+            return '61_90';
+        }
+
+        return '90_plus';
+    }
+
+    public function getCollectionStatusAttribute(): string
+    {
+        if ($this->status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        $balance = $this->effective_balance;
+
+        if ($balance <= 0 && (float) $this->amount_paid > 0) {
+            return 'paid';
+        }
+
+        if ((float) $this->amount_paid > 0 || $this->creditedAmount() > 0) {
+            return $this->isOverdue() ? 'overdue' : 'partial';
+        }
+
+        return $this->isOverdue() ? 'overdue' : 'unpaid';
     }
 
     public function isFullyEditable(): bool
@@ -134,7 +236,7 @@ class Invoice extends Model
 
     public function canCancel(): bool
     {
-        if (in_array($this->status, ['paid', 'cancelled'], true)) {
+        if (in_array($this->status, ['paid', 'overpaid', 'cancelled'], true)) {
             return false;
         }
 
@@ -161,8 +263,7 @@ class Invoice extends Model
     public function canAcceptPayment(): bool
     {
         return in_array($this->status, config('payments.payable_invoice_statuses', []), true)
-            && (float) $this->total > 0
-            && $this->balance_due > 0;
+            && (float) $this->total > 0;
     }
 
     public function recalculateAmountPaid(): void
@@ -193,6 +294,11 @@ class Invoice extends Model
     public function getFormattedBalanceDueAttribute(): string
     {
         return number_format($this->balance_due, 2).' '.$this->currency;
+    }
+
+    public function getFormattedEffectiveBalanceAttribute(): string
+    {
+        return number_format($this->effective_balance, 2).' '.$this->currency;
     }
 
     public static function generateNumber(Organization $organization): string
@@ -242,12 +348,44 @@ class Invoice extends Model
         $paid = (float) $this->amount_paid;
         $total = (float) $this->total;
 
-        if ($paid >= $total && $total > 0) {
+        if ($paid > $total && $total > 0) {
+            $this->status = 'overpaid';
+        } elseif ($paid >= $total && $total > 0) {
             $this->status = 'paid';
         } elseif ($paid > 0) {
             $this->status = 'partially_paid';
-        } elseif (in_array($this->status, ['partially_paid', 'paid'], true)) {
+        } elseif (in_array($this->status, ['partially_paid', 'paid', 'overpaid'], true)) {
             $this->status = 'issued';
         }
+    }
+
+    public function getPaymentStatusAttribute(): string
+    {
+        $paid = (float) $this->amount_paid;
+        $total = (float) $this->total;
+
+        if ($paid > $total && $total > 0) {
+            return 'overpaid';
+        }
+
+        if ($paid >= $total && $total > 0) {
+            return 'paid';
+        }
+
+        if ($paid > 0) {
+            return 'partial';
+        }
+
+        return 'unpaid';
+    }
+
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        return config('payments.invoice_statuses.'.$this->payment_status, ucfirst($this->payment_status));
+    }
+
+    public function getOverpaidAmountAttribute(): float
+    {
+        return max(0, round((float) $this->amount_paid - (float) $this->total, 2));
     }
 }

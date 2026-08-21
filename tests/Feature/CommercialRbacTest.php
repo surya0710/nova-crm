@@ -38,10 +38,14 @@ class CommercialRbacTest extends TestCase
         $this->get(route('products.index'))->assertForbidden();
         $this->get(route('product-categories.index'))->assertForbidden();
         $this->get(route('quotations.index'))->assertForbidden();
+        $this->get(route('sales-orders.index'))->assertForbidden();
         $this->get(route('invoices.index'))->assertForbidden();
+        $this->get(route('credit-notes.index'))->assertForbidden();
+        $this->get(route('price-lists.index'))->assertForbidden();
+        $this->get(route('receivables.index'))->assertForbidden();
     }
 
-    public function test_sales_executive_cannot_convert_quotation(): void
+    public function test_sales_executive_can_convert_quotation_to_sales_order(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('sales-executive');
 
@@ -54,13 +58,24 @@ class CommercialRbacTest extends TestCase
             'organization_id' => $organization->id,
             'customer_id' => $customer->id,
             'status' => 'accepted',
+            'total' => 100,
             'created_by' => $user->id,
+        ]);
+        $quotation->items()->create([
+            'description' => 'Line',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'line_total' => 100,
+            'sort_order' => 0,
         ]);
 
         $this->actingAs($user)
             ->withSession(['current_organization_id' => $organization->id])
             ->post(route('quotations.convert', $quotation))
-            ->assertForbidden();
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('sales_orders', 1);
+        $this->assertDatabaseCount('invoices', 0);
     }
 
     public function test_sales_executive_cannot_create_product_category(): void
@@ -134,5 +149,70 @@ class CommercialRbacTest extends TestCase
             $this->post(route('quotations.convert', $quotation))->status(),
             [403, 404],
         );
+    }
+
+    public function test_support_can_view_receivables_and_payments_but_not_create_notes(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg('support');
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id]);
+
+        $this->get(route('receivables.index'))->assertOk();
+        $this->get(route('payments.index'))->assertOk();
+        $this->get(route('credit-notes.create'))->assertForbidden();
+        $this->get(route('price-lists.index'))->assertForbidden();
+    }
+
+    public function test_tenant_isolation_blocks_foreign_sales_orders_payments_and_notes(): void
+    {
+        [$userA, $orgA] = $this->setupUserWithOrg('manager');
+        [$userB, $orgB] = $this->setupUserWithOrg('manager');
+
+        $customerA = Customer::factory()->create([
+            'organization_id' => $orgA->id,
+            'created_by' => $userA->id,
+        ]);
+
+        $order = \App\Models\SalesOrder::factory()->create([
+            'organization_id' => $orgA->id,
+            'customer_id' => $customerA->id,
+            'created_by' => $userA->id,
+        ]);
+
+        $invoice = Invoice::factory()->create([
+            'organization_id' => $orgA->id,
+            'customer_id' => $customerA->id,
+            'created_by' => $userA->id,
+            'status' => 'issued',
+            'total' => 100,
+        ]);
+
+        $payment = \App\Models\Payment::factory()->create([
+            'organization_id' => $orgA->id,
+            'customer_id' => $customerA->id,
+            'invoice_id' => $invoice->id,
+            'recorded_by' => $userA->id,
+        ]);
+
+        $note = \App\Models\AdjustmentNote::factory()->create([
+            'organization_id' => $orgA->id,
+            'customer_id' => $customerA->id,
+            'invoice_id' => $invoice->id,
+            'created_by' => $userA->id,
+            'type' => 'credit',
+        ]);
+
+        $this->actingAs($userB)
+            ->withSession(['current_organization_id' => $orgB->id]);
+
+        foreach ([
+            route('sales-orders.show', $order),
+            route('payments.show', $payment),
+            route('credit-notes.show', $note),
+        ] as $url) {
+            $status = $this->get($url)->status();
+            $this->assertContains($status, [403, 404], $url.' should be isolated, got '.$status);
+        }
     }
 }

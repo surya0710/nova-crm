@@ -14,10 +14,7 @@
         :subtitle="__('Email, in-app, reminders, and digests')"
     >
         <x-slot:breadcrumbs>
-            <x-nav.breadcrumbs :items="[
-                ['label' => __('Administration'), 'href' => \Illuminate\Support\Facades\Route::has('administration.home') ? route('administration.home') : null],
-                ['label' => __('Notifications'), 'current' => true],
-            ]" />
+            <x-nav.configuration-breadcrumbs :current="__('Notifications')" />
         </x-slot:breadcrumbs>
 
         <form method="POST" action="{{ route('organization.settings.notifications.update') }}" class="space-y-6 max-w-2xl">

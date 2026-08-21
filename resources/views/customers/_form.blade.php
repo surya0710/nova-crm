@@ -156,6 +156,36 @@
                 @endforeach
             </x-forms.select>
         </x-forms.field>
+        <x-forms.field :label="__('Type')" name="type">
+            <x-forms.select id="type" name="type">
+                @foreach (config('customers.types') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('type', $customer->type ?: 'company') === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <x-forms.field :label="__('Lifecycle stage')" name="lifecycle_stage">
+            <x-forms.select id="lifecycle_stage" name="lifecycle_stage">
+                @foreach (config('customers.lifecycle_stages') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('lifecycle_stage', $customer->lifecycle_stage ?: 'customer') === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <x-forms.field :label="__('Segment')" name="segment">
+            <x-forms.select id="segment" name="segment">
+                <option value="">{{ __('Not set') }}</option>
+                @foreach (config('customers.segments') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('segment', $customer->segment) === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+        <x-forms.field :label="__('Source')" name="source">
+            <x-forms.select id="source" name="source">
+                <option value="">{{ __('Not set') }}</option>
+                @foreach (config('customers.sources') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('source', $customer->source) === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
         <x-forms.field :label="__('Account Manager')" name="assigned_to">
             <x-forms.select id="assigned_to" name="assigned_to">
                 <option value="">{{ __('Unassigned') }}</option>

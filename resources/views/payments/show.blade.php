@@ -13,6 +13,12 @@
             ]" />
         </x-slot:breadcrumbs>
 
+        <x-slot:actions>
+            @can('view', $payment)
+                <x-ui.button :href="route('payments.pdf', $payment)" variant="secondary" size="sm">{{ __('Download PDF') }}</x-ui.button>
+            @endcan
+        </x-slot:actions>
+
         <x-entity.section :title="__('Payment details')">
             <x-entity.definition-list>
                 <x-entity.definition-item :label="__('Amount')">
@@ -21,6 +27,11 @@
                 <x-entity.definition-item :label="__('Method')">{{ $payment->method_label }}</x-entity.definition-item>
                 @if ($payment->reference)
                     <x-entity.definition-item :label="__('Reference')" :span="2">{{ $payment->reference }}</x-entity.definition-item>
+                @endif
+                @if ($payment->bank_name || $payment->bank_account_number)
+                    <x-entity.definition-item :label="__('Bank')" :span="2">
+                        {{ collect([$payment->bank_name, $payment->bank_account_name, $payment->bank_account_number, $payment->bank_ifsc])->filter()->implode(' · ') }}
+                    </x-entity.definition-item>
                 @endif
                 <x-entity.definition-item :label="crm_term('invoice')" :span="2">
                     <a href="{{ route('invoices.show', $payment->invoice) }}" class="text-primary-600 hover:text-primary-700">{{ $payment->invoice->number }}</a>
@@ -47,6 +58,11 @@
                 :description="__('Send payment confirmation to your customer')"
                 :organization="$organization"
                 :missing-email-hint="! $payment->customer->email"
+                :show-cc="true"
+                :show-bcc="true"
+                :cc-sender="true"
+                module="payments"
+                :related="$payment"
             />
         @endcan
 

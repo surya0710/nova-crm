@@ -30,6 +30,11 @@ class Opportunity extends Model
         'expected_close_date',
         'won_at',
         'lost_reason',
+        'source',
+        'competitor',
+        'next_activity_at',
+        'next_activity_type',
+        'next_activity_subject',
         'description',
         'custom_fields',
         'assigned_to',
@@ -40,8 +45,10 @@ class Opportunity extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'probability' => 'integer',
             'expected_close_date' => 'date',
             'won_at' => 'date',
+            'next_activity_at' => 'datetime',
             'custom_fields' => 'array',
         ];
     }
@@ -76,9 +83,44 @@ class Opportunity extends Model
         return $this->hasMany(OpportunityNote::class)->latest();
     }
 
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(OpportunityContact::class);
+    }
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(OpportunityProduct::class);
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(CrmActivity::class)->latest('occurred_at');
+    }
+
     public function tasks(): MorphMany
     {
         return $this->morphMany(Task::class, 'taskable')->latest();
+    }
+
+    public function weightedAmount(): float
+    {
+        return round(((float) $this->amount) * ((int) $this->probability) / 100, 2);
+    }
+
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class)->latest('issue_date');
+    }
+
+    public function salesOrders(): HasMany
+    {
+        return $this->hasMany(SalesOrder::class)->latest('order_date');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->latest('issue_date');
     }
 
     public function getStageLabelAttribute(): string

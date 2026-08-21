@@ -1,0 +1,7 @@
+{
+  "plugins": {
+    "port": {
+      "enabled": true
+    }
+  }
+}

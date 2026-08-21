@@ -204,6 +204,7 @@
                                     $taskableRoute = match ($task->taskable_type) {
                                         App\Models\Lead::class => route('leads.show', $task->taskable),
                                         App\Models\Customer::class => route('customers.show', $task->taskable),
+                                        App\Models\Contact::class => route('contacts.show', $task->taskable),
                                         App\Models\Opportunity::class => route('pipeline.show', $task->taskable),
                                         App\Models\Project::class => route('projects.show', $task->taskable),
                                         default => null,
@@ -211,6 +212,7 @@
                                     $taskableLabel = match ($task->taskable_type) {
                                         App\Models\Lead::class => $task->taskable->name,
                                         App\Models\Customer::class => $task->taskable->display_name,
+                                        App\Models\Contact::class => $task->taskable->name,
                                         App\Models\Opportunity::class => $task->taskable->title,
                                         App\Models\Project::class => $task->taskable->name,
                                         default => class_basename($task->taskable_type).' #'.$task->taskable_id,

@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Support\Money;
 use Illuminate\Support\Collection;
 
@@ -35,6 +36,31 @@ class CommercialMetricsService
             'converted_count' => $converted,
             'converted_value' => $convertedValue,
             'conversion_rate' => $conversionRate,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function salesOrderMetrics(?Organization $organization = null): array
+    {
+        $query = SalesOrder::query();
+        $active = (clone $query)->where('status', '!=', 'cancelled');
+
+        $count = (clone $active)->count();
+        $value = (float) (clone $active)->sum('total');
+        $confirmedCount = (clone $query)->where('status', 'confirmed')->count();
+        $confirmedValue = (float) (clone $query)->where('status', 'confirmed')->sum('total');
+        $invoicedCount = (clone $query)->where('status', '!=', 'cancelled')
+            ->whereHas('invoice', fn ($inner) => $inner->where('status', '!=', 'cancelled'))
+            ->count();
+
+        return [
+            'count' => $count,
+            'value' => $value,
+            'confirmed_count' => $confirmedCount,
+            'confirmed_value' => $confirmedValue,
+            'invoiced_count' => $invoicedCount,
         ];
     }
 
@@ -87,13 +113,36 @@ class CommercialMetricsService
     }
 
     /**
-     * @return array{products: list<array<string, mixed>>, customers: list<array<string, mixed>>}
+     * @return array<string, mixed>
+     */
+    public function receivableMetrics(?Organization $organization = null): array
+    {
+        $invoices = $this->invoiceMetrics($organization);
+
+        return [
+            'outstanding_count' => $invoices['outstanding_count'],
+            'outstanding_value' => $invoices['outstanding_value'],
+            'overdue_count' => $invoices['overdue_count'],
+            'overdue_value' => $invoices['overdue_value'],
+            'collected_revenue' => $invoices['revenue'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
      */
     public function revenueBreakdown(RevenueService $revenue, Organization $organization, int $limit = 5): array
     {
+        $collection = $revenue->collectionMetrics($organization);
+
         return [
             'products' => $revenue->revenueByProduct($organization, [], $limit)->values()->all(),
             'customers' => $this->revenueByCustomer($limit),
+            'salespeople' => $revenue->revenueBySalesperson($organization, [], $limit)->values()->all(),
+            'monthly' => $revenue->revenueByMonth($organization)->values()->all(),
+            'collection_rate' => $collection['collection_rate'],
+            'total_invoiced' => $collection['total_invoiced'],
+            'total_paid' => $collection['total_paid'],
         ];
     }
 

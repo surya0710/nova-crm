@@ -9,8 +9,9 @@ use App\Mail\InvoiceMail;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Quotation;
-use App\Services\ClientEmailCc;
+use App\Models\SalesOrder;
 use App\Services\CommercialFormData;
+use App\Services\CrmEmailService;
 use App\Services\InvoicePdfService;
 use App\Services\InvoiceService;
 use App\Services\OrganizationMailer;
@@ -26,6 +27,7 @@ class InvoiceController extends Controller
 {
     public function __construct(
         protected OrganizationMailer $organizationMailer,
+        protected CrmEmailService $crmEmails,
         protected InvoiceService $invoiceService,
         protected InvoicePdfService $pdfService,
         protected CommercialFormData $commercialFormData,
@@ -73,10 +75,16 @@ class InvoiceController extends Controller
     {
         $organization = $tenant->get();
         $quotation = null;
+        $salesOrder = null;
 
         if ($quotationId = $request->integer('quotation')) {
             $quotation = Quotation::query()->with('items')->findOrFail($quotationId);
             $this->authorize('view', $quotation);
+        }
+
+        if ($salesOrderId = $request->integer('sales_order')) {
+            $salesOrder = SalesOrder::query()->with('items')->findOrFail($salesOrderId);
+            $this->authorize('view', $salesOrder);
         }
 
         $invoice = new Invoice([
@@ -89,7 +97,23 @@ class InvoiceController extends Controller
             'shipping_amount' => 0,
         ]);
 
-        if ($quotation) {
+        if ($salesOrder) {
+            $invoice->fill([
+                'customer_id' => $salesOrder->customer_id,
+                'quotation_id' => $salesOrder->quotation_id,
+                'sales_order_id' => $salesOrder->id,
+                'opportunity_id' => $salesOrder->opportunity_id,
+                'title' => $salesOrder->title,
+                'currency' => $salesOrder->currency,
+                'notes' => $salesOrder->notes,
+                'terms' => $salesOrder->terms,
+                'pricing_mode' => $salesOrder->pricing_mode,
+                'tax_treatment' => $salesOrder->tax_treatment,
+                'place_of_supply' => $salesOrder->place_of_supply,
+                'shipping_amount' => $salesOrder->shipping_amount,
+            ]);
+            $invoice->setRelation('items', $salesOrder->items);
+        } elseif ($quotation) {
             $invoice->fill([
                 'customer_id' => $quotation->customer_id,
                 'quotation_id' => $quotation->id,
@@ -109,6 +133,7 @@ class InvoiceController extends Controller
         return view('invoices.create', [
             'invoice' => $invoice,
             'sourceQuotation' => $quotation,
+            'sourceSalesOrder' => $salesOrder,
             ...$this->commercialFormData->for($tenant),
         ]);
     }
@@ -130,7 +155,18 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice, TenantContext $tenant): View
     {
-        $invoice->load(['customer', 'quotation', 'opportunity', 'creator', 'items.product', 'payments.recorder', 'attachments.uploader']);
+        $invoice->load([
+            'customer',
+            'quotation',
+            'salesOrder',
+            'opportunity',
+            'creator',
+            'items.product',
+            'payments.recorder',
+            'attachments.uploader',
+            'creditNotes',
+            'debitNotes',
+        ]);
 
         return view('invoices.show', [
             'invoice' => $invoice,
@@ -227,27 +263,22 @@ class InvoiceController extends Controller
                 ->with('error', __('Organization not found.'));
         }
 
-        if (! $this->organizationMailer->isConfigured($organization)) {
-            return redirect()
-                ->route('invoices.show', $invoice)
-                ->with('error', __('Configure organization email in Settings → Email before sending.'));
-        }
-
         $invoice->load(['customer', 'creator', 'items.product']);
-        $to = $request->validated('email');
-        $cc = ClientEmailCc::merge($request->user(), $to, $request->input('cc'));
 
         try {
-            $this->organizationMailer->send(
+            $message = $this->crmEmails->send(
                 $organization,
-                $to,
+                $request->user(),
+                $invoice,
+                $request->validated(),
                 new InvoiceMail(
                     $invoice,
                     $organization,
                     $request->validated('message'),
-                    $request->file('attachments', []),
+                    $request->file('attachments', []) ?? [],
                 ),
-                $cc,
+                $request->file('attachments', []) ?? [],
+                ccSender: true,
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -255,20 +286,20 @@ class InvoiceController extends Controller
                 ->with('error', __('Failed to send email: :message', ['message' => $e->getMessage()]));
         }
 
-        $this->invoiceService->recordEmailSent($invoice, $request->user(), $to);
+        $this->invoiceService->recordEmailSent($invoice, $request->user(), $request->validated('email'));
 
         try {
             $this->invoiceService->markIssuedAfterEmail($invoice, $request->user());
         } catch (ValidationException $e) {
             return redirect()
                 ->route('invoices.show', $invoice)
-                ->with('status', 'invoice-email-sent')
+                ->with('status', $message->flashKey('invoice-email-sent'))
                 ->withErrors($e->errors());
         }
 
         return redirect()
             ->route('invoices.show', $invoice)
-            ->with('status', 'invoice-email-sent');
+            ->with('status', $message->flashKey('invoice-email-sent'));
     }
 
     public function pdf(Invoice $invoice): Response|StreamedResponse

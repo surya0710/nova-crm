@@ -14,6 +14,14 @@ class StorePaymentRequest extends FormRequest
         return $this->user()?->can('create', Payment::class) ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $invoice = $this->route('invoice');
+        if ($invoice && ! $this->filled('invoice_id')) {
+            $this->merge(['invoice_id' => $invoice->id]);
+        }
+    }
+
     public function rules(): array
     {
         $organization = app(TenantContext::class)->get();
@@ -28,6 +36,10 @@ class StorePaymentRequest extends FormRequest
             'payment_date' => ['required', 'date'],
             'method' => ['required', 'string', Rule::in(array_keys(config('payments.methods')))],
             'reference' => ['nullable', 'string', 'max:100'],
+            'bank_name' => ['nullable', 'string', 'max:120'],
+            'bank_account_name' => ['nullable', 'string', 'max:120'],
+            'bank_account_number' => ['nullable', 'string', 'max:50'],
+            'bank_ifsc' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

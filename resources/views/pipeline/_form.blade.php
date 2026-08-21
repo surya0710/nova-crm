@@ -72,7 +72,61 @@
         <x-forms.field :label="__('Expected Close Date')" name="expected_close_date">
             <x-forms.input id="expected_close_date" type="date" name="expected_close_date" :value="old('expected_close_date', $opportunity->expected_close_date?->format('Y-m-d'))" />
         </x-forms.field>
+
+        <x-forms.field :label="__('Source')" name="source">
+            <x-forms.select id="source" name="source">
+                <option value="">{{ __('None') }}</option>
+                @foreach (config('customers.sources') as $value => $label)
+                    <option value="{{ $value }}" @selected(old('source', $opportunity->source) === $value)>{{ $label }}</option>
+                @endforeach
+            </x-forms.select>
+        </x-forms.field>
+
+        <x-forms.field :label="__('Competitor')" name="competitor">
+            <x-forms.input id="competitor" type="text" name="competitor" :value="old('competitor', $opportunity->competitor)" />
+        </x-forms.field>
     </x-forms.section>
+
+    @if (($availableContacts ?? collect())->isNotEmpty())
+        <x-forms.section :title="__('Contacts')" :subtitle="__('People involved in this deal')">
+            <div class="sm:col-span-2 space-y-3">
+                @foreach ($availableContacts as $index => $contact)
+                    @php
+                        $existing = $opportunity->exists ? $opportunity->contacts : collect();
+                        $linked = collect(old('contacts', $existing->map->only(['contact_id', 'role'])->all()))->firstWhere('contact_id', $contact->id);
+                    @endphp
+                    <label class="flex items-center gap-3 text-sm">
+                        <input type="checkbox" name="contacts[{{ $index }}][contact_id]" value="{{ $contact->id }}" @checked($linked)>
+                        <span class="flex-1">{{ $contact->name }}</span>
+                        <select name="contacts[{{ $index }}][role]" class="rounded-md border-line text-sm">
+                            @foreach (config('pipeline.contact_roles') as $value => $label)
+                                <option value="{{ $value }}" @selected(($linked['role'] ?? 'other') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                @endforeach
+            </div>
+        </x-forms.section>
+    @endif
+
+    @if (($products ?? collect())->isNotEmpty())
+        <x-forms.section :title="__('Products / services')">
+            <div class="sm:col-span-2 space-y-3">
+                @php $selected = collect(old('products', $opportunity->exists ? $opportunity->products->all() : [])); @endphp
+                @foreach ($products->take(8) as $index => $product)
+                    @php $row = $selected->firstWhere('product_id', $product->id); @endphp
+                    <div class="grid grid-cols-12 items-center gap-2 text-sm">
+                        <label class="col-span-5 flex items-center gap-2">
+                            <input type="checkbox" name="products[{{ $index }}][product_id]" value="{{ $product->id }}" @checked($row)>
+                            {{ $product->name }}
+                        </label>
+                        <input type="number" step="0.01" min="0" name="products[{{ $index }}][quantity]" value="{{ old('products.'.$index.'.quantity', $row->quantity ?? 1) }}" class="col-span-3 rounded-md border-line" placeholder="{{ __('Qty') }}">
+                        <input type="number" step="0.01" min="0" name="products[{{ $index }}][unit_price]" value="{{ old('products.'.$index.'.unit_price', $row->unit_price ?? $product->unit_price) }}" class="col-span-4 rounded-md border-line" placeholder="{{ __('Price') }}">
+                    </div>
+                @endforeach
+            </div>
+        </x-forms.section>
+    @endif
 
     @include('metadata-fields._runtime_form', [
         'metadataFields' => $metadataFields ?? collect(),

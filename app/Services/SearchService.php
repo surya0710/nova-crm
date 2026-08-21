@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\AdjustmentNote;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Payment;
+use App\Models\PriceList;
 use App\Models\Portfolio;
 use App\Models\PortfolioReport;
 use App\Models\Product;
@@ -22,6 +24,7 @@ use App\Models\ProjectReport;
 use App\Models\ProjectRisk;
 use App\Models\ProjectTemplate;
 use App\Models\Quotation;
+use App\Models\SalesOrder;
 use App\Models\ResourceAllocation;
 use App\Models\SavedFilter;
 use App\Models\Task;
@@ -57,6 +60,7 @@ class SearchService
 
         if ($user->hasPermission('customers.view')) {
             $results = $results->merge($this->searchCustomers($query));
+            $results = $results->merge($this->searchContacts($query));
         }
 
         if ($user->hasPermission('opportunities.view')) {
@@ -71,12 +75,24 @@ class SearchService
             $results = $results->merge($this->searchQuotations($query));
         }
 
+        if ($user->hasPermission('sales_orders.view')) {
+            $results = $results->merge($this->searchSalesOrders($query));
+        }
+
         if ($user->hasPermission('invoices.view')) {
             $results = $results->merge($this->searchInvoices($query));
         }
 
         if ($user->hasPermission('payments.view')) {
             $results = $results->merge($this->searchPayments($query));
+        }
+
+        if ($user->hasPermission('adjustment_notes.view')) {
+            $results = $results->merge($this->searchAdjustmentNotes($query));
+        }
+
+        if ($user->hasPermission('price_lists.view')) {
+            $results = $results->merge($this->searchPriceLists($query));
         }
 
         if ($user->hasPermission('projects.view')) {
@@ -188,6 +204,28 @@ class SearchService
             ]);
     }
 
+    protected function searchContacts(string $query): Collection
+    {
+        $like = '%'.mb_strtolower($query).'%';
+
+        return \App\Models\Contact::query()
+            ->with('customer')
+            ->where(function ($q) use ($like) {
+                $q->whereRaw('LOWER(name) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', [$like]);
+            })
+            ->limit(5)
+            ->get()
+            ->map(fn (\App\Models\Contact $contact) => [
+                'type' => __('Contact'),
+                'label' => __('Contacts'),
+                'title' => $contact->name,
+                'subtitle' => $contact->customer?->display_name,
+                'url' => route('contacts.show', $contact),
+            ]);
+    }
+
     protected function searchOpportunities(string $query): Collection
     {
         return Opportunity::query()
@@ -245,6 +283,25 @@ class SearchService
             ]);
     }
 
+    public function searchSalesOrders(string $query): Collection
+    {
+        return SalesOrder::query()
+            ->where(function ($q) use ($query) {
+                $q->where('number', 'like', "%{$query}%")
+                    ->orWhere('title', 'like', "%{$query}%");
+            })
+            ->limit(5)
+            ->get()
+            ->map(fn (SalesOrder $salesOrder) => [
+                'type' => crm_term('sales_order'),
+                'label' => crm_term('sales_orders'),
+                'title' => $salesOrder->number,
+                'subtitle' => $salesOrder->title,
+                'url' => route('sales-orders.show', $salesOrder),
+                'workspace' => 'crm',
+            ]);
+    }
+
     public function searchInvoices(string $query): Collection
     {
         return Invoice::query()
@@ -279,6 +336,41 @@ class SearchService
                 'title' => $payment->number,
                 'subtitle' => $payment->formatted_amount,
                 'url' => route('payments.show', $payment),
+                'workspace' => 'crm',
+            ]);
+    }
+
+    public function searchAdjustmentNotes(string $query): Collection
+    {
+        return AdjustmentNote::query()
+            ->where(function ($q) use ($query) {
+                $q->where('number', 'like', "%{$query}%")
+                    ->orWhere('title', 'like', "%{$query}%");
+            })
+            ->limit(5)
+            ->get()
+            ->map(fn (AdjustmentNote $note) => [
+                'type' => $note->type_label,
+                'label' => $note->isCredit() ? crm_term('credit_notes') : crm_term('debit_notes'),
+                'title' => $note->number,
+                'subtitle' => $note->title,
+                'url' => route($note->routePrefix().'.show', $note),
+                'workspace' => 'crm',
+            ]);
+    }
+
+    public function searchPriceLists(string $query): Collection
+    {
+        return PriceList::query()
+            ->where('name', 'like', "%{$query}%")
+            ->limit(5)
+            ->get()
+            ->map(fn (PriceList $list) => [
+                'type' => crm_term('price_list'),
+                'label' => crm_term('price_lists'),
+                'title' => $list->name,
+                'subtitle' => $list->currency,
+                'url' => route('price-lists.show', $list),
                 'workspace' => 'crm',
             ]);
     }

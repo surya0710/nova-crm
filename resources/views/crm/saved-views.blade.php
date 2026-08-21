@@ -37,6 +37,9 @@
                         <td class="px-4 py-3 text-sm font-medium text-ink-heading">
                             <div class="flex items-center gap-2">
                                 <span>{{ $row['filter']->name }}</span>
+                                @if ($row['is_default'] ?? false)
+                                    <x-ui.badge variant="primary">{{ __('Default') }}</x-ui.badge>
+                                @endif
                                 @if ($row['filter']->validation_status !== 'valid')
                                     <x-ui.badge variant="warning">{{ __('Needs review') }}</x-ui.badge>
                                 @endif

@@ -15,7 +15,12 @@ class OrganizationMailer
         return $this->mailConfig->for($organization)->isConfigured();
     }
 
-    public function send(Organization $organization, string $recipient, Mailable $mailable, array $cc = []): void
+    /**
+     * @param  string|list<string>  $recipient
+     * @param  list<string>  $cc
+     * @param  list<string>  $bcc
+     */
+    public function send(Organization $organization, string|array $recipient, Mailable $mailable, array $cc = [], array $bcc = []): void
     {
         $config = $this->mailConfig->for($organization);
 
@@ -25,12 +30,14 @@ class OrganizationMailer
 
         $mailer = $config->registerMailer();
 
-        $pending = Mail::mailer($mailer)->to($recipient);
-
         if ($cc !== []) {
-            $pending->cc($cc);
+            $mailable->cc($cc);
         }
 
-        $pending->send($mailable);
+        if ($bcc !== []) {
+            $mailable->bcc($bcc);
+        }
+
+        Mail::mailer($mailer)->to($recipient)->send($mailable);
     }
 }

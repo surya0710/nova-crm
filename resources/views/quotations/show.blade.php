@@ -44,8 +44,12 @@
                 @can('convert', $quotation)
                     <form method="POST" action="{{ route('quotations.convert', $quotation) }}">
                         @csrf
-                        <x-ui.button type="submit" variant="primary" size="sm">{{ __('Generate :label', ['label' => crm_term('invoice')]) }}</x-ui.button>
+                        <x-ui.button type="submit" variant="primary" size="sm">{{ __('Create :label', ['label' => crm_term('sales_order')]) }}</x-ui.button>
                     </form>
+                @endcan
+            @elseif ($quotation->status === 'converted' && $quotation->salesOrder)
+                @can('view', $quotation->salesOrder)
+                    <x-ui.button :href="route('sales-orders.show', $quotation->salesOrder)" variant="secondary" size="sm">{{ __('View :label', ['label' => crm_term('sales_order')]) }}</x-ui.button>
                 @endcan
             @elseif ($quotation->status === 'converted' && $quotation->invoice)
                 @can('view', $quotation->invoice)
@@ -114,6 +118,10 @@
                 :organization="$organization"
                 :missing-email-hint="! $quotation->customer->email"
                 :show-cc="true"
+                :show-bcc="true"
+                :cc-sender="true"
+                module="quotations"
+                :related="$quotation"
             />
 
             @if ($allowedTransitions !== [])

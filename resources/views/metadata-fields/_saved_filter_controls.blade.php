@@ -4,6 +4,7 @@
     $savedFilterRoute = $savedFilterRoute ?? '';
     $savedFilterEntityType = $savedFilterEntityType ?? '';
     $filterFormId = $filterFormId ?? '';
+    $defaultSavedFilter = $defaultSavedFilter ?? null;
 @endphp
 
 <div class="lg:col-span-full border-t border-slate-100 pt-3 space-y-3" data-saved-filter-controls>
@@ -29,6 +30,9 @@
                         {{ $savedFilter->name }}
                         @if ($savedFilter->isShared())
                             ({{ __('Shared') }})
+                        @endif
+                        @if (($defaultSavedFilter->id ?? null) === $savedFilter->id)
+                            ({{ __('Default') }})
                         @endif
                         @if ($savedFilter->validation_status !== 'valid')
                             ({{ __('Needs review') }})
@@ -128,6 +132,24 @@
                             {{ __('Duplicate') }}
                         </button>
                     </form>
+                @endcan
+                @can('view', $activeSavedFilter)
+                    @if (($defaultSavedFilter->id ?? null) === $activeSavedFilter->id)
+                        <form method="POST" action="{{ route('saved-filters.default.clear', $activeSavedFilter) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                                {{ __('Clear default view') }}
+                            </button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('saved-filters.default', $activeSavedFilter) }}">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                                {{ __('Set as default view') }}
+                            </button>
+                        </form>
+                    @endif
                 @endcan
                 @can('delete', $activeSavedFilter)
                     <form method="POST" action="{{ route('saved-filters.destroy', $activeSavedFilter) }}" onsubmit="return confirm(@js(__('Delete this saved filter?')))">

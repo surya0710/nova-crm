@@ -45,8 +45,27 @@ class OrganizationMailTest extends TestCase
 
         $organization->refresh();
         $this->assertTrue($organization->settings['mail']['enabled']);
+        $this->assertSame('log', $organization->settings['mail']['provider']);
         $this->assertSame('log', $organization->settings['mail']['driver']);
         $this->assertSame('noreply@acme.test', $organization->settings['mail']['from_address']);
+    }
+
+    public function test_legacy_log_driver_without_provider_is_still_configured(): void
+    {
+        $organization = Organization::factory()->create();
+        $settings = $organization->settings ?? [];
+        $settings['mail'] = [
+            'enabled' => true,
+            'driver' => 'log',
+            'from_address' => 'billing@example.test',
+            'from_name' => 'Acme',
+        ];
+        $organization->update(['settings' => $settings]);
+
+        $config = app(\App\Services\OrganizationMailConfig::class)->for($organization->fresh());
+
+        $this->assertTrue($config->isConfigured());
+        $this->assertSame('log', $config->driver());
     }
 
     public function test_owner_can_send_test_email_using_organization_mailer(): void
