@@ -285,6 +285,17 @@ class CrmExpansionTest extends TestCase
             ->assertSee('Send proposal');
     }
 
+    public function test_activities_page_renders_when_activity_types_config_is_missing(): void
+    {
+        [$user, $organization] = $this->setupUserWithOrg();
+        config(['crm_activities.types' => null]);
+
+        $this->actingAs($user)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('crm.activities'))
+            ->assertOk();
+    }
+
     public function test_crm_apis_and_forecast_are_tenant_scoped(): void
     {
         [$user, $organization] = $this->setupUserWithOrg('manager');

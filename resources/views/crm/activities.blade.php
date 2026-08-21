@@ -28,7 +28,7 @@
                 @endforeach
                 <x-forms.select name="type" onchange="this.form.submit()">
                     <option value="">{{ __('All types') }}</option>
-                    @foreach (config('crm_activities.types') as $value => $label)
+                    @foreach (config('crm_activities.types') ?? [] as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['type'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </x-forms.select>

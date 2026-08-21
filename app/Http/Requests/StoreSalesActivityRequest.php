@@ -43,16 +43,16 @@ class StoreSalesActivityRequest extends FormRequest
         $type = $this->string('type')->toString();
 
         return [
-            'type' => ['required', 'string', Rule::in(array_keys(config('crm_activities.types')))],
+            'type' => ['required', 'string', Rule::in(array_keys(config('crm_activities.types') ?? []))],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'string', 'max:10000'],
             'occurred_at' => ['nullable', 'date'],
             'due_at' => [in_array($type, ['follow_up', 'task'], true) ? 'required' : 'nullable', 'date'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
-            'direction' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.directions')))],
-            'outcome' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.outcomes')))],
-            'status' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.statuses')))],
-            'priority' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.priorities')))],
+            'direction' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.directions') ?? []))],
+            'outcome' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.outcomes') ?? []))],
+            'status' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.statuses') ?? []))],
+            'priority' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.priorities') ?? []))],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],

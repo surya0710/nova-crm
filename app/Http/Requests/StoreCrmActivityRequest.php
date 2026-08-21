@@ -24,14 +24,14 @@ class StoreCrmActivityRequest extends FormRequest
         $type = $this->string('type')->toString();
 
         return [
-            'type' => ['required', 'string', Rule::in(array_keys(config('crm_activities.types')))],
+            'type' => ['required', 'string', Rule::in(array_keys(config('crm_activities.types') ?? []))],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'string', 'max:10000'],
             'occurred_at' => ['nullable', 'date'],
             'due_at' => [$type === 'follow_up' ? 'required' : 'nullable', 'date'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
-            'direction' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.directions')))],
-            'outcome' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.outcomes')))],
+            'direction' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.directions') ?? []))],
+            'outcome' => ['nullable', 'string', Rule::in(array_keys(config('crm_activities.outcomes') ?? []))],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }

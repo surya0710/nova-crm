@@ -18,7 +18,7 @@ class CrmActivityFactory extends Factory
 
     public function definition(): array
     {
-        $type = fake()->randomElement(array_keys(config('crm_activities.types')));
+        $type = fake()->randomElement(array_keys(config('crm_activities.types') ?? ['task' => 'Task']));
 
         return [
             'organization_id' => Organization::factory(),

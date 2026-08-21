@@ -772,6 +772,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         require_once app_path('helpers.php');
+        $this->ensureCrmActivitiesConfigLoaded();
 
         View::composer([
             'layouts.app',
@@ -1249,6 +1250,27 @@ class AppServiceProvider extends ServiceProvider
 
         foreach (['activate', 'disable', 'lock', 'unlock', 'resend_invitation'] as $mode) {
             $registry->register(new UserAccountBulkAction($accounts, $invitations, $mode));
+        }
+    }
+
+    /**
+     * Reload CRM activity option maps when a cached config was built
+     * before config/crm_activities.php existed.
+     */
+    protected function ensureCrmActivitiesConfigLoaded(): void
+    {
+        if (is_array(config('crm_activities.types'))) {
+            return;
+        }
+
+        $path = config_path('crm_activities.php');
+        if (! is_file($path)) {
+            return;
+        }
+
+        $loaded = require $path;
+        if (is_array($loaded)) {
+            config(['crm_activities' => $loaded]);
         }
     }
 

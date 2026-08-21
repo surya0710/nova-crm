@@ -77,7 +77,7 @@
                             <form method="POST" action="{{ route('contacts.activities.store', $contact) }}" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 @csrf
                                 <x-forms.select name="type" aria-label="{{ __('Activity type') }}" required>
-                                    @foreach (config('crm_activities.types') as $value => $label)
+                                    @foreach (config('crm_activities.types') ?? [] as $value => $label)
                                         <option value="{{ $value }}" @selected(old('type', 'call') === $value)>{{ $label }}</option>
                                     @endforeach
                                 </x-forms.select>
@@ -86,13 +86,13 @@
                                 <x-forms.input type="datetime-local" name="due_at" :value="old('due_at')" aria-label="{{ __('Follow-up due') }}" />
                                 <x-forms.select name="direction" aria-label="{{ __('Direction') }}">
                                     <option value="">{{ __('Direction') }}</option>
-                                    @foreach (config('crm_activities.directions') as $value => $label)
+                                    @foreach (config('crm_activities.directions') ?? [] as $value => $label)
                                         <option value="{{ $value }}" @selected(old('direction') === $value)>{{ $label }}</option>
                                     @endforeach
                                 </x-forms.select>
                                 <x-forms.select name="outcome" aria-label="{{ __('Outcome') }}">
                                     <option value="">{{ __('Outcome') }}</option>
-                                    @foreach (config('crm_activities.outcomes') as $value => $label)
+                                    @foreach (config('crm_activities.outcomes') ?? [] as $value => $label)
                                         <option value="{{ $value }}" @selected(old('outcome') === $value)>{{ $label }}</option>
                                     @endforeach
                                 </x-forms.select>

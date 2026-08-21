@@ -271,7 +271,7 @@
                             @csrf
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 <x-forms.select name="type" required>
-                                    @foreach (config('crm_activities.types') as $value => $label)
+                                    @foreach (config('crm_activities.types') ?? [] as $value => $label)
                                         <option value="{{ $value }}" @selected(old('type', 'follow_up') === $value)>{{ $label }}</option>
                                     @endforeach
                                 </x-forms.select>
