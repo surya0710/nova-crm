@@ -61,8 +61,8 @@ class ConfigurationRegistry
 
                 return [
                     'key' => $module['key'],
-                    'name' => $module['name'],
-                    'description' => $module['description'] ?? '',
+                    'name' => trans_string($module['name']),
+                    'description' => trans_string($module['description'] ?? ''),
                     'icon' => $module['icon'] ?? 'cog',
                     'license' => $module['license'] ?? null,
                     'order' => $module['order'] ?? 100,
@@ -122,8 +122,8 @@ class ConfigurationRegistry
 
                 return [
                     'key' => $key,
-                    'label' => $section['label'],
-                    'description' => $section['description'] ?? '',
+                    'label' => trans_string($section['label']),
+                    'description' => trans_string($section['description'] ?? ''),
                     'keywords' => $this->sectionKeywords($key, $section),
                     'route' => $section['route'] ?? null,
                     'href' => $href,
@@ -250,13 +250,13 @@ class ConfigurationRegistry
 
                 $matches[] = [
                     'key' => $key,
-                    'label' => $section['label'] ?? $key,
-                    'description' => $section['description'] ?? '',
+                    'label' => trans_string($section['label'] ?? $key),
+                    'description' => trans_string($section['description'] ?? ''),
                     'route' => $routeName,
                     'query' => $section['query'] ?? [],
                     'license' => $section['license'] ?? $inheritedLicense,
                     'module_key' => $module['key'],
-                    'module_name' => $module['name'],
+                    'module_name' => trans_string($module['name']),
                     'href' => $this->href($section),
                 ];
             }
@@ -320,7 +320,7 @@ class ConfigurationRegistry
         $hubHref = Route::has('organization.settings.hub') ? route('organization.settings.hub') : null;
         $items = [
             [
-                'label' => __('Administration'),
+                'label' => trans_string('Administration'),
                 'href' => Route::has('administration.home') ? route('administration.home') : null,
             ],
         ];
@@ -330,7 +330,7 @@ class ConfigurationRegistry
 
         if ($isHub || ($section === null && ($currentLabel === null || $currentLabel === 'Configuration Hub'))) {
             $items[] = [
-                'label' => __('Configuration Hub'),
+                'label' => trans_string('Configuration Hub'),
                 'current' => true,
             ];
 
@@ -338,18 +338,18 @@ class ConfigurationRegistry
         }
 
         $items[] = [
-            'label' => __('Configuration Hub'),
+            'label' => trans_string('Configuration Hub'),
             'href' => $hubHref,
         ];
 
         if ($section) {
             $items[] = [
-                'label' => __($section['module_name']),
+                'label' => trans_string($section['module_name']),
                 'href' => $hubHref ? $hubHref.'#module-'.$section['module_key'] : null,
             ];
             $label = $currentLabel ?: $section['label'];
             $items[] = [
-                'label' => __($label),
+                'label' => trans_string($label),
                 'current' => true,
             ];
 
@@ -357,7 +357,7 @@ class ConfigurationRegistry
         }
 
         $items[] = [
-            'label' => __($currentLabel ?: 'Settings'),
+            'label' => trans_string($currentLabel ?: 'Settings'),
             'current' => true,
         ];
 
@@ -371,7 +371,7 @@ class ConfigurationRegistry
     protected function sectionKeywords(string $key, array $section): array
     {
         $keywords = array_merge(
-            [$key, str_replace('_', ' ', $key)],
+            [$key, str_replace('_', ' ', $key), trans_string($section['label'] ?? '')],
             is_array($section['keywords'] ?? null) ? $section['keywords'] : [],
         );
 

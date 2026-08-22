@@ -16,6 +16,8 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee(config('branding.product_name'));
+        $response->assertSee(config('branding.logo'));
+        $response->assertSee(config('branding.logo_dark'));
         $response->assertSee('One platform for');
         $response->assertSee('sales, delivery');
     }

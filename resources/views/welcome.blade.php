@@ -8,6 +8,7 @@
     <meta name="application-name" content="{{ config('branding.product_name') }}">
     <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
     <title>{{ config('branding.product_name') }} — CRM, Projects, HR &amp; Analytics</title>
+    <x-brand-favicon />
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -23,10 +24,9 @@
         {{-- Nav --}}
         <header class="relative z-50">
             <div class="max-w-6xl mx-auto px-5 sm:px-8">
-                <div class="flex items-center justify-between h-[72px]">
-                    <a href="{{ route('home') }}" class="flex items-center gap-3 group">
-                        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 transition-shadow">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
-                        <span class="font-bold text-xl tracking-tight">{{ config('branding.product_name') }}</span>
+                <div class="flex items-center justify-between py-4">
+                    <a href="{{ route('home') }}" class="flex items-center group">
+                        <x-product-logo size="lg" />
                     </a>
 
                     <nav class="hidden md:flex items-center gap-1">
@@ -121,11 +121,7 @@
                             <div class="hidden sm:flex flex-col w-52 bg-slate-950 border-r border-white/5 shrink-0">
                                 <div class="p-4 border-b border-white/5">
                                     <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
-                                        <div>
-                                            <p class="text-xs font-semibold text-white">{{ config('branding.product_name') }}</p>
-                                            <p class="text-[10px] text-slate-500">Enterprise Suite</p>
-                                        </div>
+                                        <x-product-logo size="sm" />
                                     </div>
                                 </div>
                                 <div class="p-3 flex-1 space-y-1">
@@ -342,10 +338,7 @@
         <div class="max-w-6xl mx-auto px-5 sm:px-8 py-12">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                 <div>
-                    <div class="flex items-center gap-3">
-                        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-bold text-white text-sm">{{ strtoupper(substr(config('branding.product_short_name'), 0, 1)) }}</div>
-                        <span class="font-bold text-lg text-slate-900">{{ config('branding.product_name') }}</span>
-                    </div>
+                    <x-product-logo variant="dark" size="lg" />
                     <p class="mt-3 text-sm text-slate-500 max-w-xs">Multi-tenant enterprise suite for CRM, Projects, HRMS, Marketing, and Analytics.</p>
                 </div>
                 <div class="flex gap-12 text-sm">

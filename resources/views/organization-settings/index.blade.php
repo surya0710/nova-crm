@@ -79,7 +79,7 @@
                                 href="#module-{{ $module['key'] }}"
                                 class="shrink-0 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:border-primary-200 hover:text-primary-700"
                                 x-show="moduleVisible(modules[{{ $loop->index }}])"
-                            >{{ __($module['name']) }}</a>
+                            >{{ trans_string($module['name']) }}</a>
                         @endforeach
                     </nav>
                 @endif
@@ -111,10 +111,10 @@
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">{!! $icons[$module['icon']] ?? $icons['cog'] !!}</span>
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <h2 class="text-base font-semibold text-ink-heading">{{ __($module['name']) }}</h2>
+                                <h2 class="text-base font-semibold text-ink-heading">{{ trans_string($module['name']) }}</h2>
                                 <span class="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-ink-muted">{{ trans_choice(':count setting|:count settings', count($module['sections']), ['count' => count($module['sections'])]) }}</span>
                             </div>
-                            <p class="mt-1 text-sm text-ink-muted">{{ __($module['description']) }}</p>
+                            <p class="mt-1 text-sm text-ink-muted">{{ trans_string($module['description']) }}</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -124,8 +124,8 @@
                                 class="group flex min-h-[5.5rem] flex-col rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-200 hover:shadow"
                                 x-show="matches(modules[{{ $index }}].sections[{{ $sectionIndex }}])"
                             >
-                                <p class="font-medium text-ink-heading group-hover:text-primary-700">{{ __($section['label']) }}</p>
-                                <p class="mt-1 text-xs leading-5 text-ink-muted">{{ __($section['description']) }}</p>
+                                <p class="font-medium text-ink-heading group-hover:text-primary-700">{{ trans_string($section['label']) }}</p>
+                                <p class="mt-1 text-xs leading-5 text-ink-muted">{{ trans_string($section['description']) }}</p>
                             </a>
                         @endforeach
                     </div>
@@ -152,8 +152,8 @@
                     <x-ui.card>
                         @forelse ($futureModules as $module)
                             <div @class(['mt-4 pt-4 border-t border-line' => ! $loop->first])>
-                                <p class="font-medium text-ink-heading">{{ __($module['label']) }}</p>
-                                <p class="mt-1 text-sm text-ink-muted">{{ __($module['reason'] ?? '') }}</p>
+                                <p class="font-medium text-ink-heading">{{ trans_string($module['label']) }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ trans_string($module['reason'] ?? '') }}</p>
                             </div>
                         @empty
                             <x-ui.empty-state-preset

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $careerSiteSettings?->seo_title ?? ($careerOrganization->name ?? config('app.name')).' Careers' }}</title>
+    <x-brand-favicon />
     @if($careerSiteSettings?->seo_description)
         <meta name="description" content="{{ $careerSiteSettings->seo_description }}">
     @endif
@@ -14,9 +15,7 @@
     <header class="bg-white border-b border-slate-200">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <a href="{{ route('careers.home', $careerOrganization) }}" class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-semibold">
-                    {{ strtoupper(substr($careerOrganization->name, 0, 1)) }}
-                </div>
+                <x-organization-logo :organization="$careerOrganization" size="lg" />
                 <div>
                     <div class="font-semibold">{{ $careerOrganization->name }}</div>
                     <div class="text-xs text-slate-500">{{ __('Careers') }}</div>

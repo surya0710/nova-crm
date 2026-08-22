@@ -282,7 +282,7 @@
 
             <x-entity.section :title="__('Organization')">
                 <div class="flex items-center gap-3 pb-4 border-b border-line">
-                    <x-organization-logo :organization="$organization" size="lg" />
+                    <x-organization-logo :organization="$organization" size="xl" />
                     <div class="min-w-0">
                         <p class="font-semibold text-ink-heading truncate">{{ $organization->name }}</p>
                         <p class="text-sm text-ink-muted truncate">{{ $organization->slug }}</p>

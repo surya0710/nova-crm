@@ -7,6 +7,7 @@
         <meta name="application-name" content="{{ config('branding.product_name') }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
         <title>{{ __('Platform') }} — {{ config('branding.product_name') }}</title>
+        <x-brand-favicon />
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -121,8 +122,8 @@
                     {{ $slot }}
                 </main>
 
-                <footer class="border-t border-line px-4 py-3 text-xs text-ink-muted sm:px-6 lg:px-8">
-                    {{ config('branding.product_name') }} · {{ __('Platform console') }}
+                <footer class="border-t border-line px-4 py-3 flex items-center justify-center gap-2 sm:px-6 lg:px-8">
+                    <x-product-logo variant="dark" size="sm" />
                 </footer>
             </div>
         </div>

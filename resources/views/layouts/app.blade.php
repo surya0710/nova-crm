@@ -15,6 +15,7 @@
         <meta name="application-name" content="{{ config('branding.product_name') }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
         <title>{{ config('branding.product_name') }}</title>
+        <x-brand-favicon />
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
         @stack('page-assets')

@@ -283,7 +283,7 @@ $modules = [
                 'order' => 100,
             ],
             'attendance' => [
-                'label' => 'Attendance',
+                'label' => 'attendance.label',
                 'description' => 'Grace, lateness, geofence, and verification rules.',
                 'route' => 'organization.settings.attendance-rules.edit',
                 'permission' => 'organization.hr_config.manage',

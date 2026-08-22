@@ -7,18 +7,16 @@
         <meta name="application-name" content="{{ config('branding.product_name') }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('branding.product_name') }}">
         <title>{{ __('Platform Login') }} — {{ config('branding.product_name') }}</title>
+        <x-brand-favicon />
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased bg-slate-950 text-slate-100">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="h-12 w-12 rounded-xl bg-violet-600 flex items-center justify-center font-bold text-white text-lg">P</div>
-                <div>
-                    <div class="font-semibold text-xl text-white">{{ config('branding.product_name') }} {{ __('Platform') }}</div>
-                    <div class="text-sm text-slate-400">{{ __('SaaS Administration') }}</div>
-                </div>
+            <div class="mb-6">
+                <x-product-logo size="xl" />
+                <p class="mt-2 text-sm text-slate-400">{{ __('SaaS Administration') }}</p>
             </div>
             <div class="w-full sm:max-w-md px-6 py-6 bg-slate-900 border border-slate-800 shadow-xl sm:rounded-xl">
                 {{ $slot }}

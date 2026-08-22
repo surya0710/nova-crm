@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($portalOrganization->name ?? config('app.name')).' — '.__('Client Portal') }}</title>
+    <x-brand-favicon />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased bg-slate-50 text-slate-900">
     <header class="bg-white border-b border-slate-200">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <a href="{{ route('portal.dashboard', $portalOrganization) }}" class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-lg bg-slate-800 text-white flex items-center justify-center font-semibold">
-                    {{ strtoupper(substr($portalOrganization->name, 0, 1)) }}
-                </div>
+                <x-organization-logo :organization="$portalOrganization" size="lg" />
                 <div>
                     <div class="font-semibold">{{ $portalOrganization->name }}</div>
                     <div class="text-xs text-slate-500">{{ __('Client Portal') }}</div>

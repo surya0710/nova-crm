@@ -14,9 +14,9 @@
 @endphp
 
 @if ($primary->isNotEmpty() || $overflow->isNotEmpty())
-    <div class="flex min-w-0 max-w-full items-center gap-1 overflow-hidden" data-testid="header-quick-actions">
+    <div class="flex min-w-0 max-w-full items-center gap-1 overflow-visible" data-testid="header-quick-actions">
         {{-- Desktop: primary action links --}}
-        <div class="hidden min-w-0 items-center gap-1 lg:flex">
+        <div class="hidden min-w-0 items-center gap-1 overflow-hidden lg:flex">
             @foreach ($primary as $action)
                 <a
                     href="{{ $action['href'] }}"
@@ -26,7 +26,7 @@
         </div>
 
         {{-- Tablet: fewer primary actions --}}
-        <div class="hidden min-w-0 items-center gap-1 sm:flex lg:hidden">
+        <div class="hidden min-w-0 items-center gap-1 overflow-hidden sm:flex lg:hidden">
             @foreach ($primary->take((int) config('navigation.quick_action_limits.tablet', 3)) as $action)
                 <a
                     href="{{ $action['href'] }}"
@@ -39,7 +39,8 @@
         @php
             $tabletOverflow = $primary->slice((int) config('navigation.quick_action_limits.tablet', 3))->concat($overflow)->values();
             $mobileActions = $primary->concat($overflow)->values();
-            $hasMoreDesktop = $overflow->isNotEmpty();
+            $desktopMenu = $overflow->isNotEmpty() ? $overflow : $tabletOverflow;
+            $hasMoreDesktop = $desktopMenu->isNotEmpty();
             $hasMoreTablet = $tabletOverflow->isNotEmpty();
             $hasMoreMobile = $mobileActions->isNotEmpty();
         @endphp
@@ -48,14 +49,14 @@
             <div
                 class="relative shrink-0"
                 x-data="{ open: false }"
-                x-on:keydown.escape.window="open = false"
-                x-on:click.outside="open = false"
+                @keydown.escape.window="open = false"
+                @click.outside="open = false"
             >
                 <button
                     type="button"
                     class="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-xs font-medium text-ink-heading hover:bg-app sm:text-sm"
-                    x-on:click="open = ! open"
-                    x-bind:aria-expanded="open.toString()"
+                    @click.stop="open = ! open"
+                    :aria-expanded="open.toString()"
                     aria-haspopup="menu"
                     aria-label="{{ __('More actions') }}"
                 >
@@ -65,15 +66,16 @@
                 </button>
 
                 {{-- Desktop / tablet dropdown --}}
+                <div class="hidden sm:block">
                 <div
                     x-show="open"
                     x-cloak
                     x-transition
-                    class="absolute right-0 z-50 mt-1 hidden w-56 rounded-xl border border-line bg-surface-card py-1 shadow-lg sm:block"
+                    class="absolute right-0 z-dropdown mt-1 w-56 rounded-xl border border-line bg-surface-card py-1 shadow-lg"
                     role="menu"
                 >
                     <div class="hidden lg:block">
-                        @forelse ($overflow as $action)
+                        @forelse ($desktopMenu as $action)
                             <a href="{{ $action['href'] }}" class="block px-3 py-2 text-sm text-ink hover:bg-surface-muted" role="menuitem">{{ $action['label'] }}</a>
                         @empty
                             <p class="px-3 py-2 text-sm text-ink-muted">{{ __('No more actions') }}</p>
@@ -85,6 +87,7 @@
                         @endforeach
                     </div>
                 </div>
+                </div>
 
                 {{-- Mobile drawer --}}
                 <div
@@ -95,14 +98,14 @@
                     aria-modal="true"
                     aria-label="{{ __('Quick actions') }}"
                 >
-                    <div class="absolute inset-0 bg-[var(--nova-color-bg-overlay)]" x-on:click="open = false"></div>
+                    <div class="absolute inset-0 bg-[var(--nova-color-bg-overlay)]" @click="open = false"></div>
                     <div
                         class="absolute inset-x-0 bottom-0 max-h-[70vh] overflow-y-auto rounded-t-2xl border border-line bg-surface-card p-4 shadow-xl"
-                        x-on:click.stop
+                        @click.stop
                     >
                         <div class="mb-3 flex items-center justify-between">
                             <p class="text-sm font-semibold text-ink-heading">{{ __('Quick actions') }}</p>
-                            <button type="button" class="rounded-lg p-2 text-ink-muted hover:bg-surface-muted" x-on:click="open = false" aria-label="{{ __('Close') }}">
+                            <button type="button" class="rounded-lg p-2 text-ink-muted hover:bg-surface-muted" @click="open = false" aria-label="{{ __('Close') }}">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>

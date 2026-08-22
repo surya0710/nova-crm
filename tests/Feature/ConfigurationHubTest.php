@@ -81,6 +81,18 @@ class ConfigurationHubTest extends TestCase
         $this->assertContains('projects', $keys);
     }
 
+    public function test_hub_renders_attendance_section_when_hrms_is_enabled(): void
+    {
+        [$organization, $owner] = $this->ownerOnPlan('professional');
+
+        $this->actingAs($owner)
+            ->withSession(['current_organization_id' => $organization->id])
+            ->get(route('organization.settings.hub'))
+            ->assertOk()
+            ->assertSee('Attendance')
+            ->assertDontSee('attendance.label');
+    }
+
     public function test_disabled_hrms_module_is_hidden_from_hub(): void
     {
         [$organization, $owner] = $this->ownerOnPlan('professional');

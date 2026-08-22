@@ -26,6 +26,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Product logo
+    |--------------------------------------------------------------------------
+    |
+    | Public path (relative to the public directory) used for the product mark
+    | on login, marketing, platform chrome, and as the default org logo.
+    |
+    */
+
+    'logo' => env('BRAND_LOGO', 'konnect-logo.png'),
+
+    'logo_dark' => env('BRAND_LOGO_DARK', 'konnect-dark-logo.jpg'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filename prefix
     |--------------------------------------------------------------------------
     |

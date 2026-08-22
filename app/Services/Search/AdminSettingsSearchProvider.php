@@ -46,8 +46,8 @@ class AdminSettingsSearchProvider implements SearchProviderInterface
                 return [
                     'type' => __('Setting'),
                     'label' => $this->label(),
-                    'title' => __($section['label']),
-                    'subtitle' => $subtitle !== '' ? __($subtitle) : null,
+                    'title' => trans_string($section['label']),
+                    'subtitle' => $subtitle !== '' ? trans_string($subtitle) : null,
                     'url' => $section['href'],
                     'workspace' => 'administration',
                 ];

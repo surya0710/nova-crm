@@ -2,25 +2,18 @@
 
 @php
     $sizes = [
-        'sm' => 'h-8 w-8 text-xs',
-        'md' => 'h-10 w-10 text-sm',
-        'lg' => 'h-14 w-14 text-base',
-        'xl' => 'h-20 w-20 text-xl',
+        'sm' => 'h-10 w-10',
+        'md' => 'h-12 w-12',
+        'lg' => 'h-16 w-16',
+        'xl' => 'h-24 w-24',
     ];
     $sizeClass = $sizes[$size] ?? $sizes['md'];
+    $src = $organization->logo_url
+        ?: asset(ltrim((string) config('branding.logo', 'konnect-logo.png'), '/'));
 @endphp
 
-@if ($organization->hasLogo())
-    <img
-        {{ $attributes->merge(['class' => "$sizeClass rounded-lg object-cover shrink-0 ring-1 ring-slate-200"]) }}
-        src="{{ $organization->logo_url }}"
-        alt="{{ $organization->name }}"
-    />
-@else
-    <div
-        {{ $attributes->merge(['class' => "$sizeClass rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center font-semibold text-white shrink-0 shadow-sm"]) }}
-        title="{{ $organization->name }}"
-    >
-        {{ $organization->initials }}
-    </div>
-@endif
+<img
+    {{ $attributes->merge(['class' => "$sizeClass rounded-lg object-contain shrink-0 ring-1 ring-slate-200 bg-black"]) }}
+    src="{{ $src }}"
+    alt="{{ $organization->name }}"
+/>

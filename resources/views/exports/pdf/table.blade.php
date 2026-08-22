@@ -16,8 +16,15 @@
 </head>
 <body>
     <div class="brand">
-        @if ($organization->logo_url)
-            <img src="{{ $organization->logo_url }}" alt="" style="max-height: 40px; margin-bottom: 6px;">
+        @php
+            $logoSrc = $organization->logo_url;
+            if (! $logoSrc) {
+                $logoFile = public_path(ltrim((string) config('branding.logo', 'konnect-logo.png'), '/'));
+                $logoSrc = is_file($logoFile) ? $logoFile : null;
+            }
+        @endphp
+        @if ($logoSrc)
+            <img src="{{ $logoSrc }}" alt="" style="max-height: 40px; margin-bottom: 6px;">
         @endif
         <h1>{{ $organization->name }}</h1>
         <div class="meta">
