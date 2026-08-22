@@ -24,34 +24,49 @@
             <x-nav.breadcrumbs :items="$hubBreadcrumbs" />
         </x-slot:breadcrumbs>
 
+        <script type="application/json" id="configuration-hub-data">{!! json_encode([
+            'modules' => $modules,
+            'recent' => $recentSettings ?? [],
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
         <div
             class="space-y-8"
-            x-data='{
-                query: "",
-                norm(value) { return (value || "").toString().toLowerCase(); },
+            x-data="{
+                query: '',
+                modules: [],
+                recent: [],
+                init() {
+                    try {
+                        const payload = JSON.parse(document.getElementById('configuration-hub-data')?.textContent || '{}');
+                        this.modules = Array.isArray(payload.modules) ? payload.modules : [];
+                        this.recent = Array.isArray(payload.recent) ? payload.recent : [];
+                    } catch (e) {
+                        this.modules = [];
+                        this.recent = [];
+                    }
+                },
+                norm(value) { return (value || '').toString().toLowerCase(); },
                 haystack(item) {
-                    return this.norm([item.key, item.label, item.description, (item.keywords || []).join(" ")].join(" "));
+                    return this.norm([item?.key, item?.label, item?.description, (item?.keywords || []).join(' ')].join(' '));
                 },
                 matches(item) {
                     const tokens = this.norm(this.query).split(/\s+/).filter(Boolean);
                     if (! tokens.length) return true;
-                    const haystack = this.haystack(item);
-                    return tokens.every((token) => haystack.includes(token));
+                    return tokens.every((token) => this.haystack(item).includes(token));
                 },
                 moduleVisible(module) {
-                    return (module.sections || []).some((section) => this.matches(section));
+                    if (! module) return true;
+                    const sections = module.sections || [];
+                    return sections.length === 0 || sections.some((section) => this.matches(section));
                 },
                 get hasQuery() { return this.norm(this.query).length > 0; },
                 get anyVisible() {
-                    return this.modules.some((module) => this.moduleVisible(module));
+                    return (this.modules || []).some((module) => this.moduleVisible(module));
                 },
                 recentVisible() {
                     if (this.hasQuery) return false;
-                    return this.recent.length > 0;
+                    return (this.recent || []).length > 0;
                 },
-                modules: {!! json_encode($modules, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!},
-                recent: {!! json_encode($recentSettings ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!},
-            }'
+            }"
         >
             <div class="rounded-2xl border border-line bg-surface-card p-4 shadow-sm sm:p-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -78,7 +93,7 @@
                             <a
                                 href="#module-{{ $module['key'] }}"
                                 class="shrink-0 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:border-primary-200 hover:text-primary-700"
-                                x-show="moduleVisible(modules[{{ $loop->index }}])"
+                                x-show="!hasQuery || moduleVisible(modules[{{ $loop->index }}])"
                             >{{ trans_string($module['name']) }}</a>
                         @endforeach
                     </nav>
@@ -104,8 +119,7 @@
                 <section
                     id="module-{{ $module['key'] }}"
                     class="scroll-mt-24"
-                    x-show="moduleVisible(modules[{{ $index }}])"
-                    x-cloak
+                    x-show="!hasQuery || moduleVisible(modules[{{ $index }}])"
                 >
                     <div class="mb-4 flex items-start gap-3">
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">{!! $icons[$module['icon']] ?? $icons['cog'] !!}</span>
@@ -122,7 +136,7 @@
                             <a
                                 href="{{ $section['href'] }}"
                                 class="group flex min-h-[5.5rem] flex-col rounded-xl border border-line bg-surface-card p-4 shadow-sm transition hover:border-primary-200 hover:shadow"
-                                x-show="matches(modules[{{ $index }}].sections[{{ $sectionIndex }}])"
+                                x-show="!hasQuery || matches(modules[{{ $index }}]?.sections?.[{{ $sectionIndex }}])"
                             >
                                 <p class="font-medium text-ink-heading group-hover:text-primary-700">{{ trans_string($section['label']) }}</p>
                                 <p class="mt-1 text-xs leading-5 text-ink-muted">{{ trans_string($section['description']) }}</p>
