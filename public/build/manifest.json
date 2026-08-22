@@ -1,0 +1,24 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-BpKHCd6M.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/workflow.css": {
+    "file": "assets/workflow-D3gQdCvM.css",
+    "src": "resources/css/workflow.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-D0ijllCK.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/workflow.js": {
+    "file": "assets/workflow-Cs_zoQX_.js",
+    "name": "workflow",
+    "src": "resources/js/workflow.js",
+    "isEntry": true
+  }
+}

@@ -1,6 +1,6 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# public/build is committed so production can deploy without npm.
 /public/hot
 /public/storage
 /storage/*.key
