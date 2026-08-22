@@ -40,6 +40,29 @@ class ConfigurationHubTest extends TestCase
         $this->assertArrayNotHasKey('business_hours', config('organization_settings.sections'));
     }
 
+    public function test_registry_rebuilds_catalog_when_modules_key_is_missing(): void
+    {
+        $original = config('organization_settings');
+        $this->assertNotEmpty($original['sections'] ?? []);
+
+        config([
+            'organization_settings.modules' => [],
+            'organization_settings.sections' => $original['sections'],
+            'organization_settings.groups' => $original['groups'] ?? [],
+        ]);
+
+        [$organization, $owner] = $this->starterOwner();
+        $modules = app(ConfigurationRegistry::class)->visibleModules($owner, $organization);
+
+        $this->assertNotEmpty($modules);
+        $this->assertTrue(
+            collect($modules)->contains(fn (array $module) => ($module['key'] ?? null) === 'organization'
+                || collect($module['sections'] ?? [])->contains(fn (array $section) => ($section['key'] ?? null) === 'profile'))
+        );
+
+        config(['organization_settings' => $original]);
+    }
+
     public function test_hub_is_reachable_for_organization_owner(): void
     {
         [$organization, $owner] = $this->starterOwner();

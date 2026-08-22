@@ -25,7 +25,12 @@ class ConfigurationRegistry
      */
     public function all(): array
     {
-        return config('organization_settings.modules', []);
+        $modules = config('organization_settings.modules', []);
+        if (is_array($modules) && $modules !== []) {
+            return $modules;
+        }
+
+        return $this->modulesFromLegacySections();
     }
 
     /**
@@ -142,6 +147,10 @@ class ConfigurationRegistry
      */
     public function userCanAccessSection(User $user, Organization $organization, array $section): bool
     {
+        if ($user->is_super_admin || $user->isOwnerOf($organization)) {
+            return true;
+        }
+
         $any = $section['any_permissions'] ?? null;
         if (is_array($any) && $any !== []) {
             return $user->hasAnyPermission($any, $organization);
@@ -166,6 +175,10 @@ class ConfigurationRegistry
      */
     public function userCanAccessModule(User $user, Organization $organization, array $module): bool
     {
+        if ($user->is_super_admin || $user->isOwnerOf($organization)) {
+            return true;
+        }
+
         $permission = $module['permission'] ?? null;
         if ($permission === null) {
             return true;
@@ -193,7 +206,11 @@ class ConfigurationRegistry
             return null;
         }
 
-        return route($routeName, $section['query'] ?? []);
+        try {
+            return route($routeName, $section['query'] ?? []);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -387,5 +404,48 @@ class ConfigurationRegistry
     public function futureModules(): Collection
     {
         return collect(config('organization_settings.future_modules', []));
+    }
+
+    /**
+     * Rebuild the hub catalog from the pre-module-aware sections list.
+     * Used when production still has a cached config without `modules`.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    protected function modulesFromLegacySections(): array
+    {
+        $sections = config('organization_settings.sections', []);
+        $groups = config('organization_settings.groups', []);
+        if (! is_array($sections) || $sections === []) {
+            return [];
+        }
+
+        $modules = [];
+
+        foreach ($sections as $key => $section) {
+            if (! is_array($section)) {
+                continue;
+            }
+
+            $group = (string) ($section['group'] ?? $section['module'] ?? 'organization');
+            if (! isset($modules[$group])) {
+                $modules[$group] = [
+                    'key' => $group,
+                    'name' => is_string($groups[$group] ?? null)
+                        ? $groups[$group]
+                        : ucfirst(str_replace('_', ' ', $group)),
+                    'description' => '',
+                    'icon' => 'cog',
+                    'license' => $section['license'] ?? null,
+                    'permission' => null,
+                    'order' => count($modules) * 10 + 10,
+                    'sections' => [],
+                ];
+            }
+
+            $modules[$group]['sections'][(string) $key] = $section;
+        }
+
+        return $modules;
     }
 }
