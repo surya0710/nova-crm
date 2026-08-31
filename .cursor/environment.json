@@ -1,0 +1,20 @@
+{
+  "name": "Nova CRM (Konnect Nex)",
+  "install": "bash .cursor/install.sh",
+  "start": "sudo mkdir -p /var/run/mysqld && sudo chown mysql:mysql /var/run/mysqld && sudo service mysql start",
+  "terminals": [
+    {
+      "name": "app",
+      "command": "php artisan serve --host=0.0.0.0 --port=8000"
+    },
+    {
+      "name": "vite",
+      "command": "npm run dev -- --host"
+    },
+    {
+      "name": "queue",
+      "command": "php artisan queue:work database --queue=default,imports,exports,bulk,provisioning,mail --sleep=1 --tries=3 --timeout=360"
+    }
+  ],
+  "ports": [8000, 5173]
+}
